@@ -34,9 +34,7 @@ const clinicalFormRef = ref(null)
 const savingGeneral = ref(false)
 const savingMedical = ref(false)
 const savingClinical = ref(false)
-const savingAgreement = ref(false)
 const showAgreement = ref(false)
-const agreementCheckbox = ref(false)
 
 const parsedAgreement = computed(() => {
   const content = personalDataAuthorizationContent['fr-FR'] || ''
@@ -77,28 +75,10 @@ const clinicalModel = ref({
   iah: null,
 })
 
-const agreementAccepted = computed(() => !!currentUser.value?.agreementPersonal && !!currentUser.value?.agreementPersonalDate)
-
 const agreementDate = computed(() => {
   const d = currentUser.value?.agreementPersonalDate
   return d?.toDate?.() || d || null
 })
-
-async function acceptAgreement() {
-  savingAgreement.value = true
-  try {
-    const updateData = {
-      agreementPersonal: true,
-      agreementPersonalDate: new Date().toISOString(),
-    }
-    Object.assign(selfStore.item, updateData)
-    messagesStore.add({ type: 'success', text: 'Autorisation enregistrée avec succès' })
-  } catch (error) {
-    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement de l'autorisation" })
-  } finally {
-    savingAgreement.value = false
-  }
-}
 
 watch(() => currentUser.value, (item) => {
   if (!item?.id) return
@@ -225,24 +205,11 @@ async function logOut() {
         <v-card class="card-shadow px-6 pb-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
           <div class="markdown-content" v-html="parsedAgreement" />
 
-          <div v-if="agreementAccepted" class="d-flex align-center mt-6 justify-center">
+          <div class="d-flex align-center mt-6 justify-center">
             <v-icon color="success" class="mr-2">{{ mdiCheck }}</v-icon>
             <span class="text-body-small text-medium-emphasis">
-              Accepté le {{ ISOToShortenedDate(agreementDate) }}
+              Accepté{{ agreementDate ? ` le ${ISOToShortenedDate(agreementDate)}` : '' }}
             </span>
-          </div>
-          <div v-else class="mt-6">
-            <div>
-              <v-checkbox v-model="agreementCheckbox"
-                label="J'ai lu et j'accepte les conditions de traitement de mes données personnelles" color="primary"
-                hide-details class="mb-4" />
-            </div>
-            <div class="text-center">
-              <v-btn color="primary" variant="flat" rounded="lg" class="text-none" :disabled="!agreementCheckbox"
-                :loading="savingAgreement" @click="acceptAgreement">
-                Accepter
-              </v-btn>
-            </div>
           </div>
         </v-card>
 
@@ -268,32 +235,6 @@ async function logOut() {
               completionTitle="Complétez votre profil" completeTitle="Profil complet"
               completionSubtitle="Renseignez vos informations pour accéder à toutes les fonctionnalités"
               completeSubtitle="Toutes vos informations sont renseignées" :sections="profileSections" />
-          </v-col>
-
-          <!-- Autorisation données personnelles -->
-          <v-col cols="12">
-            <v-card class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
-              <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
-                <span class="text-headline-small font-weight-bold text-truncate">Données personnelles</span>
-              </v-card-title>
-              <v-card-text class="px-4 pt-4">
-                <div v-if="agreementAccepted" class="d-flex align-center">
-                  <v-icon color="success" class="mr-2">{{ mdiCheck }}</v-icon>
-                  <span class="text-body-small text-medium-emphasis">
-                    Accepté le {{ ISOToShortenedDate(agreementDate) }}
-                  </span>
-                </div>
-                <div v-else class="text-body-small text-medium-emphasis">
-                  Vous n'avez pas encore accepté l'autorisation de traitement des données personnelles.
-                </div>
-              </v-card-text>
-              <v-card-actions class="px-4 pb-4">
-                <v-btn variant="text" rounded="lg" size="small" class="border-light text-none"
-                  @click="showAgreement = true">
-                  {{ agreementAccepted ? 'Consulter' : 'Lire et accepter' }}
-                </v-btn>
-              </v-card-actions>
-            </v-card>
           </v-col>
 
           <v-col cols="12">
@@ -527,12 +468,27 @@ async function logOut() {
             </v-card>
           </v-col>
 
+          <!-- Autorisation données personnelles -->
           <v-col cols="12">
-            <!-- Carte Vitale -->
-          </v-col>
-
-          <v-col cols="12">
-            <!-- Attestation de Sécurité Sociale -->
+            <v-card class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+              <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
+                <span class="text-headline-small font-weight-bold text-truncate">Données personnelles</span>
+              </v-card-title>
+              <v-card-text class="px-4 pt-4">
+                <div class="d-flex align-center">
+                  <v-icon color="success" class="mr-2">{{ mdiCheck }}</v-icon>
+                  <span class="text-body-small text-medium-emphasis">
+                    Accepté{{ agreementDate ? ` le ${ISOToShortenedDate(agreementDate)}` : '' }}
+                  </span>
+                </div>
+              </v-card-text>
+              <v-card-actions class="px-4 pb-4">
+                <v-btn variant="text" rounded="lg" size="small" class="border-light text-none"
+                  @click="showAgreement = true">
+                  Consulter
+                </v-btn>
+              </v-card-actions>
+            </v-card>
           </v-col>
 
           <!-- Log Out Section -->

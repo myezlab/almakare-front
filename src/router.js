@@ -1,3 +1,4 @@
+import { useSelfStore } from '@/stores/self'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
@@ -77,7 +78,11 @@ const router = createRouter({
 
 
 router.beforeEach(async (to, from, next) => {
-  // Allow navigation to all other routes
+  const selfStore = useSelfStore()
+  if (to.name === 'Home' && selfStore.item.id) {
+    next({ name: 'Dashboard' })
+    return
+  }
   next()
 })
 

@@ -4,8 +4,12 @@ import logo from "@/assets/img/logo.svg"
 import { useNavigationItems } from "@/composables/useNavigationItems"
 import { useSelfStore } from "@/stores/self"
 import { mdiAccountOutline, mdiChevronLeft, mdiChevronRight, mdiCircle } from "@mdi/js"
-import { computed, ref, watch } from "vue"
+import { computed, defineAsyncComponent, ref, watch } from "vue"
 import { useRoute } from "vue-router"
+
+const WelcomeNameDialog = defineAsyncComponent(() =>
+  import("@/components/WelcomeNameDialog.vue")
+)
 
 const MINI_STORAGE_KEY = "mini"
 
@@ -17,6 +21,11 @@ const route = useRoute()
 const active = computed(() => items.value.length > 0)
 
 const activeRouteName = computed(() => route.name)
+
+const needsName = computed(() => {
+  const { id, firstName, lastName } = selfStore.item
+  return !!id && (!firstName?.trim() || !lastName?.trim())
+})
 
 const hasUnreadMessages = computed(() => {
   const { lastMessageAt, messagesViewedAt } = selfStore.item
@@ -31,6 +40,8 @@ watch(mini, (val) => {
 </script>
 
 <template>
+  <WelcomeNameDialog v-if="needsName" />
+
   <!-- Mobile: Floating Bottom Navigation -->
   <div v-if="$vuetify.display.mobile && active" class="bottom-nav-wrap">
     <nav class="bottom-nav">

@@ -3,18 +3,13 @@ import { computed, toValue } from "vue"
 const PROFILE_FIELDS = [
   { key: 'firstName', label: 'Prénom' },
   { key: 'lastName', label: 'Nom' },
-  { key: 'birthName', label: 'Nom de naissance' },
   { key: 'gender', label: 'Genre' },
   { key: 'dob', label: 'Date de naissance' },
   { key: 'socialSecurityNumber', label: 'Numéro de sécurité sociale' },
-  { key: 'postalAddress', label: 'Adresse' },
-  { key: 'city', label: 'Ville' },
-  { key: 'postalCode', label: 'Code postal' },
   { key: 'phoneNumber', label: 'Téléphone' },
   { key: 'dietaryRestrictions', label: 'Régime alimentaire' },
   { key: 'medicalHistory', label: 'Antécédents médicaux' },
   { key: 'currentTreatments', label: 'Traitements en cours' },
-  { key: 'avatarUrl', label: 'Photo de profil' },
   { key: 'weight', label: 'Poids (kg)' },
   { key: 'height', label: 'Taille (m)' },
   { key: 'iah', label: 'IAH' },
@@ -22,7 +17,7 @@ const PROFILE_FIELDS = [
 
 const PROFILE_SECTIONS = [
   { label: 'Données personnelles', fields: ['agreementPersonal'] },
-  { label: 'Données générales', fields: ['firstName', 'lastName', 'birthName', 'gender', 'dob', 'postalAddress', 'city', 'postalCode', 'phoneNumber', 'avatarUrl'] },
+  { label: 'Données générales', fields: ['firstName', 'lastName', 'gender', 'dob', 'phoneNumber'] },
   { label: 'Données médicales', fields: ['socialSecurityNumber', 'dietaryRestrictions', 'medicalHistory', 'currentTreatments'] },
   { label: 'Données cliniques', fields: ['weight', 'height', 'iah'] },
 ]

@@ -1,9 +1,10 @@
 <script setup>
-import coordinatorIllustration from "@/assets/illustrations/team.svg"
 import doctorIllustration from "@/assets/illustrations/doctor.svg"
 import patientIllustration from "@/assets/illustrations/patient.svg"
+import coordinatorIllustration from "@/assets/illustrations/team.svg"
 import technicianIllustration from "@/assets/illustrations/technician.svg"
 import { useRules } from "@/composables/useRules"
+import personalDataAuthorizationContent from "@/data/personalDataAuthorization.json"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
 import {
@@ -13,6 +14,7 @@ import {
   mdiGoogle,
   mdiLockOutline,
 } from "@mdi/js"
+import { marked } from "marked"
 import { computed, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 
@@ -47,6 +49,11 @@ const signUpConfirmPassword = ref("testtest")
 const showSignUpPassword = ref(false)
 const showSignUpConfirmPassword = ref(false)
 const signUpForm = ref(null)
+const agreementChecked = ref(false)
+const showAgreementDialog = ref(false)
+
+const isPatient = computed(() => route.query.role === "patient")
+const parsedAgreement = computed(() => marked(personalDataAuthorizationContent["fr-FR"] || ""))
 
 // Password reset
 const resetEmail = ref("")
@@ -86,6 +93,11 @@ async function handleSignUp() {
   pendingEmail.value = true
   try {
     selfStore.item.id = "123456"
+    selfStore.item.email = signUpEmail.value
+    if (isPatient.value) {
+      selfStore.item.agreementPersonal = true
+      selfStore.item.agreementPersonalDate = new Date().toISOString()
+    }
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
@@ -101,9 +113,17 @@ async function handleSignUp() {
 }
 
 async function handleGoogleSignIn() {
+  if (status.value === "sign-up" && isPatient.value && !agreementChecked.value) {
+    messagesStore.add({ type: "info", text: "Veuillez accepter les conditions de traitement de vos données personnelles" })
+    return
+  }
   pendingGoogle.value = true
   try {
     selfStore.item.id = "123456"
+    if (status.value === "sign-up" && isPatient.value) {
+      selfStore.item.agreementPersonal = true
+      selfStore.item.agreementPersonalDate = new Date().toISOString()
+    }
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
@@ -227,9 +247,21 @@ async function handlePasswordReset() {
 
           <v-text-field v-model="signUpConfirmPassword" label="Confirmer le mot de passe"
             :type="showSignUpConfirmPassword ? 'text' : 'password'" variant="outlined" rounded="lg"
-            density="comfortable" class="mb-4" :rules="[required, signUpPasswordsMatch]"
+            density="comfortable" :class="isPatient ? 'mb-2' : 'mb-4'" :rules="[required, signUpPasswordsMatch]"
             :append-inner-icon="showSignUpConfirmPassword ? mdiEyeOff : mdiEye"
             @click:append-inner="showSignUpConfirmPassword = !showSignUpConfirmPassword" />
+
+          <v-checkbox v-if="isPatient" v-model="agreementChecked" color="primary" density="comfortable"
+            class="text-left mb-2"
+            :rules="[v => !!v || 'Vous devez accepter les conditions de traitement de vos données personnelles']">
+            <template #label>
+              <span class="text-body-small">
+                J'ai lu et j'accepte
+                <a class="agreement-link" @click.stop.prevent="showAgreementDialog = true">les conditions</a>
+                de traitement de mes données personnelles
+              </span>
+            </template>
+          </v-checkbox>
 
           <v-btn color="primary" rounded="lg" flat size="large" block :loading="pendingEmail" :disabled="pendingGoogle"
             type="submit" class="text-none mb-4">
@@ -299,6 +331,19 @@ async function handlePasswordReset() {
       </template>
 
     </v-card>
+
+    <v-dialog v-model="showAgreementDialog" max-width="700" scrollable>
+      <v-card class="rounded-15">
+        <v-card-text class="pa-6">
+          <div class="markdown-content text-left" v-html="parsedAgreement" />
+        </v-card-text>
+        <v-card-actions class="px-6 pb-4 justify-end">
+          <v-btn color="primary" variant="text" rounded="lg" class="text-none" @click="showAgreementDialog = false">
+            Fermer
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -315,5 +360,11 @@ async function handlePasswordReset() {
   display: block;
   margin-left: auto;
   margin-right: auto;
+}
+
+.agreement-link {
+  color: rgb(var(--v-theme-primary));
+  text-decoration: underline;
+  cursor: pointer;
 }
 </style>
