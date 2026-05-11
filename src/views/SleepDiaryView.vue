@@ -206,10 +206,11 @@ function confirmTimePicker() {
         <!-- Header -->
         <v-card flat color="transparent" class="mb-4" :class="{ 'mx-6': $vuetify.display.mobile }">
           <div class="text-headline-medium font-weight-bold mb-2">Agenda du sommeil</div>
-          <div class="text-body-medium text-medium-emphasis">Remplissez votre agenda chaque matin au réveil et chaque soir. Tenez-le pendant au moins 3 semaines pour obtenir une image fidèle de votre sommeil.</div>
+          <div class="text-body-medium text-medium-emphasis">Remplissez votre agenda chaque matin au réveil et chaque
+            soir. Tenez-le pendant au moins 3 semaines pour obtenir une image fidèle de votre sommeil.</div>
         </v-card>
 
-        <template v-if="selfStore.item.createdAt">
+        <template v-if="selfStore.item.id">
 
           <!-- Add / edit today -->
           <div class="mb-8" :class="{ 'mx-6': $vuetify.display.mobile }">
@@ -270,7 +271,9 @@ function confirmTimePicker() {
 
           <!-- Empty state -->
           <v-card v-else-if="!entries.length" flat color="transparent" class="mb-4 pa-5 text-center">
-            <div class="text-body-medium text-medium-emphasis">Aucune entrée pour le moment. Commencez à remplir votre agenda !</div>
+            <div class="text-body-medium text-medium-emphasis">Aucune entrée pour le moment. Commencez à remplir votre
+              agenda !
+            </div>
           </v-card>
 
           <!-- Entry cards -->

@@ -35,7 +35,7 @@ const epworthScoreLabel = computed(() => {
 
 <template>
   <div>
-    <v-row v-if="selfStore.item.createdAt" justify="center" class="mt-8 mx-6 mb-16 pb-10">
+    <v-row v-if="selfStore.item.id" justify="center" class="mt-8 mx-6 mb-16 pb-10">
       <v-col :cols="$vuetify.display.mobile ? 12 : 10">
 
         <v-row class="mb-6">

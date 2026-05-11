@@ -89,7 +89,7 @@ async function selectAnswer(questionIndex, value) {
           </div>
         </v-card>
 
-        <div v-if="selfStore.item.createdAt">
+        <div v-if="selfStore.item.id">
           <!-- Questions -->
           <v-card v-for="(question, i) in QUESTIONS" :key="i" class="mb-3 card-shadow pa-5"
             :class="{ 'rounded-15': !$vuetify.display.mobile }" color="white">

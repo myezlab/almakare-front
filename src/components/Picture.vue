@@ -1,5 +1,4 @@
 <script setup>
-import { usePicture } from "@/composables/usePicture.js"
 import { useMessagesStore } from '@/stores/messages'
 import { mdiCameraOutline, mdiClose, mdiImageOutline } from '@mdi/js'
 import { ref } from 'vue'
@@ -46,7 +45,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:source'])
-const { uploadPicture } = usePicture()
 const messagesStore = useMessagesStore()
 
 async function onFileUpdated(event) {
@@ -54,16 +52,8 @@ async function onFileUpdated(event) {
     const file = event.target.files[0]
     if (!file) return
 
-    const { pictureUrl } = await uploadPicture({
-      pictureData: file,
-      pictureName: props.pictureName,
-      docPath: props.docPath,
-      storagePath: props.storagePath,
-      hasThumbnail: props.hasThumbnail
-    })
-
     messagesStore.add({ type: 'success', text: 'Nouvelle photo enregistrée' })
-
+    const pictureUrl = URL.createObjectURL(file)
     emit('update:source', pictureUrl)
 
   } catch (error) {

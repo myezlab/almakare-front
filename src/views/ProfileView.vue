@@ -2,17 +2,15 @@
 import Picture from "@/components/Picture.vue"
 import ProfileCompletion from "@/components/ProfileCompletion.vue"
 import { ISOToShortenedDate } from "@/composables/useDates"
-import { loadPlacesLibrary } from "@/composables/useGoogleMaps"
 import { useProfileCompletion } from "@/composables/useProfileCompletion"
 import personalDataAuthorizationContent from "@/data/personalDataAuthorization.json"
 import gendersEnum from "@/enums/genders.json"
 import { useMessagesStore } from '@/stores/messages'
 import { useParamsStore } from '@/stores/params'
 import { useSelfStore } from "@/stores/self"
-import { mdiArrowLeft, mdiCalendar, mdiCheck, mdiMapMarker } from "@mdi/js"
-import { useDebounceFn } from "@vueuse/core"
+import { mdiArrowLeft, mdiCalendar, mdiCheck } from "@mdi/js"
 import { marked } from 'marked'
-import { computed, defineAsyncComponent, onMounted, ref, watch } from "vue"
+import { computed, defineAsyncComponent, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 
 const InstallAppCard = defineAsyncComponent(() =>
@@ -21,62 +19,9 @@ const InstallAppCard = defineAsyncComponent(() =>
 
 const GENDER_LABELS = { male: 'Homme', female: 'Femme', other: 'Autre' }
 
-let Place = null
 
-function useAddressSearch() {
-  const menu = ref(false)
-  const loading = ref(false)
-  const items = ref([])
-
-  async function search(query) {
-    const q = query?.trim()
-    if (!q) {
-      items.value = []
-      loading.value = false
-      return
-    }
-    loading.value = true
-    try {
-      const { places: predictions } = await Place.searchByText({
-        fields: ['displayName', 'formattedAddress', 'addressComponents'],
-        textQuery: q,
-        maxResultCount: 5,
-      })
-      if (predictions.length) {
-        items.value = predictions
-        menu.value = true
-      } else {
-        items.value = []
-      }
-    } catch (error) {
-      console.error('Error searching for address:', error)
-      messagesStore.add({ type: 'error', text: "Impossible de charger la recherche d'adresses" })
-      items.value = []
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const debouncedSearch = useDebounceFn(search, 900)
-
-  function select(place, model) {
-    model.postalAddress = place.formattedAddress || place.displayName || ''
-    if (place.addressComponents) {
-      for (const component of place.addressComponents) {
-        if (component.types.includes('locality')) model.city = component.longText || ''
-        if (component.types.includes('postal_code')) model.postalCode = component.longText || ''
-      }
-    }
-    items.value = []
-    menu.value = false
-    addressSelected.value = true
-  }
-
-  return { menu, loading, items, debouncedSearch, select }
-}
 
 const addressSelected = ref(false)
-const postalAddressSearch = useAddressSearch()
 
 const messagesStore = useMessagesStore()
 const selfStore = useSelfStore()
@@ -155,15 +100,6 @@ async function acceptAgreement() {
     savingAgreement.value = false
   }
 }
-
-onMounted(async () => {
-  try {
-    const { Place: PlaceClass } = await loadPlacesLibrary()
-    Place = PlaceClass
-  } catch (error) {
-    messagesStore.add({ type: 'error', text: "Impossible de charger la recherche d'adresses" })
-  }
-})
 
 watch(() => currentUser.value, (item) => {
   if (!item?.id) return
@@ -318,7 +254,7 @@ async function logOut() {
       </v-col>
     </v-row>
 
-    <v-row v-else-if="selfStore.item.createdAt" justify="center" class=" mb-16 pb-10 pt-6">
+    <v-row v-else-if="selfStore.item.id" justify="center" class=" mb-16 pb-10 pt-6">
       <v-col :cols="$vuetify.display.mobile ? 12 : 9">
 
         <!-- Install App Section -->
@@ -433,26 +369,6 @@ async function logOut() {
                         <v-col cols="12" md="6">
                           <v-text-field v-model.trim="proxyModel.value.phoneNumber" label="Téléphone" variant="outlined"
                             rounded="lg" inputmode="tel" />
-                        </v-col>
-
-                        <!-- Postal Address (Google Maps Search) -->
-                        <v-col cols="12" md="6">
-                          <v-menu v-model="postalAddressSearch.menu.value" :close-on-content-click="false"
-                            location="bottom" max-height="300">
-                            <template #activator="{ props: menuProps }">
-                              <v-text-field v-model.trim="proxyModel.value.postalAddress" v-bind="menuProps"
-                                label="Adresse" variant="outlined" rounded="lg"
-                                :loading="postalAddressSearch.loading.value" :prepend-inner-icon="mdiMapMarker"
-                                @update:model-value="postalAddressSearch.debouncedSearch" autocomplete="off" />
-                            </template>
-                            <v-list v-if="postalAddressSearch.items.value.length" density="compact" class="card-shadow">
-                              <v-list-item v-for="(place, i) in postalAddressSearch.items.value" :key="i"
-                                @click="postalAddressSearch.select(place, proxyModel.value)">
-                                <v-list-item-title>{{ place.displayName }}</v-list-item-title>
-                                <v-list-item-subtitle>{{ place.formattedAddress }}</v-list-item-subtitle>
-                              </v-list-item>
-                            </v-list>
-                          </v-menu>
                         </v-col>
 
                         <!-- City (shown after address selected) -->
