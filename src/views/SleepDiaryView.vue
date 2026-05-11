@@ -7,7 +7,7 @@ import {
   mdiPlus, mdiTrashCanOutline,
   mdiWhiteBalanceSunny,
 } from '@mdi/js'
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useDisplay } from 'vuetify'
 import { VBottomSheet } from 'vuetify/components/VBottomSheet'
 import { VDialog } from 'vuetify/components/VDialog'
@@ -77,28 +77,17 @@ function napSegs(entry) {
     .filter(Boolean)
 }
 
-// Data management
-const entries = ref([])
-const loading = ref(true)
+// Data management — persisted via selfStore (localStorage)
+const entries = computed({
+  get: () => selfStore.item.sleepDiaryEntries || [],
+  set: (val) => { selfStore.item.sleepDiaryEntries = val },
+})
+const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const showForm = ref(false)
 const showDelete = ref(false)
 const deleteTarget = ref(null)
-
-async function loadEntries() {
-  loading.value = true
-  try {
-    const uid = selfStore.item.id
-
-  } catch {
-    messagesStore.add({ type: 'error', text: "Erreur lors du chargement de l'agenda" })
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(loadEntries)
 
 function todayStr() {
   return new Date().toISOString().split('T')[0]
@@ -143,8 +132,13 @@ function editEntry(entry) {
 async function saveEntry() {
   saving.value = true
   try {
-    const uid = selfStore.item.id
-    await loadEntries()
+    const payload = { ...form.value }
+    const list = [...entries.value]
+    const idx = list.findIndex(e => e.date === payload.date)
+    if (idx >= 0) list[idx] = payload
+    else list.push(payload)
+    list.sort((a, b) => b.date.localeCompare(a.date))
+    entries.value = list
     showForm.value = false
     messagesStore.add({ type: 'success', text: 'Entrée enregistrée avec succès' })
   } catch {
@@ -162,8 +156,10 @@ function confirmDelete(entry) {
 async function doDelete() {
   deleting.value = true
   try {
-    const uid = selfStore.item.id
-    await loadEntries()
+    if (deleteTarget.value) {
+      entries.value = entries.value.filter(e => e.date !== deleteTarget.value.date)
+    }
+    messagesStore.add({ type: 'success', text: 'Entrée supprimée' })
   } catch {
     messagesStore.add({ type: 'error', text: 'Erreur lors de la suppression' })
   } finally {

@@ -87,10 +87,9 @@ const agreementDate = computed(() => {
 async function acceptAgreement() {
   savingAgreement.value = true
   try {
-    const now = Timestamp.now()
     const updateData = {
       agreementPersonal: true,
-      agreementPersonalDate: now,
+      agreementPersonalDate: new Date().toISOString(),
     }
     Object.assign(selfStore.item, updateData)
     messagesStore.add({ type: 'success', text: 'Autorisation enregistrée avec succès' })
@@ -147,7 +146,7 @@ async function handleSaveGeneral(proxyModel, confirmSave) {
       fullName: `${value.firstName} ${value.lastName}`.trim(),
       birthName: value.birthName,
       gender: value.gender,
-      dob: value.dob ? Timestamp.fromDate(new Date(value.dob)) : null,
+      dob: value.dob ? new Date(value.dob).toISOString() : null,
       postalAddress: value.postalAddress,
       city: value.city,
       postalCode: value.postalCode,

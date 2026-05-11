@@ -1,6 +1,7 @@
 <script setup>
 import { useRules } from "@/composables/useRules"
 import { useMessagesStore } from "@/stores/messages"
+import { useSelfStore } from "@/stores/self"
 import {
   mdiCheckCircleOutline,
   mdiEye,
@@ -14,6 +15,7 @@ import { useRoute, useRouter } from "vue-router"
 const route = useRoute()
 const router = useRouter()
 const messagesStore = useMessagesStore()
+const selfStore = useSelfStore()
 const { required, emailValidation, passwordValidation } = useRules()
 
 // sign-in | sign-up | reset-password | loading | success
@@ -28,9 +30,9 @@ const showSignInPassword = ref(false)
 const signInForm = ref(null)
 
 // Sign-up
-const signUpEmail = ref("")
-const signUpPassword = ref("")
-const signUpConfirmPassword = ref("")
+const signUpEmail = ref("test@test.fr")
+const signUpPassword = ref("testtest")
+const signUpConfirmPassword = ref("testtest")
 const showSignUpPassword = ref(false)
 const showSignUpConfirmPassword = ref(false)
 const signUpForm = ref(null)
@@ -53,6 +55,7 @@ async function handleSignIn() {
   if (!(await signInForm.value.validate()).valid) return
   pendingEmail.value = true
   try {
+    selfStore.item.id = "123456"
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
@@ -71,7 +74,7 @@ async function handleSignUp() {
   if (!(await signUpForm.value.validate()).valid) return
   pendingEmail.value = true
   try {
-
+    selfStore.item.id = "123456"
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
@@ -89,6 +92,7 @@ async function handleSignUp() {
 async function handleGoogleSignIn() {
   pendingGoogle.value = true
   try {
+    selfStore.item.id = "123456"
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
