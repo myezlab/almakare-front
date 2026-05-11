@@ -130,14 +130,13 @@ function isAfter(date) {
 
 /**
  * Returns the inclusive number of days between two dates.
- * Accepts Date objects, Firestore Timestamps (with .toDate()), or date strings.
- * @param {Date|Object|string} startDate
- * @param {Date|Object|string} endDate
+ * @param {Date|string} startDate
+ * @param {Date|string} endDate
  * @returns {number} Inclusive day count (0 if invalid or end <= start)
  */
 function daysBetween(startDate, endDate) {
 	if (!startDate || !endDate) return 0
-	const toDate = (d) => d?.toDate ? d.toDate() : new Date(d)
+	const toDate = (d) => new Date(d)
 	const s = dayjs(toDate(startDate)).startOf('day')
 	const e = dayjs(toDate(endDate)).startOf('day')
 	const diff = e.diff(s, 'day')

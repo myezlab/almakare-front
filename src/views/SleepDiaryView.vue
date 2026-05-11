@@ -7,21 +7,13 @@ import {
   mdiPlus, mdiTrashCanOutline,
   mdiWhiteBalanceSunny,
 } from '@mdi/js'
-import {
-  collection, deleteDoc, doc, getDocs, getFirestore,
-  limit,
-  orderBy, query, setDoc,
-} from 'firebase/firestore'
 import { computed, onMounted, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useDisplay } from 'vuetify'
 import { VBottomSheet } from 'vuetify/components/VBottomSheet'
 import { VDialog } from 'vuetify/components/VDialog'
 
-const { t } = useI18n()
 const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
-const db = getFirestore()
 const { xs } = useDisplay()
 
 const QUALITY_OPTIONS = ['TB', 'B', 'Moy', 'M', 'TM']
@@ -98,12 +90,9 @@ async function loadEntries() {
   loading.value = true
   try {
     const uid = selfStore.item.id
-    const snap = await getDocs(
-      query(collection(db, `users/${uid}/sleepDiary`), orderBy('date', 'desc'), limit(30)),
-    )
-    entries.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+
   } catch {
-    messagesStore.add({ type: 'error', text: t('SLEEP_DIARY_LOAD_ERROR') })
+    messagesStore.add({ type: 'error', text: "Erreur lors du chargement de l'agenda" })
   } finally {
     loading.value = false
   }
@@ -155,12 +144,11 @@ async function saveEntry() {
   saving.value = true
   try {
     const uid = selfStore.item.id
-    await setDoc(doc(db, `users/${uid}/sleepDiary`, form.value.date), { ...form.value })
     await loadEntries()
     showForm.value = false
-    messagesStore.add({ type: 'success', text: t('SLEEP_DIARY_SAVED') })
+    messagesStore.add({ type: 'success', text: 'Entrée enregistrée avec succès' })
   } catch {
-    messagesStore.add({ type: 'error', text: t('SLEEP_DIARY_SAVE_ERROR') })
+    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement" })
   } finally {
     saving.value = false
   }
@@ -175,10 +163,9 @@ async function doDelete() {
   deleting.value = true
   try {
     const uid = selfStore.item.id
-    await deleteDoc(doc(db, `users/${uid}/sleepDiary`, deleteTarget.value.date))
     await loadEntries()
   } catch {
-    messagesStore.add({ type: 'error', text: t('SLEEP_DIARY_DELETE_ERROR') })
+    messagesStore.add({ type: 'error', text: 'Erreur lors de la suppression' })
   } finally {
     deleting.value = false
     showDelete.value = false
@@ -218,8 +205,8 @@ function confirmTimePicker() {
 
         <!-- Header -->
         <v-card flat color="transparent" class="mb-4" :class="{ 'mx-6': $vuetify.display.mobile }">
-          <div class="text-headline-medium font-weight-bold mb-2">{{ $t('SLEEP_DIARY_TITLE') }}</div>
-          <div class="text-body-medium text-medium-emphasis">{{ $t('SLEEP_DIARY_DESCRIPTION') }}</div>
+          <div class="text-headline-medium font-weight-bold mb-2">Agenda du sommeil</div>
+          <div class="text-body-medium text-medium-emphasis">Remplissez votre agenda chaque matin au réveil et chaque soir. Tenez-le pendant au moins 3 semaines pour obtenir une image fidèle de votre sommeil.</div>
         </v-card>
 
         <template v-if="selfStore.item.createdAt">
@@ -228,14 +215,14 @@ function confirmTimePicker() {
           <div class="mb-8" :class="{ 'mx-6': $vuetify.display.mobile }">
             <v-btn :prepend-icon="mdiPlus" color="primary" variant="flat" rounded="lg" size="large" class="text-none"
               @click="openForm">
-              {{ hasToday ? $t('SLEEP_DIARY_EDIT_TODAY') : $t('SLEEP_DIARY_ADD_ENTRY') }}
+              {{ hasToday ? "Modifier l'entrée du jour" : 'Ajouter une entrée' }}
             </v-btn>
           </div>
 
           <!-- Timeline visualization -->
           <v-card v-if="entries.length" class="mb-4 pa-5 card-shadow"
             :class="{ 'rounded-15': !$vuetify.display.mobile }" color="white">
-            <div class="text-title-medium font-weight-bold mb-3">{{ $t('SLEEP_DIARY_TIMELINE') }}</div>
+            <div class="text-title-medium font-weight-bold mb-3">Visualisation</div>
 
             <!-- Hour labels -->
             <div class="tl-grid mb-1">
@@ -267,11 +254,11 @@ function confirmTimePicker() {
             <div class="d-flex mt-3" style="gap: 16px;">
               <div class="d-flex align-center" style="gap: 6px;">
                 <div class="legend-sleep" />
-                <span class="text-body-small text-medium-emphasis">{{ $t('SLEEP_DIARY_LEGEND_SLEEP') }}</span>
+                <span class="text-body-small text-medium-emphasis">Sommeil</span>
               </div>
               <div class="d-flex align-center" style="gap: 6px;">
                 <div class="legend-nap" />
-                <span class="text-body-small text-medium-emphasis">{{ $t('SLEEP_DIARY_LEGEND_NAP') }}</span>
+                <span class="text-body-small text-medium-emphasis">Sieste</span>
               </div>
             </div>
           </v-card>
@@ -283,7 +270,7 @@ function confirmTimePicker() {
 
           <!-- Empty state -->
           <v-card v-else-if="!entries.length" flat color="transparent" class="mb-4 pa-5 text-center">
-            <div class="text-body-medium text-medium-emphasis">{{ $t('SLEEP_DIARY_EMPTY') }}</div>
+            <div class="text-body-medium text-medium-emphasis">Aucune entrée pour le moment. Commencez à remplir votre agenda !</div>
           </v-card>
 
           <!-- Entry cards -->
@@ -305,13 +292,13 @@ function confirmTimePicker() {
                 <template v-if="entry.wakeTime">↑ {{ entry.wakeTime }}</template>
               </span>
               <v-chip v-if="entry.nightQuality" :color="qualityColor(entry.nightQuality)" variant="tonal" size="small">
-                {{ $t('SLEEP_DIARY_NIGHT_SHORT') }}: {{ entry.nightQuality }}
+                Nuit: {{ entry.nightQuality }}
               </v-chip>
               <v-chip v-if="entry.morningForm" :color="qualityColor(entry.morningForm)" variant="tonal" size="small">
-                {{ $t('SLEEP_DIARY_MORNING_SHORT') }}: {{ entry.morningForm }}
+                Réveil: {{ entry.morningForm }}
               </v-chip>
               <v-chip v-if="entry.daytimeForm" :color="qualityColor(entry.daytimeForm)" variant="tonal" size="small">
-                {{ $t('SLEEP_DIARY_DAY_SHORT') }}: {{ entry.daytimeForm }}
+                Journée: {{ entry.daytimeForm }}
               </v-chip>
             </div>
 
@@ -324,13 +311,13 @@ function confirmTimePicker() {
           <component :is="xs ? VBottomSheet : VDialog" v-model="showForm" :max-width="xs ? undefined : 580" scrollable>
             <v-card :rounded="xs ? 't-xl' : 'xl'" class="pa-2">
               <v-card-title class="pa-6 pb-2 text-title-large font-weight-bold">
-                {{ $t('SLEEP_DIARY_ENTRY_FORM') }}
+                Entrée de l'agenda
               </v-card-title>
               <v-card-text class="px-6 py-2">
 
                 <!-- Date -->
                 <div class="mb-5">
-                  <div class="field-label">{{ $t('SLEEP_DIARY_DATE') }}</div>
+                  <div class="field-label">Date de la nuit</div>
                   <v-date-input v-model="formDate" input-format="dd/MM/yyyy" variant="outlined" rounded="lg"
                     prepend-icon="" hide-details density="comfortable" />
                 </div>
@@ -338,24 +325,24 @@ function confirmTimePicker() {
                 <!-- Morning section -->
                 <div class="section-header mb-4">
                   <v-icon :icon="mdiWhiteBalanceSunny" color="warning" size="20" class="mr-2" />
-                  {{ $t('SLEEP_DIARY_MORNING_SECTION') }}
+                  Section matin
                 </div>
 
                 <v-row class="mb-4">
                   <v-col cols="6">
-                    <div class="field-label">{{ $t('SLEEP_DIARY_BEDTIME') }}</div>
+                    <div class="field-label">Heure de coucher</div>
                     <v-btn variant="outlined" rounded="lg" block size="large"
                       :color="form.bedtime ? 'primary' : undefined" class="text-none time-btn"
                       @click="openTimePicker(form.bedtime, v => form.bedtime = v)">
-                      {{ form.bedtime || $t('SLEEP_DIARY_SELECT_TIME') }}
+                      {{ form.bedtime || 'Heure' }}
                     </v-btn>
                   </v-col>
                   <v-col cols="6">
-                    <div class="field-label">{{ $t('SLEEP_DIARY_WAKE_TIME') }}</div>
+                    <div class="field-label">Heure de lever</div>
                     <v-btn variant="outlined" rounded="lg" block size="large"
                       :color="form.wakeTime ? 'primary' : undefined" class="text-none time-btn"
                       @click="openTimePicker(form.wakeTime, v => form.wakeTime = v)">
-                      {{ form.wakeTime || $t('SLEEP_DIARY_SELECT_TIME') }}
+                      {{ form.wakeTime || 'Heure' }}
                     </v-btn>
                   </v-col>
                 </v-row>
@@ -363,21 +350,21 @@ function confirmTimePicker() {
                 <!-- Awakenings -->
                 <div class="mb-4">
                   <div class="d-flex align-center justify-space-between mb-3">
-                    <div class="field-label mb-0">{{ $t('SLEEP_DIARY_AWAKENINGS') }}</div>
+                    <div class="field-label mb-0">Réveils nocturnes</div>
                     <v-btn :prepend-icon="mdiPlus" size="small" variant="tonal" color="primary" rounded="lg"
                       class="text-none" @click="addAwakening">
-                      {{ $t('SLEEP_DIARY_ADD') }}
+                      Ajouter
                     </v-btn>
                   </div>
                   <div v-for="(aw, i) in form.awakenings" :key="i" class="d-flex align-center mb-3" style="gap: 8px;">
                     <v-btn variant="outlined" rounded="lg" size="large" :color="aw.start ? 'primary' : undefined"
                       class="text-none time-btn flex-1" @click="openTimePicker(aw.start, v => aw.start = v)">
-                      {{ aw.start || $t('SLEEP_DIARY_SELECT_TIME') }}
+                      {{ aw.start || 'Heure' }}
                     </v-btn>
                     <span class="text-medium-emphasis font-weight-bold">→</span>
                     <v-btn variant="outlined" rounded="lg" size="large" :color="aw.end ? 'primary' : undefined"
                       class="text-none time-btn flex-1" @click="openTimePicker(aw.end, v => aw.end = v)">
-                      {{ aw.end || $t('SLEEP_DIARY_SELECT_TIME') }}
+                      {{ aw.end || 'Heure' }}
                     </v-btn>
                     <v-btn :icon="mdiTrashCanOutline" size="large" variant="text" color="error"
                       @click="removeAwakening(i)" />
@@ -386,7 +373,7 @@ function confirmTimePicker() {
 
                 <!-- Night quality -->
                 <div class="mb-5">
-                  <div class="field-label">{{ $t('SLEEP_DIARY_NIGHT_QUALITY') }}</div>
+                  <div class="field-label">Qualité de la nuit</div>
                   <div class="d-flex flex-wrap" style="gap: 10px;">
                     <v-btn v-for="opt in QUALITY_OPTIONS" :key="opt"
                       :color="form.nightQuality === opt ? qualityColor(opt) : undefined"
@@ -399,7 +386,7 @@ function confirmTimePicker() {
 
                 <!-- Morning form -->
                 <div class="mb-5">
-                  <div class="field-label">{{ $t('SLEEP_DIARY_MORNING_FORM') }}</div>
+                  <div class="field-label">Forme au réveil</div>
                   <div class="d-flex flex-wrap" style="gap: 10px;">
                     <v-btn v-for="opt in QUALITY_OPTIONS" :key="opt"
                       :color="form.morningForm === opt ? qualityColor(opt) : undefined"
@@ -412,9 +399,9 @@ function confirmTimePicker() {
 
                 <!-- Medications / events -->
                 <div class="mb-5">
-                  <div class="field-label">{{ $t('SLEEP_DIARY_MEDICATIONS') }}</div>
+                  <div class="field-label">Médicaments / Événements</div>
                   <v-textarea v-model="form.medications" density="comfortable" variant="outlined" rounded="lg" rows="2"
-                    hide-details :placeholder="$t('SLEEP_DIARY_MEDICATIONS_PLACEHOLDER')" />
+                    hide-details placeholder="Ex : Doliprane, sport le soir, stress…" />
                 </div>
 
                 <v-divider class="mb-5" />
@@ -422,27 +409,27 @@ function confirmTimePicker() {
                 <!-- Evening section -->
                 <div class="section-header mb-4">
                   <v-icon :icon="mdiMoonWaningCrescent" color="primary" size="20" class="mr-2" />
-                  {{ $t('SLEEP_DIARY_EVENING_SECTION') }}
+                  Section soir
                 </div>
 
                 <!-- Naps -->
                 <div class="mb-5">
                   <div class="d-flex align-center justify-space-between mb-3">
-                    <div class="field-label mb-0">{{ $t('SLEEP_DIARY_NAPS') }}</div>
+                    <div class="field-label mb-0">Siestes</div>
                     <v-btn :prepend-icon="mdiPlus" size="small" variant="tonal" color="primary" rounded="lg"
                       class="text-none" @click="addNap">
-                      {{ $t('SLEEP_DIARY_ADD') }}
+                      Ajouter
                     </v-btn>
                   </div>
                   <div v-for="(nap, i) in form.naps" :key="i" class="d-flex align-center mb-3" style="gap: 8px;">
                     <v-btn variant="outlined" rounded="lg" size="large" :color="nap.start ? 'primary' : undefined"
                       class="text-none time-btn flex-1" @click="openTimePicker(nap.start, v => nap.start = v)">
-                      {{ nap.start || $t('SLEEP_DIARY_SELECT_TIME') }}
+                      {{ nap.start || 'Heure' }}
                     </v-btn>
                     <span class="text-medium-emphasis font-weight-bold">→</span>
                     <v-btn variant="outlined" rounded="lg" size="large" :color="nap.end ? 'primary' : undefined"
                       class="text-none time-btn flex-1" @click="openTimePicker(nap.end, v => nap.end = v)">
-                      {{ nap.end || $t('SLEEP_DIARY_SELECT_TIME') }}
+                      {{ nap.end || 'Heure' }}
                     </v-btn>
                     <v-btn :icon="mdiTrashCanOutline" size="large" variant="text" color="error" @click="removeNap(i)" />
                   </div>
@@ -450,7 +437,7 @@ function confirmTimePicker() {
 
                 <!-- Daytime form -->
                 <div class="mb-2">
-                  <div class="field-label">{{ $t('SLEEP_DIARY_DAYTIME_FORM') }}</div>
+                  <div class="field-label">Forme dans la journée</div>
                   <div class="d-flex flex-wrap" style="gap: 10px;">
                     <v-btn v-for="opt in QUALITY_OPTIONS" :key="opt"
                       :color="form.daytimeForm === opt ? qualityColor(opt) : undefined"
@@ -464,12 +451,12 @@ function confirmTimePicker() {
               </v-card-text>
               <v-card-actions class="pa-6 pt-4">
                 <v-btn variant="text" rounded="lg" size="large" class="text-none" @click="showForm = false">
-                  {{ $t('CANCEL') }}
+                  Annuler
                 </v-btn>
                 <v-spacer />
                 <v-btn color="primary" variant="flat" rounded="lg" size="large" class="text-none" :loading="saving"
                   @click="saveEntry">
-                  {{ $t('SAVE') }}
+                  Enregistrer
                 </v-btn>
               </v-card-actions>
             </v-card>
@@ -479,17 +466,17 @@ function confirmTimePicker() {
           <v-bottom-sheet v-if="xs" v-model="timePicker.show" inset>
             <v-sheet rounded="t-xl" class="pa-4 pb-6">
               <div class="text-center text-title-medium font-weight-bold mb-2">
-                {{ $t('SLEEP_DIARY_SELECT_TIME') }}
+                Heure
               </div>
               <v-time-picker v-model="timePicker.value" format="24hr" hide-header color="primary" class="w-100" />
               <div class="d-flex mt-3" style="gap: 12px;">
                 <v-btn variant="outlined" rounded="lg" size="large" class="text-none flex-1"
                   @click="timePicker.show = false">
-                  {{ $t('CANCEL') }}
+                  Annuler
                 </v-btn>
                 <v-btn color="primary" variant="flat" rounded="lg" size="large" class="text-none flex-1"
                   @click="confirmTimePicker">
-                  {{ $t('SAVE') }}
+                  Enregistrer
                 </v-btn>
               </div>
             </v-sheet>
@@ -498,17 +485,17 @@ function confirmTimePicker() {
           <v-dialog v-else v-model="timePicker.show" max-width="340">
             <v-card rounded="xl" class="pa-4">
               <div class="text-center text-title-medium font-weight-bold mb-2">
-                {{ $t('SLEEP_DIARY_SELECT_TIME') }}
+                Heure
               </div>
               <v-time-picker v-model="timePicker.value" format="24hr" hide-header color="primary" class="w-100" />
               <div class="d-flex mt-3" style="gap: 12px;">
                 <v-btn variant="outlined" rounded="lg" size="large" class="text-none flex-1"
                   @click="timePicker.show = false">
-                  {{ $t('CANCEL') }}
+                  Annuler
                 </v-btn>
                 <v-btn color="primary" variant="flat" rounded="lg" size="large" class="text-none flex-1"
                   @click="confirmTimePicker">
-                  {{ $t('SAVE') }}
+                  Enregistrer
                 </v-btn>
               </div>
             </v-card>
@@ -517,16 +504,16 @@ function confirmTimePicker() {
           <!-- Delete confirm dialog -->
           <v-dialog v-model="showDelete" max-width="360">
             <v-card rounded="xl" class="pa-2">
-              <v-card-title class="pa-6 pb-2">{{ $t('SLEEP_DIARY_DELETE_CONFIRM_TITLE') }}</v-card-title>
-              <v-card-text class="px-6">{{ $t('SLEEP_DIARY_DELETE_CONFIRM') }}</v-card-text>
+              <v-card-title class="pa-6 pb-2">Supprimer l'entrée</v-card-title>
+              <v-card-text class="px-6">Êtes-vous sûr de vouloir supprimer cette entrée ?</v-card-text>
               <v-card-actions class="pa-6 pt-2">
                 <v-btn variant="text" rounded="lg" size="large" class="text-none" @click="showDelete = false">
-                  {{ $t('CANCEL') }}
+                  Annuler
                 </v-btn>
                 <v-spacer />
                 <v-btn color="error" variant="flat" rounded="lg" size="large" class="text-none" :loading="deleting"
                   @click="doDelete">
-                  {{ $t('DELETE') }}
+                  Supprimer
                 </v-btn>
               </v-card-actions>
             </v-card>

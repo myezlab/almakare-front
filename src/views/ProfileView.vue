@@ -3,35 +3,23 @@ import Picture from "@/components/Picture.vue"
 import ProfileCompletion from "@/components/ProfileCompletion.vue"
 import { ISOToShortenedDate } from "@/composables/useDates"
 import { loadPlacesLibrary } from "@/composables/useGoogleMaps"
-import { useLanguages } from "@/composables/useLanguages"
 import { useProfileCompletion } from "@/composables/useProfileCompletion"
 import personalDataAuthorizationContent from "@/data/personalDataAuthorization.json"
 import gendersEnum from "@/enums/genders.json"
-import { functions } from "@/firebase"
 import { useMessagesStore } from '@/stores/messages'
 import { useParamsStore } from '@/stores/params'
 import { useSelfStore } from "@/stores/self"
 import { mdiArrowLeft, mdiCalendar, mdiCheck, mdiMapMarker } from "@mdi/js"
 import { useDebounceFn } from "@vueuse/core"
-import { getAuth, signOut } from "firebase/auth"
-import { Timestamp, doc, getFirestore, updateDoc } from "firebase/firestore"
-import { httpsCallable } from "firebase/functions"
 import { marked } from 'marked'
 import { computed, defineAsyncComponent, onMounted, ref, watch } from "vue"
-import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
 
 const InstallAppCard = defineAsyncComponent(() =>
   import('@/components/InstallAppCard.vue')
 )
 
-const CarteVitaleCard = defineAsyncComponent(() =>
-  import('@/components/CarteVitaleCard.vue')
-)
-
-const AttestationSecuriteSociale = defineAsyncComponent(() =>
-  import('@/components/AttestationSecuriteSociale.vue')
-)
+const GENDER_LABELS = { male: 'Homme', female: 'Femme', other: 'Autre' }
 
 let Place = null
 
@@ -62,7 +50,7 @@ function useAddressSearch() {
       }
     } catch (error) {
       console.error('Error searching for address:', error)
-      messagesStore.add({ type: 'error', text: t('MAPS_LOAD_ERROR') })
+      messagesStore.add({ type: 'error', text: "Impossible de charger la recherche d'adresses" })
       items.value = []
     } finally {
       loading.value = false
@@ -90,23 +78,10 @@ function useAddressSearch() {
 const addressSelected = ref(false)
 const postalAddressSearch = useAddressSearch()
 
-const { t, locale } = useI18n()
-const db = getFirestore()
-const auth = getAuth()
-
 const messagesStore = useMessagesStore()
 const selfStore = useSelfStore()
 const router = useRouter()
 const paramsStore = useParamsStore()
-
-const {
-  allLanguages,
-  updateUserLanguage,
-  loadingLanguage,
-  getBestMatchingLanguage
-} = useLanguages()
-
-const selectedLanguage = ref("")
 
 const generalFormRef = ref(null)
 const medicalFormRef = ref(null)
@@ -119,7 +94,7 @@ const showAgreement = ref(false)
 const agreementCheckbox = ref(false)
 
 const parsedAgreement = computed(() => {
-  const content = personalDataAuthorizationContent[locale.value] || personalDataAuthorizationContent['fr-FR'] || ''
+  const content = personalDataAuthorizationContent['fr-FR'] || ''
   return marked(content)
 })
 
@@ -128,7 +103,7 @@ const currentUser = computed(() => selfStore.item || {})
 const { completionPercent, profileSections } = useProfileCompletion(currentUser)
 
 const genderOptions = computed(() => gendersEnum.map(g => ({
-  title: t(g.toUpperCase()),
+  title: GENDER_LABELS[g] || g,
   value: g,
 })))
 
@@ -172,28 +147,21 @@ async function acceptAgreement() {
       agreementPersonal: true,
       agreementPersonalDate: now,
     }
-    await updateDoc(doc(db, `users/${currentUser.value.id}`), updateData)
     Object.assign(selfStore.item, updateData)
-    messagesStore.add({ type: 'success', text: t('AGREEMENT_SAVED') })
+    messagesStore.add({ type: 'success', text: 'Autorisation enregistrée avec succès' })
   } catch (error) {
-    messagesStore.add({ type: 'error', text: t('AGREEMENT_SAVE_ERROR') })
+    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement de l'autorisation" })
   } finally {
     savingAgreement.value = false
   }
 }
 
 onMounted(async () => {
-  const userLanguage = currentUser.value.language || navigator.language
-  selectedLanguage.value = getBestMatchingLanguage(userLanguage)
-
-  httpsCallable(functions, 'ocr-extractCarteVitaleNir')({ awake: true }).catch(() => { })
-  httpsCallable(functions, 'ocr-extractAttestationSecuriteSociale')({ awake: true }).catch(() => { })
-
   try {
     const { Place: PlaceClass } = await loadPlacesLibrary()
     Place = PlaceClass
   } catch (error) {
-    messagesStore.add({ type: 'error', text: t('MAPS_LOAD_ERROR') })
+    messagesStore.add({ type: 'error', text: "Impossible de charger la recherche d'adresses" })
   }
 })
 
@@ -230,17 +198,6 @@ watch(() => currentUser.value, (item) => {
   }
 }, { immediate: true })
 
-watch(() => currentUser.value.language, (newLanguage) => {
-  if (newLanguage) {
-    selectedLanguage.value = getBestMatchingLanguage(newLanguage)
-  }
-})
-
-async function handleUpdateUserLanguage(language) {
-  selectedLanguage.value = language
-  await updateUserLanguage(language)
-}
-
 
 async function handleSaveGeneral(proxyModel, confirmSave) {
   const { valid } = await generalFormRef.value.validate()
@@ -260,12 +217,11 @@ async function handleSaveGeneral(proxyModel, confirmSave) {
       postalCode: value.postalCode,
       phoneNumber: value.phoneNumber,
     }
-    await updateDoc(doc(db, `users/${currentUser.value.id}`), updateData)
     confirmSave()
     Object.assign(selfStore.item, { ...updateData, dob: value.dob })
-    messagesStore.add({ type: 'success', text: t('PROFILE_SAVED') })
+    messagesStore.add({ type: 'success', text: 'Profil mis à jour avec succès' })
   } catch (error) {
-    messagesStore.add({ type: 'error', text: t('PROFILE_SAVE_ERROR') })
+    messagesStore.add({ type: 'error', text: 'Erreur lors de la mise à jour du profil' })
   } finally {
     savingGeneral.value = false
   }
@@ -283,12 +239,11 @@ async function handleSaveMedical(proxyModel, confirmSave) {
       medicalHistory: value.medicalHistory,
       currentTreatments: value.currentTreatments,
     }
-    await updateDoc(doc(db, `users/${currentUser.value.id}`), updateData)
     confirmSave()
     Object.assign(selfStore.item, updateData)
-    messagesStore.add({ type: 'success', text: t('PROFILE_SAVED') })
+    messagesStore.add({ type: 'success', text: 'Profil mis à jour avec succès' })
   } catch (error) {
-    messagesStore.add({ type: 'error', text: t('PROFILE_SAVE_ERROR') })
+    messagesStore.add({ type: 'error', text: 'Erreur lors de la mise à jour du profil' })
   } finally {
     savingMedical.value = false
   }
@@ -303,12 +258,11 @@ async function handleSaveClinical(proxyModel, confirmSave) {
       height: value.height != null ? Number(value.height) : null,
       iah: value.iah != null ? Number(value.iah) : null,
     }
-    await updateDoc(doc(db, `users/${currentUser.value.id}`), updateData)
     confirmSave()
     Object.assign(selfStore.item, updateData)
-    messagesStore.add({ type: 'success', text: t('PROFILE_SAVED') })
+    messagesStore.add({ type: 'success', text: 'Profil mis à jour avec succès' })
   } catch (error) {
-    messagesStore.add({ type: 'error', text: t('PROFILE_SAVE_ERROR') })
+    messagesStore.add({ type: 'error', text: 'Erreur lors de la mise à jour du profil' })
   } finally {
     savingClinical.value = false
   }
@@ -316,12 +270,10 @@ async function handleSaveClinical(proxyModel, confirmSave) {
 
 async function logOut() {
   try {
-    if (selfStore.unsubscribe) selfStore.unsubscribe()
-    await signOut(auth)
     selfStore.item = {}
     router.push({ name: "Home" })
   } catch (error) {
-    messagesStore.add({ type: 'error', text: t('LOGOUT_ERROR') })
+    messagesStore.add({ type: 'error', text: 'Erreur lors de la déconnexion' })
   }
 }
 </script>
@@ -333,7 +285,7 @@ async function logOut() {
       <v-col :cols="$vuetify.display.mobile ? 12 : 9">
         <v-btn :prepend-icon="mdiArrowLeft" :class="{ 'ml-4': $vuetify.display.mobile }" variant="text"
           color="medium-emphasis" rounded="lg" size="small" class="mb-4" @click="showAgreement = false">
-          {{ $t('GO_BACK') }}
+          Retour
         </v-btn>
         <v-card class="card-shadow px-6 pb-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
           <div class="markdown-content" v-html="parsedAgreement" />
@@ -341,18 +293,19 @@ async function logOut() {
           <div v-if="agreementAccepted" class="d-flex align-center mt-6 justify-center">
             <v-icon color="success" class="mr-2">{{ mdiCheck }}</v-icon>
             <span class="text-body-small text-medium-emphasis">
-              {{ $t('AGREEMENT_ACCEPTED_ON', { date: ISOToShortenedDate(agreementDate) }) }}
+              Accepté le {{ ISOToShortenedDate(agreementDate) }}
             </span>
           </div>
           <div v-else class="mt-6">
             <div>
-              <v-checkbox v-model="agreementCheckbox" :label="$t('AGREEMENT_CHECKBOX_LABEL')" color="primary"
+              <v-checkbox v-model="agreementCheckbox"
+                label="J'ai lu et j'accepte les conditions de traitement de mes données personnelles" color="primary"
                 hide-details class="mb-4" />
             </div>
             <div class="text-center">
               <v-btn color="primary" variant="flat" rounded="lg" class="text-none" :disabled="!agreementCheckbox"
                 :loading="savingAgreement" @click="acceptAgreement">
-                {{ $t('AGREEMENT_ACCEPT') }}
+                Accepter
               </v-btn>
             </div>
           </div>
@@ -360,7 +313,7 @@ async function logOut() {
 
         <v-btn :prepend-icon="mdiArrowLeft" :class="{ 'ml-4': $vuetify.display.mobile }" variant="text"
           color="medium-emphasis" rounded="lg" size="small" class="mt-4" @click="showAgreement = false">
-          {{ $t('GO_BACK') }}
+          Retour
         </v-btn>
       </v-col>
     </v-row>
@@ -377,33 +330,32 @@ async function logOut() {
           <!-- =================== PROFILE COMPLETION =================== -->
           <v-col cols="12">
             <ProfileCompletion :class="{ 'mx-6': $vuetify.display.mobile }" :completionPercent="completionPercent"
-              :completionTitle="$t('PROFILE_COMPLETION_TITLE')" :completeTitle="$t('PROFILE_COMPLETE_TITLE')"
-              :completionSubtitle="$t('PROFILE_COMPLETION_SUBTITLE')"
-              :completeSubtitle="$t('PROFILE_COMPLETE_SUBTITLE')" :sections="profileSections" />
+              completionTitle="Complétez votre profil" completeTitle="Profil complet"
+              completionSubtitle="Renseignez vos informations pour accéder à toutes les fonctionnalités"
+              completeSubtitle="Toutes vos informations sont renseignées" :sections="profileSections" />
           </v-col>
 
           <!-- Autorisation données personnelles -->
           <v-col cols="12">
             <v-card class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
               <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
-                <span class="text-headline-small font-weight-bold text-truncate">{{
-                  $t('SECTION_PERSONAL_DATA_AUTHORIZATION') }}</span>
+                <span class="text-headline-small font-weight-bold text-truncate">Données personnelles</span>
               </v-card-title>
               <v-card-text class="px-4 pt-4">
                 <div v-if="agreementAccepted" class="d-flex align-center">
                   <v-icon color="success" class="mr-2">{{ mdiCheck }}</v-icon>
                   <span class="text-body-small text-medium-emphasis">
-                    {{ $t('AGREEMENT_ACCEPTED_ON', { date: ISOToShortenedDate(agreementDate) }) }}
+                    Accepté le {{ ISOToShortenedDate(agreementDate) }}
                   </span>
                 </div>
                 <div v-else class="text-body-small text-medium-emphasis">
-                  {{ $t('AGREEMENT_NOT_YET_ACCEPTED') }}
+                  Vous n'avez pas encore accepté l'autorisation de traitement des données personnelles.
                 </div>
               </v-card-text>
               <v-card-actions class="px-4 pb-4">
                 <v-btn variant="text" rounded="lg" size="small" class="border-light text-none"
                   @click="showAgreement = true">
-                  {{ agreementAccepted ? $t('AGREEMENT_VIEW') : $t('AGREEMENT_READ_AND_ACCEPT') }}
+                  {{ agreementAccepted ? 'Consulter' : 'Lire et accepter' }}
                 </v-btn>
               </v-card-actions>
             </v-card>
@@ -417,16 +369,15 @@ async function logOut() {
                 <template #default="{ model: proxyModel, save: confirmSave, cancel, isPristine }">
                   <v-form ref="generalFormRef">
                     <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
-                      <span class="text-headline-small font-weight-bold text-truncate">{{ $t('SECTION_GENERAL')
-                        }}</span>
+                      <span class="text-headline-small font-weight-bold text-truncate">Données générales</span>
                       <v-spacer />
                       <template v-if="!isPristine && !$vuetify.display.mobile">
                         <v-btn variant="text" rounded="lg" size="small" @click="cancel" class="text-none">
-                          {{ $t('CANCEL') }}
+                          Annuler
                         </v-btn>
                         <v-btn color="primary" rounded="lg" size="small" :loading="savingGeneral"
                           @click="handleSaveGeneral(proxyModel, confirmSave)" flat>
-                          {{ $t('SAVE') }}
+                          Enregistrer
                         </v-btn>
                       </template>
                     </v-card-title>
@@ -438,52 +389,50 @@ async function logOut() {
                           <Picture :docPath="`users/${selfStore.item.id}`" :storagePath="`users/${selfStore.item.id}`"
                             v-model:source="selfStore.item.avatarUrl" pictureName="avatar" :size="100" for="avatar"
                             :cover="true" />
-                          <div class="text-body-small text-medium-emphasis mt-2">{{ $t('PHOTO_AVATAR') }}</div>
+                          <div class="text-body-small text-medium-emphasis mt-2">Photo de profil</div>
                         </v-col>
 
                         <!-- First Name -->
                         <v-col cols="12" md="6">
-                          <v-text-field v-model.trim="proxyModel.value.firstName" :label="$t('FIRST_NAME')"
-                            variant="outlined" rounded="lg"
-                            :rules="[v => !!v || $t('AUTH_VALIDATION_FIELD_REQUIRED')]" />
+                          <v-text-field v-model.trim="proxyModel.value.firstName" label="Prénom" variant="outlined"
+                            rounded="lg" :rules="[v => !!v || 'Ce champ est requis']" />
                         </v-col>
 
                         <!-- Last Name -->
                         <v-col cols="12" md="6">
-                          <v-text-field v-model.trim="proxyModel.value.lastName" :label="$t('LAST_NAME')"
-                            variant="outlined" rounded="lg"
-                            :rules="[v => !!v || $t('AUTH_VALIDATION_FIELD_REQUIRED')]" />
+                          <v-text-field v-model.trim="proxyModel.value.lastName" label="Nom" variant="outlined"
+                            rounded="lg" :rules="[v => !!v || 'Ce champ est requis']" />
                         </v-col>
 
                         <!-- Email (read-only) -->
                         <v-col cols="12" md="6">
-                          <v-text-field :model-value="currentUser.email" :label="$t('EMAIL')" variant="outlined"
-                            rounded="lg" disabled />
+                          <v-text-field :model-value="currentUser.email" label="Email" variant="outlined" rounded="lg"
+                            disabled />
                         </v-col>
 
                         <!-- Birth Name -->
                         <v-col cols="12" md="6">
-                          <v-text-field v-model.trim="proxyModel.value.birthName" :label="$t('BIRTH_NAME')"
+                          <v-text-field v-model.trim="proxyModel.value.birthName" label="Nom de naissance"
                             variant="outlined" rounded="lg" />
                         </v-col>
 
                         <!-- Gender -->
                         <v-col cols="12" md="6">
-                          <v-select v-model="proxyModel.value.gender" :label="$t('GENDER')" :items="genderOptions"
+                          <v-select v-model="proxyModel.value.gender" label="Genre" :items="genderOptions"
                             variant="outlined" rounded="lg" />
                         </v-col>
 
                         <!-- Date of Birth -->
                         <v-col cols="12" md="6">
                           <v-date-input v-model="proxyModel.value.dob" input-format="dd/MM/yyyy"
-                            :label="$t('DATE_OF_BIRTH')" variant="outlined" rounded="lg"
-                            :prepend-inner-icon="mdiCalendar" prepend-icon="" />
+                            label="Date de naissance" variant="outlined" rounded="lg" :prepend-inner-icon="mdiCalendar"
+                            prepend-icon="" />
                         </v-col>
 
                         <!-- Phone Number -->
                         <v-col cols="12" md="6">
-                          <v-text-field v-model.trim="proxyModel.value.phoneNumber" :label="$t('PHONE_NUMBER')"
-                            variant="outlined" rounded="lg" inputmode="tel" />
+                          <v-text-field v-model.trim="proxyModel.value.phoneNumber" label="Téléphone" variant="outlined"
+                            rounded="lg" inputmode="tel" />
                         </v-col>
 
                         <!-- Postal Address (Google Maps Search) -->
@@ -492,7 +441,7 @@ async function logOut() {
                             location="bottom" max-height="300">
                             <template #activator="{ props: menuProps }">
                               <v-text-field v-model.trim="proxyModel.value.postalAddress" v-bind="menuProps"
-                                :label="$t('POSTAL_ADDRESS')" variant="outlined" rounded="lg"
+                                label="Adresse" variant="outlined" rounded="lg"
                                 :loading="postalAddressSearch.loading.value" :prepend-inner-icon="mdiMapMarker"
                                 @update:model-value="postalAddressSearch.debouncedSearch" autocomplete="off" />
                             </template>
@@ -508,13 +457,13 @@ async function logOut() {
 
                         <!-- City (shown after address selected) -->
                         <v-col v-if="addressSelected" cols="12" md="6">
-                          <v-text-field v-model.trim="proxyModel.value.city" :label="$t('CITY')" variant="outlined"
+                          <v-text-field v-model.trim="proxyModel.value.city" label="Ville" variant="outlined"
                             rounded="lg" />
                         </v-col>
 
                         <!-- Postal Code (shown after address selected) -->
                         <v-col v-if="addressSelected" cols="12" md="6">
-                          <v-text-field v-model.trim="proxyModel.value.postalCode" :label="$t('POSTAL_CODE')"
+                          <v-text-field v-model.trim="proxyModel.value.postalCode" label="Code postal"
                             variant="outlined" rounded="lg" inputmode="numeric" />
                         </v-col>
 
@@ -523,11 +472,11 @@ async function logOut() {
 
                     <div v-if="!isPristine && $vuetify.display.mobile" class="d-flex justify-end mx-4 mb-4">
                       <v-btn variant="text" rounded="lg" size="small" @click="cancel" class="text-none">
-                        {{ $t('CANCEL') }}
+                        Annuler
                       </v-btn>
                       <v-btn color="primary" rounded="lg" size="small" :loading="savingGeneral"
                         @click="handleSaveGeneral(proxyModel, confirmSave)" flat>
-                        {{ $t('SAVE') }}
+                        Enregistrer
                       </v-btn>
                     </div>
                   </v-form>
@@ -543,16 +492,15 @@ async function logOut() {
                 <template #default="{ model: proxyModel, save: confirmSave, cancel, isPristine }">
                   <v-form ref="medicalFormRef">
                     <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
-                      <span class="text-headline-small font-weight-bold text-truncate">{{ $t('SECTION_MEDICAL')
-                      }}</span>
+                      <span class="text-headline-small font-weight-bold text-truncate">Données médicales</span>
                       <v-spacer />
                       <template v-if="!isPristine && !$vuetify.display.mobile">
                         <v-btn variant="text" rounded="lg" size="small" @click="cancel" class="text-none">
-                          {{ $t('CANCEL') }}
+                          Annuler
                         </v-btn>
                         <v-btn color="primary" rounded="lg" size="small" :loading="savingMedical"
                           @click="handleSaveMedical(proxyModel, confirmSave)" flat>
-                          {{ $t('SAVE') }}
+                          Enregistrer
                         </v-btn>
                       </template>
                     </v-card-title>
@@ -562,36 +510,36 @@ async function logOut() {
                         <!-- Social Security Number -->
                         <v-col cols="12" md="6">
                           <v-text-field v-model.trim="proxyModel.value.socialSecurityNumber"
-                            :label="$t('SOCIAL_SECURITY_NUMBER')" variant="outlined" rounded="lg" />
+                            label="Numéro de sécurité sociale" variant="outlined" rounded="lg" />
                         </v-col>
 
                         <!-- Dietary Restrictions -->
                         <v-col cols="12" md="6">
-                          <v-text-field v-model.trim="proxyModel.value.dietaryRestrictions"
-                            :label="$t('DIETARY_RESTRICTIONS')" variant="outlined" rounded="lg" />
+                          <v-text-field v-model.trim="proxyModel.value.dietaryRestrictions" label="Régime alimentaire"
+                            variant="outlined" rounded="lg" />
                         </v-col>
 
                         <!-- Medical History -->
                         <v-col cols="12" md="6">
-                          <v-textarea v-model.trim="proxyModel.value.medicalHistory" :label="$t('MEDICAL_HISTORY')"
+                          <v-textarea v-model.trim="proxyModel.value.medicalHistory" label="Antécédents médicaux"
                             variant="outlined" rounded="lg" rows="2" auto-grow />
                         </v-col>
 
                         <!-- Current Treatments -->
                         <v-col cols="12" md="6">
-                          <v-textarea v-model.trim="proxyModel.value.currentTreatments"
-                            :label="$t('CURRENT_TREATMENTS')" variant="outlined" rounded="lg" rows="2" auto-grow />
+                          <v-textarea v-model.trim="proxyModel.value.currentTreatments" label="Traitements en cours"
+                            variant="outlined" rounded="lg" rows="2" auto-grow />
                         </v-col>
                       </v-row>
                     </v-card-text>
 
                     <div v-if="!isPristine && $vuetify.display.mobile" class="d-flex justify-end mx-4 mb-4">
                       <v-btn variant="text" rounded="lg" size="small" @click="cancel" class="text-none">
-                        {{ $t('CANCEL') }}
+                        Annuler
                       </v-btn>
                       <v-btn color="primary" rounded="lg" size="small" :loading="savingMedical"
                         @click="handleSaveMedical(proxyModel, confirmSave)" flat>
-                        {{ $t('SAVE') }}
+                        Enregistrer
                       </v-btn>
                     </div>
                   </v-form>
@@ -607,16 +555,15 @@ async function logOut() {
                 <template #default="{ model: proxyModel, save: confirmSave, cancel, isPristine }">
                   <v-form ref="clinicalFormRef">
                     <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
-                      <span class="text-headline-small font-weight-bold text-truncate">{{ $t('SECTION_CLINICAL')
-                      }}</span>
+                      <span class="text-headline-small font-weight-bold text-truncate">Données cliniques</span>
                       <v-spacer />
                       <template v-if="!isPristine && !$vuetify.display.mobile">
                         <v-btn variant="text" rounded="lg" size="small" @click="cancel" class="text-none">
-                          {{ $t('CANCEL') }}
+                          Annuler
                         </v-btn>
                         <v-btn color="primary" rounded="lg" size="small" :loading="savingClinical"
                           @click="handleSaveClinical(proxyModel, confirmSave)" flat>
-                          {{ $t('SAVE') }}
+                          Enregistrer
                         </v-btn>
                       </template>
                     </v-card-title>
@@ -625,26 +572,26 @@ async function logOut() {
                       <v-row>
                         <!-- Weight -->
                         <v-col cols="12" md="6">
-                          <v-text-field v-model.number="proxyModel.value.weight" :label="$t('WEIGHT')"
-                            variant="outlined" rounded="lg" inputmode="decimal" type="number" step="0.1" />
+                          <v-text-field v-model.number="proxyModel.value.weight" label="Poids (kg)" variant="outlined"
+                            rounded="lg" inputmode="decimal" type="number" step="0.1" />
                         </v-col>
 
                         <!-- Height -->
                         <v-col cols="12" md="6">
-                          <v-text-field v-model.number="proxyModel.value.height" :label="$t('HEIGHT')"
-                            variant="outlined" rounded="lg" inputmode="decimal" type="number" step="0.01" />
+                          <v-text-field v-model.number="proxyModel.value.height" label="Taille (m)" variant="outlined"
+                            rounded="lg" inputmode="decimal" type="number" step="0.01" />
                         </v-col>
 
                         <!-- BMI (derived) -->
                         <v-col cols="12" md="6">
                           <v-text-field
                             :model-value="proxyModel.value.weight && proxyModel.value.height ? Math.round(proxyModel.value.weight / (proxyModel.value.height * proxyModel.value.height) * 10) / 10 : ''"
-                            :label="$t('BMI')" variant="outlined" rounded="lg" readonly />
+                            label="IMC (calculé)" variant="outlined" rounded="lg" readonly />
                         </v-col>
 
                         <!-- IAH -->
                         <v-col cols="12" md="6">
-                          <v-text-field v-model.number="proxyModel.value.iah" :label="$t('IAH')" variant="outlined"
+                          <v-text-field v-model.number="proxyModel.value.iah" label="IAH" variant="outlined"
                             rounded="lg" inputmode="decimal" type="number" step="0.1" />
                         </v-col>
                       </v-row>
@@ -652,11 +599,11 @@ async function logOut() {
 
                     <div v-if="!isPristine && $vuetify.display.mobile" class="d-flex justify-end mx-4 mb-4">
                       <v-btn variant="text" rounded="lg" size="small" @click="cancel" class="text-none">
-                        {{ $t('CANCEL') }}
+                        Annuler
                       </v-btn>
                       <v-btn color="primary" rounded="lg" size="small" :loading="savingClinical"
                         @click="handleSaveClinical(proxyModel, confirmSave)" flat>
-                        {{ $t('SAVE') }}
+                        Enregistrer
                       </v-btn>
                     </div>
                   </v-form>
@@ -667,46 +614,17 @@ async function logOut() {
 
           <v-col cols="12">
             <!-- Carte Vitale -->
-            <CarteVitaleCard />
           </v-col>
 
           <v-col cols="12">
             <!-- Attestation de Sécurité Sociale -->
-            <AttestationSecuriteSociale />
           </v-col>
 
-          <v-col cols="12">
-            <!-- Language Section -->
-            <v-card class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
-              <v-card-text class="pa-6">
-                <div class="d-flex align-center mb-4">
-                  <div class="text-headline-small font-weight-bold text-truncate">{{ $t('LANGUAGE') }}</div>
-                </div>
-
-                <v-list class="pa-0" bg-color="transparent">
-                  <v-list-item v-for="language in allLanguages" :key="language.value"
-                    @click="handleUpdateUserLanguage(language.value)"
-                    class="language-item rounded-lg mb-2 cursor-pointer"
-                    :class="{ 'selected-language': selectedLanguage === language.value }">
-                    <template v-slot:prepend>
-                      <span class="text-headline-small mr-3">{{ language.flag }}</span>
-                    </template>
-                    <v-list-item-title class="font-weight-medium text-truncate">{{ language.text }}</v-list-item-title>
-                    <template v-slot:append>
-                      <v-progress-circular v-if="loadingLanguage && selectedLanguage === language.value" size="20"
-                        width="2" indeterminate color="primary"></v-progress-circular>
-                      <v-icon v-else-if="selectedLanguage === language.value" :icon="mdiCheck" color="primary"></v-icon>
-                    </template>
-                  </v-list-item>
-                </v-list>
-              </v-card-text>
-            </v-card>
-          </v-col>
           <!-- Log Out Section -->
           <v-col cols="12">
             <v-row justify="center">
               <v-btn color="error" variant="outlined" class="text-none mt-6 mb-16" @click="logOut" rounded="lg">
-                {{ $t('SETTINGS_LOG_OUT') }}
+                Se déconnecter
               </v-btn>
             </v-row>
           </v-col>
@@ -761,21 +679,6 @@ async function logOut() {
 <style scoped>
 .card-shadow {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
-}
-
-.language-item {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  transition: all 0.2s ease;
-}
-
-.language-item:hover {
-  background-color: rgba(var(--v-theme-primary), 0.04);
-  border-color: rgba(var(--v-theme-primary), 0.2);
-}
-
-.selected-language {
-  background-color: rgba(var(--v-theme-primary), 0.08) !important;
-  border-color: rgba(var(--v-theme-primary), 0.3) !important;
 }
 
 .gap-2 {

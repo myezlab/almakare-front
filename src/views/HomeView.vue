@@ -26,20 +26,20 @@ const selfStore = useSelfStore()
 
             <div class="text-center mb-8">
               <h1 class="text-headline-medium font-weight-bold mb-2" style="font-family: title !important;">
-                {{ $t('HOME_TITLE') }}
+                Bienvenue sur myEZlab
               </h1>
               <p class="text-body-large text-medium-emphasis">
-                {{ $t('HOME_SUBTITLE') }}
+                Choisissez votre espace pour continuer
               </p>
             </div>
 
             <v-btn @click="router.push({ name: 'Login' })" color="primary" rounded="lg" block size="large" flat
               class="mb-3">
-              {{ $t('AUTH_SIGN_IN') }}
+              Se connecter
             </v-btn>
             <v-btn @click="router.push({ name: 'Login', query: { mode: 'signup' } })" variant="outlined" color="primary"
               rounded="lg" block size="large">
-              {{ $t('AUTH_CREATE_ACCOUNT') }}
+              Créer un compte
             </v-btn>
 
           </v-card>
@@ -60,10 +60,10 @@ const selfStore = useSelfStore()
 
             <div class="text-center">
               <h1 class="text-headline-medium font-weight-bold mb-2" style="font-family: title !important;">
-                {{ $t('HOME_WELCOME_TITLE', { name: selfStore.item.fullName || selfStore.item.email }) }}
+                Bienvenue, {{ selfStore.item.fullName || selfStore.item.email }} !
               </h1>
               <p class="text-body-large text-medium-emphasis">
-                {{ $t('HOME_WELCOME_SUBTITLE') }}
+                Vous êtes connecté à myEZlab.
               </p>
             </div>
 

@@ -14,15 +14,7 @@ import { createVuetify } from 'vuetify'
 import { VDateInput } from 'vuetify/labs/VDateInput'
 import { VMaskInput } from 'vuetify/labs/VMaskInput'
 import { VTimePicker } from 'vuetify/components/VTimePicker'
- 
 
-// Map i18n locales to Vuetify locales
-const getVuetifyLocale = (i18nLocale) => {
-  const localeMap = {
-    'fr-FR': 'fr', // Vuetify doesn't have French locale, fallback to French
-  }
-  return localeMap[i18nLocale] || 'fr'
-}
 
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
 export default createVuetify({
@@ -32,7 +24,7 @@ export default createVuetify({
     VTimePicker,
   },
   locale: {
-    locale: getVuetifyLocale(localStorage.getItem('locale') || 'fr-FR'),
+    locale: 'fr',
     fallback: 'fr',
     messages: { fr }
   },

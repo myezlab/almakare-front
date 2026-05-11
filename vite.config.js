@@ -12,9 +12,6 @@ export default defineConfig({
     VitePWA({ 
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-      workbox: {
-        importScripts: ['/firebase-messaging-init.js']
-      },
       manifest: {
         name: 'MyEZlab',
         short_name: 'MyEZlab',

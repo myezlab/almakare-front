@@ -14,7 +14,7 @@ const messagesStore = useMessagesStore()
     </template>
     <template #actions="{ item, props }">
       <v-btn v-if="item.to" :to="item.to" variant="text" size="small" class="text-none" @click="props.onClick">
-        {{ $t('VIEW') }}
+        Voir
       </v-btn>
       <v-btn :icon="mdiClose" variant="text" size="small" @click="props.onClick" />
     </template>

@@ -3,12 +3,10 @@ import { useMessagesStore } from "@/stores/messages"
 import { useParamsStore } from "@/stores/params"
 import { mdiDownloadOutline } from "@mdi/js"
 import { ref } from "vue"
-import { useI18n } from "vue-i18n"
 
 const dialogInstallApp = ref(false)
 const paramsStore = useParamsStore()
 const messagesStore = useMessagesStore()
-const { t } = useI18n()
 
 function installApp() {
   paramsStore.beforeinstallprompt.prompt()
@@ -16,12 +14,12 @@ function installApp() {
     if (choiceResult.outcome === "dismissed") {
       messagesStore.add({
         type: "info",
-        text: t('INSTALL_APP_CANCELLED'),
+        text: 'Installation annulée',
       })
     } else {
       messagesStore.add({
         type: "success",
-        text: t('INSTALL_APP_INSTALLING'),
+        text: 'Installation en cours…',
       })
     }
   })
@@ -36,13 +34,13 @@ function installApp() {
     <v-row align="center">
       <v-col>
         <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-          {{ $t('INSTALL_APP') }}
+          Installer l'application
         </div>
         <div class="text-body-medium text-medium-emphasis mb-3">
-          {{ $t('INSTALL_APP_PROMPT') }}
+          Ajoutez myEZlab à votre écran d'accueil pour un accès rapide, même hors connexion.
         </div>
         <v-btn :prepend-icon="mdiDownloadOutline" variant="tonal" color="primary" rounded="lg" class="text-none">
-          {{ $t('INSTALL_APP_BTN') }}
+          Installer
         </v-btn>
       </v-col>
       <v-col cols="auto">

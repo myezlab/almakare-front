@@ -8,36 +8,22 @@ import {
   mdiGoogle,
   mdiLockOutline,
 } from "@mdi/js"
-import {
-  GoogleAuthProvider,
-  createUserWithEmailAndPassword,
-  getAdditionalUserInfo,
-  getAuth,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-} from "firebase/auth"
-import { doc, getFirestore, serverTimestamp, setDoc } from "firebase/firestore"
 import { computed, ref } from "vue"
-import { useI18n } from "vue-i18n"
 import { useRoute, useRouter } from "vue-router"
 
-const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const messagesStore = useMessagesStore()
 const { required, emailValidation, passwordValidation } = useRules()
 
-const auth = getAuth()
-const db = getFirestore()
 // sign-in | sign-up | reset-password | loading | success
 const status = ref(route.query.mode === "signup" ? "sign-up" : "sign-in")
 const pendingEmail = ref(false)
 const pendingGoogle = ref(false)
 
 // Sign-in
-const signInEmail = ref("")
-const signInPassword = ref("")
+const signInEmail = ref("test@test.fr")
+const signInPassword = ref("testtest")
 const showSignInPassword = ref(false)
 const signInForm = ref(null)
 
@@ -55,7 +41,7 @@ const resetForm = ref(null)
 const resetSent = ref(false)
 
 const signUpPasswordsMatch = computed(() => {
-  return (v) => v === signUpPassword.value || t("LOGIN_PASSWORDS_NO_MATCH")
+  return (v) => v === signUpPassword.value || 'Les mots de passe ne correspondent pas'
 })
 
 function redirectToApp() {
@@ -67,12 +53,11 @@ async function handleSignIn() {
   if (!(await signInForm.value.validate()).valid) return
   pendingEmail.value = true
   try {
-    await signInWithEmailAndPassword(auth, signInEmail.value, signInPassword.value)
-    messagesStore.add({ type: "success", text: t("LOGIN_SUCCESS") })
+    messagesStore.add({ type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
     console.error("Sign-in error:", error)
-    messagesStore.add({ type: "error", text: t("AUTH_ERROR_WRONG_EMAIL_OR_PASSWORD") })
+    messagesStore.add({ type: "error", text: 'Email ou mot de passe incorrect' })
   } finally {
     pendingEmail.value = false
   }
@@ -80,23 +65,21 @@ async function handleSignIn() {
 
 async function createUserDoc(uid, email) {
   const now = serverTimestamp()
-  await setDoc(doc(db, "users", uid), { email, createdAt: now, updatedAt: now })
 }
 
 async function handleSignUp() {
   if (!(await signUpForm.value.validate()).valid) return
   pendingEmail.value = true
   try {
-    const { user } = await createUserWithEmailAndPassword(auth, signUpEmail.value, signUpPassword.value)
-    await createUserDoc(user.uid, user.email)
-    messagesStore.add({ type: "success", text: t("LOGIN_SUCCESS") })
+
+    messagesStore.add({ type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
     console.error("Sign-up error:", error)
     if (error.code === "auth/email-already-in-use") {
-      messagesStore.add({ type: "error", text: t("AUTH_ERROR_EMAIL_ALREADY_IN_USE") })
+      messagesStore.add({ type: "error", text: 'Email déjà utilisé' })
     } else {
-      messagesStore.add({ type: "error", text: t("AUTH_ERROR_SIGN_UP") })
+      messagesStore.add({ type: "error", text: 'Erreur lors de la création du compte' })
     }
   } finally {
     pendingEmail.value = false
@@ -106,17 +89,12 @@ async function handleSignUp() {
 async function handleGoogleSignIn() {
   pendingGoogle.value = true
   try {
-    const provider = new GoogleAuthProvider()
-    const result = await signInWithPopup(auth, provider)
-    if (getAdditionalUserInfo(result)?.isNewUser) {
-      await createUserDoc(result.user.uid, result.user.email)
-    }
-    messagesStore.add({ type: "success", text: t("LOGIN_SUCCESS") })
+    messagesStore.add({ type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
     console.error("Google sign-in error:", error)
     if (error.code !== "auth/popup-closed-by-user") {
-      messagesStore.add({ type: "error", text: t("AUTH_ERROR_SIGN_IN") })
+      messagesStore.add({ type: "error", text: 'Erreur de connexion' })
     }
   } finally {
     pendingGoogle.value = false
@@ -127,14 +105,13 @@ async function handlePasswordReset() {
   if (!(await resetForm.value.validate()).valid) return
   pendingEmail.value = true
   try {
-    await sendPasswordResetEmail(auth, resetEmail.value)
     resetSent.value = true
   } catch (error) {
     console.error("Password reset error:", error)
     if (error.code === "auth/user-not-found") {
-      messagesStore.add({ type: "error", text: t("AUTH_ERROR_NO_ACCOUNT_WITH_EMAIL") })
+      messagesStore.add({ type: "error", text: 'Aucun compte associé à cet email' })
     } else {
-      messagesStore.add({ type: "error", text: t("PASSWORD_RESET_ERROR") })
+      messagesStore.add({ type: "error", text: "Erreur lors de l'envoi de l'email de réinitialisation" })
     }
   } finally {
     pendingEmail.value = false
@@ -149,61 +126,61 @@ async function handlePasswordReset() {
       <div class="d-flex justify-start mb-4" v-if="!['success', 'loading'].includes(status)">
         <v-btn variant="text" color="medium-emphasis" rounded="lg" size="small" class="text-none"
           @click="router.push('/')">
-          {{ $t('GO_BACK') }}
+          Retour
         </v-btn>
       </div>
 
       <!-- Loading -->
       <template v-if="status === 'loading'">
         <v-progress-circular indeterminate color="primary" size="64" class="mb-6" />
-        <div class="text-headline-small font-weight-bold">{{ $t('LOGIN_SIGNING_IN') }}</div>
-        <div class="text-body-medium text-medium-emphasis mt-2">{{ $t('LOGIN_PLEASE_WAIT') }}</div>
+        <div class="text-headline-small font-weight-bold">Connexion en cours</div>
+        <div class="text-body-medium text-medium-emphasis mt-2">Veuillez patienter...</div>
       </template>
 
       <!-- Sign in -->
       <template v-if="status === 'sign-in'">
         <v-icon :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
-        <div class="text-headline-small font-weight-bold mb-2">{{ $t('AUTH_WELCOME_BACK') }}</div>
-        <div class="text-body-medium text-medium-emphasis mb-6">{{ $t('LOGIN_SIGN_IN_DESC') }}</div>
+        <div class="text-headline-small font-weight-bold mb-2">Bon retour parmi nous</div>
+        <div class="text-body-medium text-medium-emphasis mb-6">Connectez-vous avec votre email et mot de passe</div>
 
         <v-form ref="signInForm" @submit.prevent="handleSignIn">
-          <v-text-field v-model="signInEmail" :label="$t('EMAIL')" type="email" variant="outlined" rounded="lg"
+          <v-text-field v-model="signInEmail" label="Email" type="email" variant="outlined" rounded="lg"
             density="comfortable" class="mb-2" :rules="[required, emailValidation]" />
 
-          <v-text-field v-model="signInPassword" :label="$t('AUTH_PASSWORD')"
-            :type="showSignInPassword ? 'text' : 'password'" variant="outlined" rounded="lg" density="comfortable"
-            class="mb-1" :rules="[required]" :append-inner-icon="showSignInPassword ? mdiEyeOff : mdiEye"
+          <v-text-field v-model="signInPassword" label="Mot de passe" :type="showSignInPassword ? 'text' : 'password'"
+            variant="outlined" rounded="lg" density="comfortable" class="mb-1" :rules="[required]"
+            :append-inner-icon="showSignInPassword ? mdiEyeOff : mdiEye"
             @click:append-inner="showSignInPassword = !showSignInPassword" />
 
           <div class="d-flex justify-end mb-4">
             <v-btn variant="text" color="primary" size="small" rounded="lg" class="text-none"
               @click="resetEmail = signInEmail; resetSent = false; status = 'reset-password'">
-              {{ $t('AUTH_FORGOT_PASSWORD') }} ?
+              Mot de passe oublié ?
             </v-btn>
           </div>
 
           <v-btn color="primary" rounded="lg" flat size="large" block :loading="pendingEmail" :disabled="pendingGoogle"
             type="submit" class="text-none mb-4">
-            {{ $t('AUTH_SIGN_IN') }}
+            Se connecter
           </v-btn>
         </v-form>
 
         <div class="d-flex align-center my-2">
           <v-divider />
-          <span class="text-body-small text-medium-emphasis mx-3">{{ $t('AUTH_OR') }}</span>
+          <span class="text-body-small text-medium-emphasis mx-3">ou</span>
           <v-divider />
         </div>
 
         <v-btn :prepend-icon="mdiGoogle" variant="outlined" rounded="lg" size="large" block :loading="pendingGoogle"
           :disabled="pendingEmail" class="text-none mt-4" @click="handleGoogleSignIn">
-          {{ $t('AUTH_SIGN_IN_WITH_GOOGLE') }}
+          Se connecter avec Google
         </v-btn>
 
         <div class="mt-6 text-body-small text-medium-emphasis">
-          {{ $t('AUTH_NO_ACCOUNT') }}
+          Pas encore de compte ?
           <v-btn variant="text" color="primary" size="small" rounded="lg" class="text-none pa-0 ml-1"
             @click="status = 'sign-up'">
-            {{ $t('AUTH_SIGN_UP') }}
+            S'inscrire
           </v-btn>
         </div>
       </template>
@@ -211,20 +188,19 @@ async function handlePasswordReset() {
       <!-- Sign up -->
       <template v-if="status === 'sign-up'">
         <v-icon :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
-        <div class="text-headline-small font-weight-bold mb-2">{{ $t('AUTH_CREATE_ACCOUNT') }}</div>
-        <div class="text-body-medium text-medium-emphasis mb-6">{{ $t('AUTH_CREATE_ACCOUNT_DESC') }}</div>
+        <div class="text-headline-small font-weight-bold mb-2">Créer un compte</div>
+        <div class="text-body-medium text-medium-emphasis mb-6">Rejoignez myEZlab en créant votre compte</div>
 
         <v-form ref="signUpForm" @submit.prevent="handleSignUp">
-          <v-text-field v-model="signUpEmail" :label="$t('EMAIL')" type="email" variant="outlined" rounded="lg"
+          <v-text-field v-model="signUpEmail" label="Email" type="email" variant="outlined" rounded="lg"
             density="comfortable" class="mb-2" :rules="[required, emailValidation]" />
 
-          <v-text-field v-model="signUpPassword" :label="$t('AUTH_PASSWORD')"
-            :type="showSignUpPassword ? 'text' : 'password'" variant="outlined" rounded="lg" density="comfortable"
-            class="mb-2" :rules="[required, passwordValidation]"
+          <v-text-field v-model="signUpPassword" label="Mot de passe" :type="showSignUpPassword ? 'text' : 'password'"
+            variant="outlined" rounded="lg" density="comfortable" class="mb-2" :rules="[required, passwordValidation]"
             :append-inner-icon="showSignUpPassword ? mdiEyeOff : mdiEye"
             @click:append-inner="showSignUpPassword = !showSignUpPassword" />
 
-          <v-text-field v-model="signUpConfirmPassword" :label="$t('LOGIN_CONFIRM_PASSWORD')"
+          <v-text-field v-model="signUpConfirmPassword" label="Confirmer le mot de passe"
             :type="showSignUpConfirmPassword ? 'text' : 'password'" variant="outlined" rounded="lg"
             density="comfortable" class="mb-4" :rules="[required, signUpPasswordsMatch]"
             :append-inner-icon="showSignUpConfirmPassword ? mdiEyeOff : mdiEye"
@@ -232,26 +208,26 @@ async function handlePasswordReset() {
 
           <v-btn color="primary" rounded="lg" flat size="large" block :loading="pendingEmail" :disabled="pendingGoogle"
             type="submit" class="text-none mb-4">
-            {{ $t('AUTH_SIGN_UP') }}
+            S'inscrire
           </v-btn>
         </v-form>
 
         <div class="d-flex align-center my-2">
           <v-divider />
-          <span class="text-body-small text-medium-emphasis mx-3">{{ $t('AUTH_OR') }}</span>
+          <span class="text-body-small text-medium-emphasis mx-3">ou</span>
           <v-divider />
         </div>
 
         <v-btn :prepend-icon="mdiGoogle" variant="outlined" rounded="lg" size="large" block :loading="pendingGoogle"
           :disabled="pendingEmail" class="text-none mt-4" @click="handleGoogleSignIn">
-          {{ $t('AUTH_SIGN_IN_WITH_GOOGLE') }}
+          Se connecter avec Google
         </v-btn>
 
         <div class="mt-6 text-body-small text-medium-emphasis">
-          {{ $t('AUTH_ALREADY_HAVE_ACCOUNT') }}
+          Déjà un compte ?
           <v-btn variant="text" color="primary" size="small" rounded="lg" class="text-none pa-0 ml-1"
             @click="status = 'sign-in'">
-            {{ $t('AUTH_SIGN_IN') }}
+            Se connecter
           </v-btn>
         </div>
       </template>
@@ -259,30 +235,32 @@ async function handlePasswordReset() {
       <!-- Reset password -->
       <template v-if="status === 'reset-password'">
         <v-icon :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
-        <div class="text-headline-small font-weight-bold mb-2">{{ $t('AUTH_RESET_PASSWORD') }}</div>
-        <div class="text-body-medium text-medium-emphasis mb-6">{{ $t('PASSWORD_RESET_DESC') }}</div>
+        <div class="text-headline-small font-weight-bold mb-2">Réinitialiser le mot de passe</div>
+        <div class="text-body-medium text-medium-emphasis mb-6">Entrez votre adresse email pour recevoir un lien de
+          réinitialisation</div>
 
         <template v-if="!resetSent">
           <v-form ref="resetForm" @submit.prevent="handlePasswordReset">
-            <v-text-field v-model="resetEmail" :label="$t('EMAIL')" type="email" variant="outlined" rounded="lg"
+            <v-text-field v-model="resetEmail" label="Email" type="email" variant="outlined" rounded="lg"
               density="comfortable" class="mb-4" :rules="[required, emailValidation]" />
 
             <v-btn color="primary" rounded="lg" size="large" block :loading="pendingEmail" type="submit"
               class="text-none">
-              {{ $t('PASSWORD_RESET_SEND') }}
+              Envoyer le lien
             </v-btn>
           </v-form>
         </template>
 
         <template v-else>
           <v-icon :icon="mdiCheckCircleOutline" size="48" color="success" class="mb-4" />
-          <div class="text-body-medium text-medium-emphasis">{{ $t('PASSWORD_RESET_SENT') }}</div>
+          <div class="text-body-medium text-medium-emphasis">Un email de réinitialisation vous a été envoyé. Vérifiez
+            votre boîte mail.</div>
         </template>
 
         <div class="mt-4">
           <v-btn variant="text" color="medium-emphasis" size="small" rounded="lg" class="text-none"
             @click="status = 'sign-in'">
-            {{ $t('PASSWORD_RESET_BACK_TO_SIGN_IN') }}
+            Retour à la connexion
           </v-btn>
         </div>
       </template>
@@ -290,8 +268,8 @@ async function handlePasswordReset() {
       <!-- Success -->
       <template v-if="status === 'success'">
         <v-icon :icon="mdiCheckCircleOutline" size="64" color="success" class="mb-4" />
-        <div class="text-headline-small font-weight-bold mb-2">{{ $t('LOGIN_SUCCESS') }}</div>
-        <div class="text-body-medium text-medium-emphasis">{{ $t('LOGIN_REDIRECTING') }}</div>
+        <div class="text-headline-small font-weight-bold mb-2">Connexion réussie</div>
+        <div class="text-body-medium text-medium-emphasis">Redirection en cours...</div>
       </template>
 
     </v-card>

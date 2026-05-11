@@ -51,10 +51,10 @@ watch(mini, (val) => {
         </span>
       </button>
       <button class="nav-item" :class="{ active: activeRouteName === 'Profile' }"
-        :aria-label="$t('PROFILE')" @click="$router.push({ name: 'Profile' })">
+        aria-label="Profil" @click="$router.push({ name: 'Profile' })">
         <span class="nav-pill">
           <v-icon size="22" :icon="mdiAccountOutline"></v-icon>
-          <span class="nav-label">{{ $t('PROFILE') }}</span>
+          <span class="nav-label">Profil</span>
         </span>
       </button>
     </nav>
@@ -107,7 +107,7 @@ watch(mini, (val) => {
                 <v-icon color="#7a7a7a" :icon="mdiAccountOutline"></v-icon>
               </v-row>
             </template>
-            <v-tooltip activator="parent" location="start" :disabled="!mini">{{ $t('PROFILE') }}</v-tooltip>
+            <v-tooltip activator="parent" location="start" :disabled="!mini">Profil</v-tooltip>
           </v-img>
         </template>
       </v-list-item>
@@ -118,7 +118,7 @@ watch(mini, (val) => {
         <template v-slot:activator="{ props }">
           <v-btn :icon="mini ? mdiChevronRight : mdiChevronLeft" flat v-bind="props" rounded="lg"></v-btn>
         </template>
-        <span>{{ $t('EXPAND_MENU') }}</span>
+        <span>Développer le menu</span>
       </v-tooltip>
     </v-row>
   </v-navigation-drawer>

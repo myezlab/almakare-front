@@ -3,10 +3,8 @@ import { ISOToRelativeTime } from "@/composables/useDates.js"
 import notificationsData from '@/data/notifications.json'
 import { mdiAccount, mdiBell, mdiBellOutline, mdiChat, mdiCheckCircle, mdiCircle, mdiPen, mdiRefresh } from "@mdi/js"
 import { ref } from "vue"
-import { useI18n } from "vue-i18n"
 import { useRouter } from "vue-router"
 
-const { t } = useI18n()
 const router = useRouter()
 
 const notifications = ref(notificationsData.map(n => ({
@@ -24,9 +22,9 @@ const notificationTypeIcons = {
 }
 
 const notificationTypeTexts = {
-  newMessage: 'NEW_MESSAGE',
-  participationConfirmation: 'PARTICIPATION_CONFIRMED_SUCCESS',
-  contractSigned: 'REPORT_SIGNED_SUCCESS'
+  newMessage: 'Nouveau message',
+  participationConfirmation: 'Participation confirmée',
+  contractSigned: 'Rapport signé'
 }
 
 function markAsRead(notification) {
@@ -41,7 +39,7 @@ function clickNotification(notification) {
 }
 
 function getTitle(notification) {
-  return notification.userFullName ? notification.userFullName : t('USER')
+  return notification.userFullName ? notification.userFullName : 'Espace utilisateur'
 }
 </script>
 
@@ -52,7 +50,7 @@ function getTitle(notification) {
 
         <v-row class="mb-4" align="center" :class="{ 'px-6': $vuetify.display.mobile }">
           <v-col align-self="center" class="text-headline-medium font-weight-bold">
-            {{ $t('NOTIFICATIONS') }}
+            Notifications
           </v-col>
           <v-col cols="auto">
             <v-btn icon variant="text" color="grey" :loading="loading" disabled>
@@ -95,14 +93,14 @@ function getTitle(notification) {
                 <v-col class="pl-1 pr-1">
                   <div class="text-body-large font-weight-medium">{{ getTitle(notification) }}</div>
                   <div class="text-body-small text-medium-emphasis mt-1">
-                    {{ notification.text ? $t(notification.text) : $t(notificationTypeTexts[notification.type]) }}
+                    {{ notification.text || notificationTypeTexts[notification.type] }}
                   </div>
                   <div v-if="notification.createdAt" class="text-label-small text-grey mt-2 first-letter-uppercase">
                     {{ ISOToRelativeTime(notification.createdAt.toDate()) }}
                     <template v-if="!notification.read">
                       <span class="mx-2">•</span>
                       <span class="text-primary cursor-pointer" @click.stop="markAsRead(notification)">
-                        {{ $t('MARK_AS_READ') }}
+                        Marquer comme lu
                       </span>
                     </template>
                   </div>
@@ -122,7 +120,7 @@ function getTitle(notification) {
             <v-icon :icon="mdiBellOutline" size="64" class="my-6" style="opacity: 0.3" />
           </v-row>
           <v-row justify="center" class="mx-6 text-center" style="opacity: 0.3">
-            {{ $t("EMPTY_NOTIFICATIONS") }}
+            Aucune notification pour le moment
           </v-row>
         </template>
 

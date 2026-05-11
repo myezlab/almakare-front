@@ -64,7 +64,7 @@ const completionColor = computed(() => {
       <div v-if="sections.length && completionPercent < 100" class="mt-3">
         <v-btn variant="text" size="small" rounded="lg" class="text-none px-0" :color="completionColor"
           @click.stop="showChecklist = !showChecklist">
-          {{ showChecklist ? $t('HIDE_CHECKLIST') : $t('SHOW_CHECKLIST') }}
+          {{ showChecklist ? 'Masquer la liste' : 'Voir la liste' }}
         </v-btn>
         <v-expand-transition>
           <div v-if="showChecklist" class="mt-2">

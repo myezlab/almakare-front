@@ -1,9 +1,6 @@
 <script setup>
 import { marked } from 'marked'
 import { ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-
-const { t } = useI18n()
 
 const model = defineModel({ type: String, default: '' })
 
@@ -33,57 +30,57 @@ function getParsedMarkdown(text) {
       <v-menu location="bottom end" :close-on-content-click="false">
         <template #activator="{ props: menuProps }">
           <v-btn v-bind="menuProps" variant="text" rounded="lg" class="mr-2 text-none text-medium-emphasis">
-            {{ $t('MARKDOWN_HELP') }}
+            Aide Markdown
           </v-btn>
         </template>
         <v-card min-width="320" max-width="400" class="rounded-15 card-shadow">
           <v-card-title class="text-title-large font-weight-bold px-4 pt-4 pb-2">
-            {{ $t('MARKDOWN_HELP') }}
+            Aide Markdown
           </v-card-title>
           <v-card-text class="px-4 pb-4 pt-0">
             <v-table density="compact">
               <thead>
                 <tr>
-                  <th>{{ $t('MARKDOWN_SYNTAX') }}</th>
-                  <th>{{ $t('MARKDOWN_RESULT') }}</th>
+                  <th>Syntaxe</th>
+                  <th>Résultat</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><code># {{ $t('MARKDOWN_HEADING') }}</code></td>
-                  <td class="font-weight-bold">{{ $t('MARKDOWN_HEADING') }}</td>
+                  <td><code># Titre</code></td>
+                  <td class="font-weight-bold">Titre</td>
                 </tr>
                 <tr>
-                  <td><code>## {{ $t('MARKDOWN_HEADING') }} 2</code></td>
-                  <td class="font-weight-bold text-body-medium">{{ $t('MARKDOWN_HEADING') }} 2</td>
+                  <td><code>## Titre 2</code></td>
+                  <td class="font-weight-bold text-body-medium">Titre 2</td>
                 </tr>
                 <tr>
-                  <td><code>**{{ $t('MARKDOWN_BOLD') }}**</code></td>
-                  <td><strong>{{ $t('MARKDOWN_BOLD') }}</strong></td>
+                  <td><code>**Gras**</code></td>
+                  <td><strong>Gras</strong></td>
                 </tr>
                 <tr>
-                  <td><code>*{{ $t('MARKDOWN_ITALIC') }}*</code></td>
-                  <td><em>{{ $t('MARKDOWN_ITALIC') }}</em></td>
+                  <td><code>*Italique*</code></td>
+                  <td><em>Italique</em></td>
                 </tr>
                 <tr>
-                  <td><code>[{{ $t('MARKDOWN_LINK') }}](url)</code></td>
-                  <td class="text-primary">{{ $t('MARKDOWN_LINK') }}</td>
+                  <td><code>[Lien](url)</code></td>
+                  <td class="text-primary">Lien</td>
                 </tr>
                 <tr>
-                  <td><code>- {{ $t('MARKDOWN_LIST_ITEM') }}</code></td>
-                  <td>• {{ $t('MARKDOWN_LIST_ITEM') }}</td>
+                  <td><code>- Élément</code></td>
+                  <td>• Élément</td>
                 </tr>
                 <tr>
-                  <td><code>1. {{ $t('MARKDOWN_LIST_ITEM') }}</code></td>
-                  <td>1. {{ $t('MARKDOWN_LIST_ITEM') }}</td>
+                  <td><code>1. Élément</code></td>
+                  <td>1. Élément</td>
                 </tr>
                 <tr>
-                  <td><code>> {{ $t('MARKDOWN_QUOTE') }}</code></td>
-                  <td style="border-left: 3px solid #ccc; padding-left: 8px;">{{ $t('MARKDOWN_QUOTE') }}</td>
+                  <td><code>> Citation</code></td>
+                  <td style="border-left: 3px solid #ccc; padding-left: 8px;">Citation</td>
                 </tr>
                 <tr>
-                  <td><code>`{{ $t('MARKDOWN_CODE') }}`</code></td>
-                  <td><code>{{ $t('MARKDOWN_CODE') }}</code></td>
+                  <td><code>`code`</code></td>
+                  <td><code>code</code></td>
                 </tr>
                 <tr>
                   <td><code>---</code></td>
@@ -97,8 +94,8 @@ function getParsedMarkdown(text) {
         </v-card>
       </v-menu>
       <v-btn-toggle v-model="showPreview" density="compact" rounded="lg" mandatory border>
-        <v-btn :value="false" size="small" class="text-none">{{ $t('EDIT') }}</v-btn>
-        <v-btn :value="true" size="small" class="text-none">{{ $t('PREVIEW') }}</v-btn>
+        <v-btn :value="false" size="small" class="text-none">Éditer</v-btn>
+        <v-btn :value="true" size="small" class="text-none">Aperçu</v-btn>
       </v-btn-toggle>
     </div>
     <v-textarea v-if="!showPreview" v-model="model" :label="label" :hint="hint" :persistent-hint="persistentHint"
@@ -106,7 +103,7 @@ function getParsedMarkdown(text) {
       :rules="rules" />
     <v-card v-else flat rounded="lg" class="pa-4 briefing-preview" min-height="160">
       <div v-if="model" class="markdown-content" v-html="getParsedMarkdown(model)" />
-      <div v-else class="text-medium-emphasis text-body-medium">{{ $t('BRIEFING_EMPTY_PREVIEW') }}</div>
+      <div v-else class="text-medium-emphasis text-body-medium">Aucun contenu à prévisualiser</div>
     </v-card>
   </div>
 </template>

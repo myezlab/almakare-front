@@ -3,9 +3,7 @@ import { usePicture } from "@/composables/usePicture.js"
 import { useMessagesStore } from '@/stores/messages'
 import { mdiCameraOutline, mdiClose, mdiImageOutline } from '@mdi/js'
 import { ref } from 'vue'
-import { useI18n } from "vue-i18n"
 
-const { t } = useI18n()
 const showFullscreen = ref(false)
 
 const props = defineProps({
@@ -64,13 +62,13 @@ async function onFileUpdated(event) {
       hasThumbnail: props.hasThumbnail
     })
 
-    messagesStore.add({ type: 'success', text: t('NEW_PICTURE_SAVED') })
+    messagesStore.add({ type: 'success', text: 'Nouvelle photo enregistrée' })
 
     emit('update:source', pictureUrl)
 
   } catch (error) {
     console.error("Error uploading picture:", error)
-    messagesStore.add({ type: 'error', text: t('FAILED_TO_UPLOAD_PICTURE') })
+    messagesStore.add({ type: 'error', text: "Échec de l'upload de la photo" })
   }
 }
 
@@ -87,7 +85,7 @@ async function onFileUpdated(event) {
       class="d-flex rounded-15 flex-column align-center justify-center text-medium-emphasis " variant="tonal"
       color="primary" :width="$props.size" :height="$props.size">
       <v-icon :icon="mdiImageOutline" size="x-large" class="mb-1" />
-      <span class="text-body-small text-center">{{ $t('ADD_PHOTO') }}</span>
+      <span class="text-body-small text-center">Ajouter une photo</span>
     </v-card>
 
     <!-- Camera icon button -->

@@ -1,4 +1,3 @@
-import './firebase.js'
 import './style.css'
 
 import { registerPlugins } from '@/plugins'

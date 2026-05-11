@@ -1,33 +1,29 @@
 <script setup>
 import { useMessagesStore } from '@/stores/messages'
 import { useSelfStore } from '@/stores/self'
-import { doc, getFirestore, updateDoc } from 'firebase/firestore'
 import { computed, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
-const { t } = useI18n()
 const router = useRouter()
 const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
-const db = getFirestore()
 
 const QUESTIONS = [
-  'EPWORTH_QUESTION_1',
-  'EPWORTH_QUESTION_2',
-  'EPWORTH_QUESTION_3',
-  'EPWORTH_QUESTION_4',
-  'EPWORTH_QUESTION_5',
-  'EPWORTH_QUESTION_6',
-  'EPWORTH_QUESTION_7',
-  'EPWORTH_QUESTION_8',
+  'Pendant que vous êtes occupé à lire un document',
+  'Devant la télévision ou au cinéma',
+  "Assis inactif dans un lieu public (salle d'attente, théâtre, …)",
+  "Passager, depuis au moins une heure sans interruptions, d'une voiture ou d'un transport en commun (train, bus, avion, …)",
+  'Allongé pour une sieste, lorsque les circonstances le permettent',
+  'En position assise au cours d\'une conversation (ou au téléphone) avec un proche',
+  'Tranquillement assis à table à la fin d\'un repas sans alcool',
+  "Au volant d'une voiture immobilisée depuis quelques minutes dans un embouteillage",
 ]
 
 const ANSWER_OPTIONS = [
-  { value: 0, labelKey: 'EPWORTH_NEVER' },
-  { value: 1, labelKey: 'EPWORTH_LOW' },
-  { value: 2, labelKey: 'EPWORTH_MODERATE' },
-  { value: 3, labelKey: 'EPWORTH_HIGH' },
+  { value: 0, label: 'Jamais' },
+  { value: 1, label: 'Faible chance' },
+  { value: 2, label: 'Modérée' },
+  { value: 3, label: 'Forte chance' },
 ]
 
 const answers = ref([null, null, null, null, null, null, null, null])
@@ -56,9 +52,9 @@ const scoreColor = computed(() => {
 
 const scoreLabel = computed(() => {
   if (epworthScore.value === null) return ''
-  if (epworthScore.value <= 10) return t('EPWORTH_SCORE_NORMAL')
-  if (epworthScore.value <= 15) return t('EPWORTH_SCORE_MODERATE')
-  return t('EPWORTH_SCORE_SEVERE')
+  if (epworthScore.value <= 10) return 'Somnolence normale'
+  if (epworthScore.value <= 15) return 'Somnolence modérée'
+  return 'Somnolence sévère'
 })
 
 async function selectAnswer(questionIndex, value) {
@@ -72,11 +68,10 @@ async function selectAnswer(questionIndex, value) {
       : null
     const updateData = { epworthAnswers: newAnswers }
     if (score !== null) updateData.epworthScore = score
-    await updateDoc(doc(db, `users/${selfStore.item.id}`), updateData)
     if (score !== null) selfStore.item.epworthScore = score
     selfStore.item.epworthAnswers = newAnswers
   } catch {
-    messagesStore.add({ type: 'error', text: t('EPWORTH_SAVE_ERROR') })
+    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement du test" })
   }
 }
 </script>
@@ -87,17 +82,20 @@ async function selectAnswer(questionIndex, value) {
       <v-col :cols="$vuetify.display.mobile ? 12 : 8">
 
         <v-card flat color="transparent" class="mb-4 pa-5">
-          <div class="text-headline-medium font-weight-bold mb-2">{{ $t('EPWORTH_TEST') }}</div>
-          <div class="text-body-medium text-medium-emphasis">{{ $t('EPWORTH_TEST_DESCRIPTION') }}</div>
+          <div class="text-headline-medium font-weight-bold mb-2">Test d'Epworth</div>
+          <div class="text-body-medium text-medium-emphasis">
+            Évaluez votre tendance à vous endormir dans différentes situations de la vie quotidienne. Pour chaque
+            question, indiquez la probabilité que vous vous endormiez.
+          </div>
         </v-card>
 
         <div v-if="selfStore.item.createdAt">
           <!-- Questions -->
-          <v-card v-for="(questionKey, i) in QUESTIONS" :key="i" class="mb-3 card-shadow pa-5"
+          <v-card v-for="(question, i) in QUESTIONS" :key="i" class="mb-3 card-shadow pa-5"
             :class="{ 'rounded-15': !$vuetify.display.mobile }" color="white">
             <div class="text-body-large font-weight-medium mb-4">
               <span class="text-medium-emphasis mr-1">{{ i + 1 }}.</span>
-              {{ $t(questionKey) }}
+              {{ question }}
             </div>
 
             <div class="d-flex flex-wrap gap-2">
@@ -105,7 +103,7 @@ async function selectAnswer(questionIndex, value) {
                 :color="answers[i] === option.value ? 'primary' : undefined" variant="flat" rounded="lg" size="small"
                 class="text-none" :class="{ 'border-light': answers[i] !== option.value }"
                 @click="selectAnswer(i, option.value)">
-                {{ $t(option.labelKey) }}
+                {{ option.label }}
               </v-btn>
             </div>
           </v-card>

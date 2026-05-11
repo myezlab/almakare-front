@@ -2,16 +2,11 @@
 import { useProfileCompletion } from '@/composables/useProfileCompletion'
 import { useSelfStore } from '@/stores/self'
 import { mdiAccountOutline, mdiChartBar, mdiClipboardPulseOutline, mdiMoonWaningCrescent } from '@mdi/js'
-import { doc, getDoc, getFirestore } from 'firebase/firestore'
-import { computed, onMounted, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const { t } = useI18n()
 const selfStore = useSelfStore()
-
-const db = getFirestore()
 
 const loading = ref(true)
 const usersCount = ref(0)
@@ -31,24 +26,11 @@ const epworthScoreColor = computed(() => {
 const epworthScoreLabel = computed(() => {
   const score = selfStore.item?.epworthScore
   if (score == null) return ''
-  if (score <= 10) return t('EPWORTH_SCORE_NORMAL')
-  if (score <= 15) return t('EPWORTH_SCORE_MODERATE')
-  return t('EPWORTH_SCORE_SEVERE')
+  if (score <= 10) return 'Somnolence normale'
+  if (score <= 15) return 'Somnolence modérée'
+  return 'Somnolence sévère'
 })
 
-onMounted(async () => {
-  try {
-    const snapshot = await getDoc(doc(db, 'statistics', 'global'))
-    if (snapshot.exists()) {
-      usersCount.value = snapshot.data().usersCount || 0
-      projectsCount.value = snapshot.data().projectsCount || 0
-    }
-  } catch (error) {
-    console.error('Error fetching statistics:', error)
-  } finally {
-    loading.value = false
-  }
-})
 </script>
 
 <template>
@@ -59,7 +41,7 @@ onMounted(async () => {
         <v-row class="mb-6">
           <v-col align-self="center" class="text-headline-medium font-weight-bold">
             <v-row>
-              {{ $t('DASHBOARD') }}
+              Tableau de bord
             </v-row>
           </v-col>
         </v-row>
@@ -70,14 +52,14 @@ onMounted(async () => {
           <v-row align="center">
             <v-col>
               <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-                {{ $t('PROFILE_COMPLETION_TITLE') }}
+                Complétez votre profil
               </div>
               <div class="text-body-medium text-medium-emphasis mb-4">
-                {{ $t('PROFILE_COMPLETION_SUBTITLE') }}
+                Renseignez vos informations pour accéder à toutes les fonctionnalités
               </div>
               <v-btn :prepend-icon="mdiAccountOutline" variant="tonal" color="primary" rounded="lg"
                 @click.stop="router.push({ name: 'Profile' })" class="text-none">
-                {{ $t('PROFILE') }}
+                Profil
               </v-btn>
             </v-col>
             <v-col cols="auto">
@@ -93,14 +75,14 @@ onMounted(async () => {
           <v-row align="center">
             <v-col>
               <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-                {{ $t('SLEEP_DIARY_TITLE') }}
+                Agenda du sommeil
               </div>
               <div class="text-body-medium text-medium-emphasis mb-4">
-                {{ $t('SLEEP_DIARY_DASHBOARD_SUBTITLE') }}
+                Suivez votre sommeil nuit après nuit avec un agenda visuel
               </div>
               <v-btn :prepend-icon="mdiMoonWaningCrescent" variant="tonal" color="primary" rounded="lg"
                 @click.stop="router.push({ name: 'SleepDiary' })" class="text-none">
-                {{ $t('SLEEP_DIARY_OPEN') }}
+                Ouvrir l'agenda
               </v-btn>
             </v-col>
             <v-col cols="auto">
@@ -116,14 +98,14 @@ onMounted(async () => {
           <v-row align="center">
             <v-col>
               <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-                {{ $t('SLEEP_STATS_TITLE') }}
+                En savoir plus
               </div>
               <div class="text-body-medium text-medium-emphasis mb-4">
-                {{ $t('SLEEP_STATS_SUBTITLE') }}
+                Chiffres clés sur les troubles du sommeil en France
               </div>
               <v-btn :prepend-icon="mdiChartBar" variant="tonal" color="primary" rounded="lg"
                 @click.stop="router.push({ name: 'SleepStatsFrance' })" class="text-none">
-                {{ $t('SLEEP_STATS_CTA') }}
+                Découvrir
               </v-btn>
             </v-col>
             <v-col cols="auto">
@@ -138,10 +120,10 @@ onMounted(async () => {
           <v-row align="center">
             <v-col>
               <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-                {{ $t('EPWORTH_TEST') }}
+                Test d'Epworth
               </div>
               <div class="text-body-medium text-medium-emphasis mb-4">
-                {{ $t('EPWORTH_DASHBOARD_SUBTITLE') }}
+                Évaluez votre somnolence diurne en répondant à 8 questions
               </div>
               <div class="d-flex flex-column align-start gap-2">
                 <v-chip v-if="selfStore.item?.epworthScore != null" class="mb-4" :color="epworthScoreColor"
@@ -150,7 +132,7 @@ onMounted(async () => {
                 </v-chip>
                 <v-btn :prepend-icon="mdiClipboardPulseOutline" variant="tonal" color="primary" rounded="lg"
                   @click.stop="router.push({ name: 'EpworthTest' })" class="text-none">
-                  {{ selfStore.item?.epworthScore != null ? $t('EPWORTH_RETAKE') : $t('EPWORTH_TAKE_TEST') }}
+                  {{ selfStore.item?.epworthScore != null ? 'Refaire le test' : 'Passer le test' }}
                 </v-btn>
               </div>
             </v-col>
