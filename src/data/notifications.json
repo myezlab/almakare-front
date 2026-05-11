@@ -1,0 +1,90 @@
+[
+  {
+    "id": "notif-001",
+    "type": "newMessage",
+    "userFullName": "Dr. Sophie Martin",
+    "userAvatarUrl": null,
+    "text": "NOTIF_RESULTS_AVAILABLE",
+    "createdAt": "2026-04-12T09:30:00Z",
+    "read": false,
+    "to": "/dashboard",
+    "projectId": null
+  },
+  {
+    "id": "notif-002",
+    "type": "participationConfirmation",
+    "userFullName": "Laboratoire EZlab",
+    "userAvatarUrl": null,
+    "text": null,
+    "createdAt": "2026-04-11T14:15:00Z",
+    "read": false,
+    "to": "/dashboard",
+    "projectId": "project-123"
+  },
+  {
+    "id": "notif-003",
+    "type": "contractSigned",
+    "userFullName": "Dr. Jean Dupont",
+    "userAvatarUrl": null,
+    "text": null,
+    "createdAt": "2026-04-10T11:00:00Z",
+    "read": true,
+    "to": "/profile",
+    "projectId": "project-456"
+  },
+  {
+    "id": "notif-004",
+    "type": "newMessage",
+    "userFullName": "Marie Curie",
+    "userAvatarUrl": null,
+    "text": "NOTIF_FILL_SLEEP_DIARY",
+    "createdAt": "2026-04-09T08:45:00Z",
+    "read": true,
+    "to": "/sleep-diary",
+    "projectId": null
+  },
+  {
+    "id": "notif-005",
+    "type": "newMessage",
+    "userFullName": "Service Administratif",
+    "userAvatarUrl": null,
+    "text": "NOTIF_CARTE_VITALE_VERIFIED",
+    "createdAt": "2026-04-08T16:20:00Z",
+    "read": true,
+    "to": "/profile",
+    "projectId": null
+  },
+  {
+    "id": "notif-006",
+    "type": "participationConfirmation",
+    "userFullName": "Étude Sommeil 2026",
+    "userAvatarUrl": null,
+    "text": "NOTIF_STUDY_ENROLLED",
+    "createdAt": "2026-04-05T10:00:00Z",
+    "read": true,
+    "to": "/epworth-test",
+    "projectId": "project-789"
+  },
+  {
+    "id": "notif-007",
+    "type": "newMessage",
+    "userFullName": "Dr. Pierre Leblanc",
+    "userAvatarUrl": null,
+    "text": "NOTIF_EPWORTH_COMPLETED",
+    "createdAt": "2026-04-03T13:30:00Z",
+    "read": true,
+    "to": "/epworth-test",
+    "projectId": null
+  },
+  {
+    "id": "notif-008",
+    "type": "contractSigned",
+    "userFullName": "Laboratoire EZlab",
+    "userAvatarUrl": null,
+    "text": "NOTIF_CONSENT_SIGNED",
+    "createdAt": "2026-04-01T09:00:00Z",
+    "read": true,
+    "to": "/profile",
+    "projectId": "project-123"
+  }
+]
