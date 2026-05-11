@@ -62,6 +62,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/parcours-hospitalisation',
+      name: 'HospitalizationJourney',
+      component: () => import('./views/HospitalizationJourneyView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/troubles-du-sommeil',
       name: 'SleepStatsFrance',
       component: () => import('./views/SleepStatsFranceView.vue'),

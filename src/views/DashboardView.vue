@@ -1,7 +1,7 @@
 <script setup>
 import { useProfileCompletion } from '@/composables/useProfileCompletion'
 import { useSelfStore } from '@/stores/self'
-import { mdiAccountOutline, mdiChartBar, mdiClipboardPulseOutline, mdiMoonWaningCrescent } from '@mdi/js'
+import { mdiAccountOutline, mdiChartBar, mdiClipboardPulseOutline, mdiHospitalBuilding, mdiMoonWaningCrescent } from '@mdi/js'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -14,6 +14,12 @@ const projectsCount = ref(0)
 
 const currentUser = computed(() => selfStore.item || {})
 const { completionPercent } = useProfileCompletion(currentUser)
+
+const HOSPITALIZATION_TOTAL_STEPS = 8
+const hospitalizationStep = computed(() => selfStore.item?.hospitalizationStep || 1)
+const hospitalizationProgress = computed(
+  () => Math.round((hospitalizationStep.value / HOSPITALIZATION_TOTAL_STEPS) * 100),
+)
 
 const epworthScoreColor = computed(() => {
   const score = selfStore.item?.epworthScore
@@ -46,8 +52,37 @@ const epworthScoreLabel = computed(() => {
           </v-col>
         </v-row>
 
+        <!-- Hospitalization journey card -->
+        <v-card class="mt-6 pa-6 card-shadow rounded-15 cursor-pointer"
+          @click="router.push({ name: 'HospitalizationJourney' })">
+          <v-row align="center">
+            <v-col>
+              <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
+                Mon hospitalisation
+              </div>
+              <div class="text-body-medium text-medium-emphasis mb-2">
+                Comprenez les étapes de votre évaluation pour l'apnée du sommeil
+              </div>
+              <v-chip color="primary" variant="tonal" size="small" class="mb-4">
+                Étape {{ hospitalizationStep }} sur {{ HOSPITALIZATION_TOTAL_STEPS }}
+              </v-chip>
+              <div>
+                <v-btn :prepend-icon="mdiHospitalBuilding" variant="tonal" color="primary" rounded="lg"
+                  @click.stop="router.push({ name: 'HospitalizationJourney' })" class="text-none">
+                  Suivre mon parcours
+                </v-btn>
+              </div>
+            </v-col>
+            <v-col cols="auto">
+              <v-progress-circular :model-value="hospitalizationProgress" color="primary" size="80" width="6">
+                <span class="text-body-medium font-weight-bold">{{ hospitalizationStep }}/{{ HOSPITALIZATION_TOTAL_STEPS }}</span>
+              </v-progress-circular>
+            </v-col>
+          </v-row>
+        </v-card>
+
         <!-- Complete your profile card -->
-        <v-card v-if="completionPercent < 100" class="mt-6 pa-6 card-shadow rounded-15 cursor-pointer"
+        <v-card v-if="completionPercent < 100" class="mt-4 pa-6 card-shadow rounded-15 cursor-pointer"
           @click="router.push({ name: 'Profile' })">
           <v-row align="center">
             <v-col>
