@@ -1,12 +1,13 @@
 <script setup>
-import patientIllustration from '@/assets/illustrations/patient.svg'
-import professionalIllustration from '@/assets/illustrations/doctors.svg'
-import coordinatorIllustration from '@/assets/illustrations/team.svg'
 import doctorIllustration from '@/assets/illustrations/doctor.svg'
-import technicianIllustration from '@/assets/illustrations/settings.svg'
+import professionalIllustration from '@/assets/illustrations/doctors.svg'
+import patientIllustration from '@/assets/illustrations/patient.svg'
+import coordinatorIllustration from '@/assets/illustrations/team.svg'
+import technicianIllustration from '@/assets/illustrations/technician.svg'
 import logo from '@/assets/img/logo.svg'
 import { useSelfStore } from '@/stores/self'
 import {
+  mdiAccountGroupOutline,
   mdiAccountHeartOutline,
   mdiAccountTieOutline,
   mdiArrowLeft,
@@ -16,17 +17,15 @@ import {
   mdiCogOutline,
   mdiFileDocumentMultipleOutline,
   mdiFileSearchOutline,
-  mdiLoginVariant,
   mdiMessageTextOutline,
-  mdiMoonWaningCrescent,
   mdiStethoscope,
-  mdiToolboxOutline,
-  mdiAccountGroupOutline,
+  mdiToolboxOutline
 } from '@mdi/js'
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 const selfStore = useSelfStore()
 
 // Onboarding flow steps:
@@ -150,26 +149,51 @@ const servicesBySpecialty = {
 
 const currentServices = computed(() => servicesBySpecialty[selectedSpecialty.value?.key] || [])
 
+function syncFromQuery() {
+  const q = route.query
+  if (q.step === 'specialty') {
+    step.value = 'specialty'
+    selectedSpecialty.value = null
+  } else if (q.step === 'services' && q.role) {
+    const found = specialties.find((s) => s.key === q.role)
+    if (found) {
+      selectedSpecialty.value = found
+      step.value = 'services'
+    } else {
+      step.value = 'role'
+      selectedSpecialty.value = null
+    }
+  } else {
+    step.value = 'role'
+    selectedSpecialty.value = null
+  }
+}
+
+syncFromQuery()
+watch(() => route.query, syncFromQuery)
+
 function selectRole(role) {
   if (role.key === 'patient') {
-    router.push({ name: 'Dashboard' })
+    router.push({ name: 'Login', query: { mode: 'signup', role: 'patient' } })
   } else {
-    step.value = 'specialty'
+    router.push({ query: { step: 'specialty' } })
   }
 }
 
 function selectSpecialty(specialty) {
-  selectedSpecialty.value = specialty
-  step.value = 'services'
+  router.push({ query: { step: 'services', role: specialty.key } })
 }
 
 function goBack() {
   if (step.value === 'services') {
-    step.value = 'specialty'
-    selectedSpecialty.value = null
+    router.push({ query: { step: 'specialty' } })
   } else if (step.value === 'specialty') {
-    step.value = 'role'
+    router.push({ query: {} })
   }
+}
+
+function goHome() {
+  router.push({ query: {} })
 }
 
 function goToLogin() {
@@ -177,7 +201,11 @@ function goToLogin() {
 }
 
 function selectService(service) {
-  router.push({ name: 'Login' })
+  signUpAsSpecialty()
+}
+
+function signUpAsSpecialty() {
+  router.push({ name: 'Login', query: { mode: 'signup', role: selectedSpecialty.value.key } })
 }
 </script>
 
@@ -185,28 +213,14 @@ function selectService(service) {
   <div class="onboarding-wrapper background-image">
     <!-- Top bar -->
     <div class="top-bar d-flex align-center justify-space-between px-6 px-md-10 py-4">
-      <div class="d-flex align-center" style="cursor: pointer;" @click="step = 'role'; selectedSpecialty = null">
-        <img :src="logo" alt="myEZlab" class="top-logo" />
+      <div class="d-flex align-center" style="cursor: pointer;" @click="goHome">
+        <img :src="logo" alt="myEZlab" class="top-logo" width="auto" height="40" />
       </div>
-      <v-btn
-        v-if="!selfStore.item.id"
-        :prepend-icon="mdiLoginVariant"
-        color="primary"
-        variant="flat"
-        rounded="lg"
-        class="text-none"
-        @click="goToLogin"
-      >
+      <v-btn v-if="!selfStore.item.id" color="primary" variant="flat" rounded="lg" class="text-none" @click="goToLogin">
         Se connecter
       </v-btn>
-      <v-btn
-        v-else
-        color="primary"
-        variant="tonal"
-        rounded="lg"
-        class="text-none"
-        @click="router.push({ name: 'Dashboard' })"
-      >
+      <v-btn v-else color="primary" variant="tonal" rounded="lg" class="text-none"
+        @click="router.push({ name: 'Dashboard' })">
         Mon tableau de bord
       </v-btn>
     </div>
@@ -228,41 +242,17 @@ function selectService(service) {
           </div>
 
           <v-row justify="center" align="stretch" class="mx-0">
-            <v-col
-              v-for="role in roleCards"
-              :key="role.key"
-              cols="12"
-              sm="10"
-              md="5"
-              lg="4"
-            >
-              <v-card
-                class="role-card card-shadow pa-8 h-100 d-flex flex-column align-center text-center"
-                rounded="xl"
-                elevation="0"
-                @click="selectRole(role)"
-              >
+            <v-col v-for="role in roleCards" :key="role.key" cols="12" sm="10" md="5" lg="4">
+              <v-card class="role-card card-shadow pa-8 h-100 d-flex flex-column align-center text-center" rounded="xl"
+                elevation="0" @click="selectRole(role)">
                 <div class="role-illustration-wrap mb-6 d-flex align-center justify-center">
                   <img :src="role.illustration" :alt="role.title" class="role-illustration" />
-                </div>
-                <div
-                  class="role-icon-badge mb-4 d-flex align-center justify-center"
-                  :style="{ backgroundColor: role.color + '22' }"
-                >
-                  <v-icon :icon="role.icon" :color="role.color" size="28" />
                 </div>
                 <h2 class="text-headline-small font-weight-bold mb-3">{{ role.title }}</h2>
                 <p class="text-body-medium text-medium-emphasis mb-6 flex-grow-1">
                   {{ role.description }}
                 </p>
-                <v-btn
-                  color="primary"
-                  variant="tonal"
-                  rounded="lg"
-                  size="large"
-                  block
-                  class="text-none"
-                >
+                <v-btn color="primary" variant="tonal" rounded="lg" size="large" block class="text-none">
                   Continuer
                 </v-btn>
               </v-card>
@@ -273,13 +263,7 @@ function selectService(service) {
         <!-- Step 2: Specialty choice -->
         <div v-else-if="step === 'specialty'" key="specialty">
           <div class="d-flex align-center mb-6">
-            <v-btn
-              :prepend-icon="mdiArrowLeft"
-              variant="text"
-              rounded="lg"
-              class="text-none"
-              @click="goBack"
-            >
+            <v-btn :prepend-icon="mdiArrowLeft" variant="text" rounded="lg" class="text-none" @click="goBack">
               Retour
             </v-btn>
           </div>
@@ -294,36 +278,17 @@ function selectService(service) {
           </div>
 
           <v-row justify="center" align="stretch" class="mx-0">
-            <v-col
-              v-for="specialty in specialties"
-              :key="specialty.key"
-              cols="12"
-              sm="10"
-              md="4"
-            >
-              <v-card
-                class="role-card card-shadow pa-6 pa-md-8 h-100 d-flex flex-column align-center text-center"
-                rounded="xl"
-                elevation="0"
-                @click="selectSpecialty(specialty)"
-              >
+            <v-col v-for="specialty in specialties" :key="specialty.key" cols="12" sm="10" md="4">
+              <v-card class="role-card card-shadow pa-6 pa-md-8 h-100 d-flex flex-column align-center text-center"
+                rounded="xl" elevation="0" @click="selectSpecialty(specialty)">
                 <div class="specialty-illustration-wrap mb-6 d-flex align-center justify-center">
                   <img :src="specialty.illustration" :alt="specialty.title" class="specialty-illustration" />
-                </div>
-                <div class="specialty-icon-badge mb-4 d-flex align-center justify-center">
-                  <v-icon :icon="specialty.icon" color="primary" size="24" />
                 </div>
                 <h2 class="text-title-large font-weight-bold mb-2">{{ specialty.title }}</h2>
                 <p class="text-body-medium text-medium-emphasis mb-6 flex-grow-1">
                   {{ specialty.description }}
                 </p>
-                <v-btn
-                  color="primary"
-                  variant="tonal"
-                  rounded="lg"
-                  block
-                  class="text-none"
-                >
+                <v-btn color="primary" variant="tonal" rounded="lg" block class="text-none">
                   Choisir
                 </v-btn>
               </v-card>
@@ -334,46 +299,37 @@ function selectService(service) {
         <!-- Step 3: Services -->
         <div v-else-if="step === 'services'" key="services">
           <div class="d-flex align-center mb-6">
-            <v-btn
-              :prepend-icon="mdiArrowLeft"
-              variant="text"
-              rounded="lg"
-              class="text-none"
-              @click="goBack"
-            >
+            <v-btn :prepend-icon="mdiArrowLeft" variant="text" rounded="lg" class="text-none" @click="goBack">
               Retour
             </v-btn>
           </div>
 
-          <div class="text-center mb-10">
+          <div class="text-center mb-16">
             <div class="d-flex justify-center mb-4">
-              <div class="specialty-icon-badge specialty-icon-badge-large d-flex align-center justify-center">
-                <v-icon :icon="selectedSpecialty.icon" color="primary" size="32" />
-              </div>
+              <img :src="selectedSpecialty.illustration" :alt="selectedSpecialty.title"
+                class="specialty-illustration-large" />
             </div>
-            <h1 class="text-headline-medium font-weight-bold mb-2" style="font-family: title !important;">
+            <h1 class="text-headline-medium font-weight-bold mb-6" style="font-family: title !important;">
               Espace {{ selectedSpecialty.title }}
             </h1>
-            <p class="text-body-large text-medium-emphasis">
+            <div class="d-flex justify-center">
+              <v-btn color="primary" variant="flat" rounded="lg" size="large" class="text-none px-8"
+                @click="signUpAsSpecialty">
+                S'inscrire
+              </v-btn>
+            </div>
+          </div>
+
+          <div class="text-center mb-6">
+            <p class="text-title-large">
               Découvrez les services à votre disposition
             </p>
           </div>
 
           <v-row justify="center" align="stretch" class="mx-0">
-            <v-col
-              v-for="(service, idx) in currentServices"
-              :key="idx"
-              cols="12"
-              sm="6"
-              md="6"
-              lg="5"
-            >
-              <v-card
-                class="service-card card-shadow pa-6 h-100"
-                rounded="xl"
-                elevation="0"
-                @click="selectService(service)"
-              >
+            <v-col v-for="(service, idx) in currentServices" :key="idx" cols="12" sm="6" md="6" lg="5">
+              <v-card class="service-card card-shadow pa-6 h-100" rounded="xl" elevation="0"
+                @click="selectService(service)">
                 <div class="d-flex align-start">
                   <div class="service-icon-wrap d-flex align-center justify-center mr-4 flex-shrink-0">
                     <v-icon :icon="service.icon" color="primary" size="28" />
@@ -404,8 +360,10 @@ function selectService(service) {
 }
 
 .top-logo {
-  max-height: 40px;
+  height: 40px;
   width: auto;
+  display: block;
+  object-fit: contain;
 }
 
 .content-container {
@@ -449,6 +407,12 @@ function selectService(service) {
 .specialty-illustration {
   max-height: 140px;
   max-width: 100%;
+  object-fit: contain;
+}
+
+.specialty-illustration-large {
+  max-height: 140px;
+  max-width: 200px;
   object-fit: contain;
 }
 

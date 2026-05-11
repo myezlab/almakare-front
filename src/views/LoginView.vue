@@ -1,4 +1,8 @@
 <script setup>
+import coordinatorIllustration from "@/assets/illustrations/team.svg"
+import doctorIllustration from "@/assets/illustrations/doctor.svg"
+import patientIllustration from "@/assets/illustrations/patient.svg"
+import technicianIllustration from "@/assets/illustrations/technician.svg"
 import { useRules } from "@/composables/useRules"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
@@ -20,6 +24,13 @@ const { required, emailValidation, passwordValidation } = useRules()
 
 // sign-in | sign-up | reset-password | loading | success
 const status = ref(route.query.mode === "signup" ? "sign-up" : "sign-in")
+const roleIllustrations = {
+  patient: patientIllustration,
+  coordinator: coordinatorIllustration,
+  doctor: doctorIllustration,
+  technician: technicianIllustration,
+}
+const roleIllustration = computed(() => roleIllustrations[route.query.role] || null)
 const pendingEmail = ref(false)
 const pendingGoogle = ref(false)
 
@@ -105,6 +116,14 @@ async function handleGoogleSignIn() {
   }
 }
 
+function goToSignUp() {
+  if (!route.query.role) {
+    router.push({ name: 'Home' })
+  } else {
+    status.value = 'sign-up'
+  }
+}
+
 async function handlePasswordReset() {
   if (!(await resetForm.value.validate()).valid) return
   pendingEmail.value = true
@@ -143,7 +162,8 @@ async function handlePasswordReset() {
 
       <!-- Sign in -->
       <template v-if="status === 'sign-in'">
-        <v-icon :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
+        <img v-if="roleIllustration" :src="roleIllustration" alt="" class="header-illustration mb-4" />
+        <v-icon v-else :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
         <div class="text-headline-small font-weight-bold mb-2">Bon retour parmi nous</div>
         <div class="text-body-medium text-medium-emphasis mb-6">Connectez-vous avec votre email et mot de passe</div>
 
@@ -183,7 +203,7 @@ async function handlePasswordReset() {
         <div class="mt-6 text-body-small text-medium-emphasis">
           Pas encore de compte ?
           <v-btn variant="text" color="primary" size="small" rounded="lg" class="text-none pa-0 ml-1"
-            @click="status = 'sign-up'">
+            @click="goToSignUp">
             S'inscrire
           </v-btn>
         </div>
@@ -191,7 +211,8 @@ async function handlePasswordReset() {
 
       <!-- Sign up -->
       <template v-if="status === 'sign-up'">
-        <v-icon :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
+        <img v-if="roleIllustration" :src="roleIllustration" alt="" class="header-illustration mb-4" />
+        <v-icon v-else :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
         <div class="text-headline-small font-weight-bold mb-2">Créer un compte</div>
         <div class="text-body-medium text-medium-emphasis mb-6">Rejoignez myEZlab en créant votre compte</div>
 
@@ -238,7 +259,8 @@ async function handlePasswordReset() {
 
       <!-- Reset password -->
       <template v-if="status === 'reset-password'">
-        <v-icon :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
+        <img v-if="roleIllustration" :src="roleIllustration" alt="" class="header-illustration mb-4" />
+        <v-icon v-else :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
         <div class="text-headline-small font-weight-bold mb-2">Réinitialiser le mot de passe</div>
         <div class="text-body-medium text-medium-emphasis mb-6">Entrez votre adresse email pour recevoir un lien de
           réinitialisation</div>
@@ -283,5 +305,15 @@ async function handlePasswordReset() {
 <style scoped>
 .min-h-screen {
   min-height: 100vh;
+}
+
+.header-illustration {
+  height: 100px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 </style>
