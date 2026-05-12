@@ -38,7 +38,7 @@ async function handleContinue() {
 <template>
   <v-dialog :model-value="true" persistent max-width="460" :fullscreen="$vuetify.display.mobile">
     <v-card class="pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
-      <v-card-text class="text-center px-6 pt-6 pb-2">
+      <v-card-text class="text-center px-6 pt-6 pb-6">
         <img :src="detailsIllustration" alt="" class="welcome-illustration mb-4" />
         <div class="text-headline-small font-weight-bold mb-2">Bienvenue !</div>
         <div class="text-body-medium text-medium-emphasis mb-6">
@@ -49,16 +49,13 @@ async function handleContinue() {
           <v-text-field v-model.trim="firstName" label="Prénom" variant="outlined" rounded="lg"
             density="comfortable" autofocus :rules="[required]" class="mb-2" />
           <v-text-field v-model.trim="lastName" label="Nom" variant="outlined" rounded="lg"
-            density="comfortable" :rules="[required]" />
+            density="comfortable" :rules="[required]" class="mb-4" />
+          <v-btn color="primary" rounded="lg" flat size="large" block class="text-none" type="submit"
+            :loading="saving">
+            Continuer
+          </v-btn>
         </v-form>
       </v-card-text>
-
-      <v-card-actions class="px-6 pb-6">
-        <v-btn color="primary" rounded="lg" flat size="large" block class="text-none" :loading="saving"
-          @click="handleContinue">
-          Continuer
-        </v-btn>
-      </v-card-actions>
     </v-card>
   </v-dialog>
 </template>

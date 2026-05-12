@@ -1,5 +1,6 @@
 <script setup>
 import patientsData from '@/data/patients.json'
+import { useMessagesStore } from '@/stores/messages'
 import {
   mdiCalendar,
   mdiCalendarQuestion,
@@ -9,6 +10,7 @@ import {
   mdiEmailOutline,
   mdiPhoneOutline,
 } from '@mdi/js'
+import { useClipboard } from '@vueuse/core'
 import dayjs from 'dayjs'
 import 'dayjs/locale/fr'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -20,6 +22,14 @@ dayjs.extend(relativeTime)
 
 const route = useRoute()
 const router = useRouter()
+const messagesStore = useMessagesStore()
+const { copy } = useClipboard()
+
+function copyToClipboard(value, label) {
+  if (!value) return
+  copy(value)
+  messagesStore.add({ type: 'info', text: `${label} copié : ${value}` })
+}
 
 const STEPS = [
   {
@@ -144,10 +154,12 @@ function stepDateInfo(step) {
             </div>
 
             <div class="d-flex flex-wrap ga-2 mt-3">
-              <v-chip :prepend-icon="mdiEmailOutline" variant="tonal" size="small" color="grey">
+              <v-chip :prepend-icon="mdiEmailOutline" variant="tonal" size="small" color="grey"
+                style="cursor: pointer;" @click="copyToClipboard(patient.email, 'Email')">
                 {{ patient.email }}
               </v-chip>
-              <v-chip :prepend-icon="mdiPhoneOutline" variant="tonal" size="small" color="grey">
+              <v-chip :prepend-icon="mdiPhoneOutline" variant="tonal" size="small" color="grey"
+                style="cursor: pointer;" @click="copyToClipboard(patient.phone, 'Téléphone')">
                 {{ patient.phone }}
               </v-chip>
             </div>

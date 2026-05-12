@@ -149,6 +149,8 @@ const servicesBySpecialty = {
 
 const currentServices = computed(() => servicesBySpecialty[selectedSpecialty.value?.key] || [])
 
+const hasQuery = computed(() => Object.keys(route.query).length > 0)
+
 function syncFromQuery() {
   const q = route.query
   if (q.step === 'specialty') {
@@ -216,10 +218,10 @@ function signUpAsSpecialty() {
       <div class="d-flex align-center" style="cursor: pointer;" @click="goHome">
         <img :src="logo" alt="myEZlab" class="top-logo" width="auto" height="40" />
       </div>
-      <v-btn v-if="!selfStore.item.id" color="primary" variant="flat" rounded="lg" class="text-none" @click="goToLogin">
+      <v-btn v-if="!selfStore.item.id && !hasQuery" color="primary" variant="flat" rounded="lg" class="text-none" @click="goToLogin">
         Se connecter
       </v-btn>
-      <v-btn v-else color="primary" variant="tonal" rounded="lg" class="text-none"
+      <v-btn v-else-if="selfStore.item.id && !hasQuery" color="primary" variant="tonal" rounded="lg" class="text-none"
         @click="router.push({ name: 'DashboardPatient' })">
         Mon tableau de bord
       </v-btn>
