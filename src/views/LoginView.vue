@@ -66,7 +66,7 @@ const signUpPasswordsMatch = computed(() => {
 
 function redirectToApp() {
   status.value = "success"
-  setTimeout(() => router.push({ name: "Dashboard" }), 1000)
+  setTimeout(() => router.push({ name: "DashboardPatient" }), 1000)
 }
 
 async function handleSignIn() {

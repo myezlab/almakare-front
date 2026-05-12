@@ -158,14 +158,14 @@ const sources = {
                 <div class="text-body-small text-medium-emphasis mb-4">Cochez ceux que vous reconnaissez</div>
                 <v-row>
                   <v-col cols="12" sm="6">
-                    <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
+                    <div class="text-body-small font-weight-bold text-medium-emphasis mb-2 text-uppercase">
                       🌙 La nuit
                     </div>
                     <v-checkbox v-for="s in symptomsNight" :key="s" v-model="checkedNight" :value="s" :label="s"
                       density="compact" hide-details color="primary" class="mb-1" />
                   </v-col>
                   <v-col cols="12" sm="6">
-                    <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
+                    <div class="text-body-small font-weight-bold text-medium-emphasis mb-2 text-uppercase">
                       ☀️ Le jour
                     </div>
                     <v-checkbox v-for="s in symptomsDay" :key="s" v-model="checkedDay" :value="s" :label="s"
@@ -209,7 +209,7 @@ const sources = {
                     <div class="text-h4 font-weight-bold text-warning mb-2">1 sur 3</div>
                     <div class="text-body-small text-medium-emphasis">
                       Français souffre d'insomnie
-                      <span class="text-caption d-block mt-1">(Santé publique France, 2024)</span>
+                      <span class="text-body-small d-block mt-1">(Santé publique France, 2024)</span>
                     </div>
                   </v-col>
                   <v-col cols="12" sm="4" class="text-center py-3">
@@ -319,7 +319,8 @@ const sources = {
                 <div class="text-body-small text-medium-emphasis mb-4">Les facteurs qui augmentent les probabilités
                 </div>
 
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1 text-uppercase">Facteurs importants
+                <div class="text-body-small font-weight-bold text-medium-emphasis mb-1 text-uppercase">Facteurs
+                  importants
                 </div>
                 <v-chip-group column class="mb-2">
                   <v-chip v-for="f in riskFactorsHigh" :key="f" color="error" variant="tonal" size="small" label>
@@ -327,7 +328,7 @@ const sources = {
                   </v-chip>
                 </v-chip-group>
 
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1 mt-1 text-uppercase">Facteurs
+                <div class="text-body-small font-weight-bold text-medium-emphasis mb-1 mt-1 text-uppercase">Facteurs
                   aggravants</div>
                 <v-chip-group column class="mb-2">
                   <v-chip v-for="f in riskFactorsMedium" :key="f" color="warning" variant="tonal" size="small" label>
@@ -335,7 +336,7 @@ const sources = {
                   </v-chip>
                 </v-chip-group>
 
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1 mt-1 text-uppercase">Facteurs
+                <div class="text-body-small font-weight-bold text-medium-emphasis mb-1 mt-1 text-uppercase">Facteurs
                   prédisposants
                 </div>
                 <v-chip-group column class="mb-3">

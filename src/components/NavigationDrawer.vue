@@ -46,8 +46,7 @@ watch(mini, (val) => {
   <div v-if="$vuetify.display.mobile && active" class="bottom-nav-wrap">
     <nav class="bottom-nav">
       <button v-for="(item, index) in items" :key="index" class="nav-item"
-        :class="{ active: activeRouteName === item.to.name }" :aria-label="item.text"
-        @click="$router.push(item.to)">
+        :class="{ active: activeRouteName === item.to.name }" :aria-label="item.text" @click="$router.push(item.to)">
         <span class="nav-pill">
           <v-badge dot color="primary" location="top right" offset-x="2" offset-y="2"
             :model-value="item.id === 'messages' && hasUnreadMessages">
@@ -61,8 +60,8 @@ watch(mini, (val) => {
           <span class="nav-label">{{ item.text }}</span>
         </span>
       </button>
-      <button class="nav-item" :class="{ active: activeRouteName === 'Profile' }"
-        aria-label="Profil" @click="$router.push({ name: 'Profile' })">
+      <button class="nav-item" :class="{ active: activeRouteName === 'Profile' }" aria-label="Profil"
+        @click="$router.push({ name: 'Profile' })">
         <span class="nav-pill">
           <v-icon size="22" :icon="mdiAccountOutline"></v-icon>
           <span class="nav-label">Profil</span>
@@ -74,7 +73,7 @@ watch(mini, (val) => {
   <!-- Desktop: Navigation Drawer -->
   <v-navigation-drawer v-else permanent class="card-shadow" :rail="mini" :rail-width="mini ? 64 : 100"
     style="border-right:0px">
-    <v-row justify="center" class="mt-6 mb-4 px-2 cursor-pointer" @click="$router.push({ name: 'Dashboard' })">
+    <v-row justify="center" class="mt-6 mb-4 px-2 cursor-pointer" @click="$router.push({ name: 'DashboardPatient' })">
       <v-img alt="Logo" class="shrink rounded-xs" :src="mini ? logoInitials : logo" transition="scale-transition"
         max-width="100%" width="100%" max-height="45" />
     </v-row>
@@ -216,5 +215,4 @@ watch(mini, (val) => {
 .nav-item.active .nav-label {
   font-weight: 600;
 }
-
 </style>

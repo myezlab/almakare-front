@@ -38,10 +38,10 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },  
     {
-      path: '/dashboard',
-      name: 'Dashboard',
-      component: () => import('./views/DashboardView.vue'),
-      meta: { requiresAuth: true },
+      path: '/dashboard-patient',
+      name: 'DashboardPatient',
+      component: () => import('./views/DashboardPatientView.vue'),
+      meta: { requiresAuth: true, roles: ['patient'] },
     },      
     {
       path: '/profile',
@@ -86,7 +86,7 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const selfStore = useSelfStore()
   if (to.name === 'Home' && selfStore.item.id) {
-    next({ name: 'Dashboard' })
+    next({ name: 'DashboardPatient' })
     return
   }
   next()

@@ -220,7 +220,7 @@ function signUpAsSpecialty() {
         Se connecter
       </v-btn>
       <v-btn v-else color="primary" variant="tonal" rounded="lg" class="text-none"
-        @click="router.push({ name: 'Dashboard' })">
+        @click="router.push({ name: 'DashboardPatient' })">
         Mon tableau de bord
       </v-btn>
     </div>
