@@ -107,8 +107,8 @@ function userRole(selfStore) {
   return selfStore.item?.role || 'patient'
 }
 
-function dashboardRouteFor(role) {
-  return DASHBOARD_BY_ROLE[role] || 'DashboardPatient'
+function landingRouteFor(role) {
+  return DASHBOARD_BY_ROLE[role] || 'Profile'
 }
 
 function hasAccess(to, selfStore) {
@@ -125,7 +125,12 @@ router.beforeEach(async (to, from, next) => {
   const authenticated = isAuthenticated(selfStore)
 
   if (to.name === 'Home' && authenticated) {
-    next({ name: dashboardRouteFor(userRole(selfStore)) })
+    const target = landingRouteFor(userRole(selfStore))
+    if (target === to.name) {
+      next()
+      return
+    }
+    next({ name: target })
     return
   }
 
@@ -135,7 +140,12 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (!hasAccess(to, selfStore)) {
-    next({ name: dashboardRouteFor(userRole(selfStore)) })
+    const target = landingRouteFor(userRole(selfStore))
+    if (target === to.name) {
+      next()
+      return
+    }
+    next({ name: target })
     return
   }
 

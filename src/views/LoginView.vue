@@ -83,6 +83,7 @@ async function handleSignIn() {
   pendingEmail.value = true
   try {
     selfStore.item.id = "123456"
+    selfStore.item.email = signInEmail.value
     const role = route.query.role || selfStore.item.role || "patient"
     selfStore.item.role = role
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
