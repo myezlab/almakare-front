@@ -1,0 +1,98 @@
+[
+  {
+    "id": "p-001",
+    "firstName": "Marie",
+    "lastName": "Dubois",
+    "gender": "female",
+    "birthDate": "1972-04-15",
+    "email": "marie.dubois@example.com",
+    "phone": "06 12 34 56 78",
+    "hospitalizationStep": 3,
+    "epworthScore": 12,
+    "lastVisit": "2026-04-28"
+  },
+  {
+    "id": "p-002",
+    "firstName": "Jean",
+    "lastName": "Martin",
+    "gender": "male",
+    "birthDate": "1965-11-02",
+    "email": "jean.martin@example.com",
+    "phone": "06 23 45 67 89",
+    "hospitalizationStep": 6,
+    "epworthScore": 17,
+    "lastVisit": "2026-05-02"
+  },
+  {
+    "id": "p-003",
+    "firstName": "Sophie",
+    "lastName": "Lefèvre",
+    "gender": "female",
+    "birthDate": "1980-07-23",
+    "email": "sophie.lefevre@example.com",
+    "phone": "06 34 56 78 90",
+    "hospitalizationStep": 1,
+    "epworthScore": 8,
+    "lastVisit": "2026-05-08"
+  },
+  {
+    "id": "p-004",
+    "firstName": "Pierre",
+    "lastName": "Bernard",
+    "gender": "male",
+    "birthDate": "1958-01-09",
+    "email": "pierre.bernard@example.com",
+    "phone": "06 45 67 89 01",
+    "hospitalizationStep": 8,
+    "epworthScore": 14,
+    "lastVisit": "2026-05-10"
+  },
+  {
+    "id": "p-005",
+    "firstName": "Camille",
+    "lastName": "Petit",
+    "gender": "female",
+    "birthDate": "1990-09-30",
+    "email": "camille.petit@example.com",
+    "phone": "06 56 78 90 12",
+    "hospitalizationStep": 4,
+    "epworthScore": 11,
+    "lastVisit": "2026-04-20"
+  },
+  {
+    "id": "p-006",
+    "firstName": "Lucas",
+    "lastName": "Moreau",
+    "gender": "male",
+    "birthDate": "1976-06-14",
+    "email": "lucas.moreau@example.com",
+    "phone": "06 67 89 01 23",
+    "hospitalizationStep": 7,
+    "epworthScore": 16,
+    "lastVisit": "2026-05-05"
+  },
+  {
+    "id": "p-007",
+    "firstName": "Isabelle",
+    "lastName": "Rousseau",
+    "gender": "female",
+    "birthDate": "1968-03-19",
+    "email": "isabelle.rousseau@example.com",
+    "phone": "06 78 90 12 34",
+    "hospitalizationStep": 2,
+    "epworthScore": 9,
+    "lastVisit": "2026-04-15"
+  },
+  {
+    "id": "p-008",
+    "firstName": "Thomas",
+    "lastName": "Garnier",
+    "gender": "male",
+    "birthDate": "1985-12-05",
+    "email": "thomas.garnier@example.com",
+    "phone": "06 89 01 23 45",
+    "hospitalizationStep": 5,
+    "epworthScore": 13,
+    "lastVisit": "2026-05-01"
+  }
+]

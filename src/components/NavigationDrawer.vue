@@ -73,7 +73,7 @@ watch(mini, (val) => {
   <!-- Desktop: Navigation Drawer -->
   <v-navigation-drawer v-else permanent class="card-shadow" :rail="mini" :rail-width="mini ? 64 : 100"
     style="border-right:0px">
-    <v-row justify="center" class="mt-6 mb-4 px-2 cursor-pointer" @click="$router.push({ name: 'DashboardPatient' })">
+    <v-row justify="center" class="mt-6 mb-4 px-2 cursor-pointer" @click="$router.push(items[0]?.to || { name: 'DashboardPatient' })">
       <v-img alt="Logo" class="shrink rounded-xs" :src="mini ? logoInitials : logo" transition="scale-transition"
         max-width="100%" width="100%" max-height="45" />
     </v-row>

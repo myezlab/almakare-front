@@ -7,6 +7,7 @@ import {
   mdiCalendarQuestion,
   mdiCheck,
   mdiChevronLeft,
+  mdiClockOutline,
 } from '@mdi/js'
 import dayjs from 'dayjs'
 import 'dayjs/locale/fr'
@@ -26,48 +27,56 @@ const STEPS = [
     desc: "Un médecin adresseur complète vos données et émet une ordonnance, transmise directement à un médecin spécialiste du sommeil.",
     illustration: 'doctors-orders.svg',
     dayOffset: -18,
+    duration: '~ 30 min',
   },
   {
     title: 'Génération de l\'acte',
     desc: "Le médecin spécialiste prend connaissance de votre dossier et génère l'acte médical correspondant à votre examen.",
     illustration: 'doctor.svg',
     dayOffset: -14,
+    duration: '~ 15 min',
   },
   {
     title: 'Planification',
     desc: "Le coordonnateur planifie l'acte dans l'agenda des hospitalisations et vous propose une date.",
     illustration: 'tasks.svg',
     dayOffset: -10,
+    duration: '~ 10 min',
   },
   {
     title: 'Pose des capteurs',
     desc: "Le jour de l'hospitalisation, le technicien vous accueille et pose les capteurs sur votre corps pour la nuit d'enregistrement.",
     illustration: 'technician.svg',
     dayOffset: -5,
+    duration: '~ 45 min',
   },
   {
     title: 'Remontée des données',
     desc: "Au matin, ce même technicien retire les capteurs et remonte les données brutes enregistrées pendant la nuit.",
     illustration: 'details.svg',
     dayOffset: -4,
+    duration: '~ 30 min',
   },
   {
     title: 'Rapport technique',
     desc: "Un technicien de prélecture prend le relais. Il analyse les données et produit un rapport technique détaillé.",
     illustration: 'report.svg',
     dayOffset: -2,
+    duration: '~ 2 h',
   },
   {
     title: 'Interprétation médicale',
     desc: "Le médecin spécialiste interprète le rapport et pose le diagnostic à partir des résultats de l'acte.",
     illustration: 'doctors.svg',
     dayOffset: 0,
+    duration: '~ 30 min',
   },
   {
     title: 'Résultats transmis',
     desc: "Les résultats sont envoyés à votre médecin adresseur et à vous-même. Vous pouvez alors discuter du traitement.",
     illustration: 'congratulations.svg',
     dayOffset: null,
+    duration: '~ 15 min',
   },
 ]
 
@@ -78,6 +87,8 @@ const currentStep = computed({
 
 const selectedStep = ref(currentStep.value)
 watch(currentStep, (val) => { selectedStep.value = val })
+
+const detailsCardRef = ref(null)
 
 const selectedStepData = computed(() => STEPS[selectedStep.value - 1])
 
@@ -97,6 +108,7 @@ function goNext() {
 
 function goToStep(n) {
   selectedStep.value = n
+  detailsCardRef.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function stepDateInfo(step) {
@@ -156,7 +168,8 @@ function stepDateInfo(step) {
 
           <!-- Step details card -->
           <v-col cols="12">
-            <v-card class="card-shadow pa-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+            <v-card ref="detailsCardRef" class="card-shadow pa-6"
+              :class="{ 'rounded-15': !$vuetify.display.mobile }">
               <v-row align="center">
                 <v-col cols="12" sm="7">
                   <v-chip :color="selectedStep === currentStep ? 'primary' : 'grey'" variant="tonal" size="small"
@@ -165,7 +178,34 @@ function stepDateInfo(step) {
                     <span v-if="selectedStep === currentStep" class="ml-1">· en cours</span>
                   </v-chip>
                   <div class="text-headline-small font-weight-bold mb-3">{{ selectedStepData.title }}</div>
-                  <div class="text-body-medium text-medium-emphasis">{{ selectedStepData.desc }}</div>
+                  <div class="text-body-medium text-medium-emphasis mb-3">{{ selectedStepData.desc }}</div>
+                  <div class="d-flex flex-wrap ga-2">
+                    <v-chip v-if="stepDateInfo(selectedStepData).label" :prepend-icon="mdiCalendarQuestion"
+                      variant="tonal" size="small" color="grey" style="cursor: pointer">
+                      <span class="font-italic">{{ stepDateInfo(selectedStepData).label }}</span>
+                      <v-tooltip activator="parent" location="top" open-on-click max-width="280">
+                        Cette étape n'a pas encore été planifiée. Une date vous sera proposée par le coordonnateur dès
+                        qu'un créneau sera disponible.
+                      </v-tooltip>
+                    </v-chip>
+                    <v-chip v-else :prepend-icon="mdiCalendar" variant="tonal" size="small" color="grey"
+                      style="cursor: pointer">
+                      <span class="font-weight-medium">{{ stepDateInfo(selectedStepData).date }}</span>
+                      <span class="ml-1">· {{ stepDateInfo(selectedStepData).relative }}</span>
+                      <v-tooltip activator="parent" location="top" open-on-click max-width="280">
+                        Date prévue pour cette étape. Les dates sont susceptibles d'évoluer en fonction du déroulement
+                        de votre parcours.
+                      </v-tooltip>
+                    </v-chip>
+                    <v-chip v-if="selectedStepData.duration" :prepend-icon="mdiClockOutline" variant="tonal" size="small"
+                      color="grey" style="cursor: pointer">
+                      {{ selectedStepData.duration }}
+                      <v-tooltip activator="parent" location="top" open-on-click max-width="280">
+                        Durée estimée de cette étape. Il s'agit d'une estimation moyenne, qui peut varier selon votre
+                        situation.
+                      </v-tooltip>
+                    </v-chip>
+                  </div>
                 </v-col>
                 <v-col cols="12" sm="5" class="text-center">
                   <v-img :src="illustrationUrl" :width="180" :height="160" contain class="mx-auto" />
@@ -190,17 +230,20 @@ function stepDateInfo(step) {
                         :class="{ 'text-primary': i + 1 === currentStep, 'text-medium-emphasis': i + 1 > currentStep }">
                         {{ i + 1 }}. {{ step.title }}
                       </div>
-                      <div class="text-body-small text-medium-emphasis mb-1">{{ step.desc }}</div>
-                      <div class="text-body-small text-medium-emphasis text-grey">
-                        <template v-if="stepDateInfo(step).label">
-                          <v-icon size="x-small" class="mr-1" :icon="mdiCalendarQuestion"></v-icon>
+                      <div class="text-body-small text-medium-emphasis mb-2">{{ step.desc }}</div>
+                      <div class="d-flex flex-wrap ga-1">
+                        <v-chip v-if="stepDateInfo(step).label" :prepend-icon="mdiCalendarQuestion" variant="tonal"
+                          size="x-small" color="grey">
                           <span class="font-italic">{{ stepDateInfo(step).label }}</span>
-                        </template>
-                        <template v-else>
-                          <v-icon size="x-small" class="mr-1" :icon="mdiCalendar"></v-icon>
+                        </v-chip>
+                        <v-chip v-else :prepend-icon="mdiCalendar" variant="tonal" size="x-small" color="grey">
                           <span class="font-weight-medium">{{ stepDateInfo(step).date }}</span>
                           <span class="ml-1">· {{ stepDateInfo(step).relative }}</span>
-                        </template>
+                        </v-chip>
+                        <v-chip v-if="step.duration" :prepend-icon="mdiClockOutline" variant="tonal" size="x-small"
+                          color="grey">
+                          {{ step.duration }}
+                        </v-chip>
                       </div>
                     </div>
                   </v-timeline-item>

@@ -8,19 +8,18 @@ import { computed } from "vue"
 export function useNavigationItems() {
   const selfStore = useSelfStore()
 
+  const dashboardRouteByRole = {
+    patient: "DashboardPatient",
+    doctor: "DashboardDoctor",
+  }
+
   const items = computed(() => {
-    if (selfStore.item.isAdmin) {
-      return [
-        { id: 'dashboard', text: 'Accueil', icon: mdiViewDashboardOutline, to: { name: "DashboardPatient" } },
-        { id: 'notifications', text: 'Notifications', icon: mdiBellOutline, to: { name: "Notifications" } },
-      ]
-    } else if (selfStore.item.id) {
-      return [
-        { id: 'dashboard', text: 'Accueil', icon: mdiViewDashboardOutline, to: { name: "DashboardPatient" } },
-        { id: 'notifications', text: 'Notifications', icon: mdiBellOutline, to: { name: "Notifications" } },
-      ]
-    }
-    return []
+    if (!selfStore.item.id) return []
+    const dashboardName = dashboardRouteByRole[selfStore.item.role] || "DashboardPatient"
+    return [
+      { id: 'dashboard', text: 'Accueil', icon: mdiViewDashboardOutline, to: { name: dashboardName } },
+      { id: 'notifications', text: 'Notifications', icon: mdiBellOutline, to: { name: "Notifications" } },
+    ]
   })
 
   return {
