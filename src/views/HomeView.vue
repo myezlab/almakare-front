@@ -4,6 +4,7 @@ import professionalIllustration from '@/assets/illustrations/doctors.svg'
 import patientIllustration from '@/assets/illustrations/patient.svg'
 import coordinatorIllustration from '@/assets/illustrations/team.svg'
 import technicianIllustration from '@/assets/illustrations/technician.svg'
+import logoText from '@/assets/img/logo-text.svg'
 import logo from '@/assets/img/logo.svg'
 import { useSelfStore } from '@/stores/self'
 import {
@@ -50,7 +51,7 @@ const roleCards = [
     description: 'Accédez à des outils dédiés pour accompagner vos patients atteints d\'apnée du sommeil',
     illustration: professionalIllustration,
     icon: mdiAccountTieOutline,
-    color: '#58AD32',
+    color: '#202F4E',
   },
 ]
 
@@ -216,7 +217,7 @@ function signUpAsSpecialty() {
     <!-- Top bar -->
     <div class="top-bar d-flex align-center justify-space-between px-6 px-md-10 py-4">
       <div class="d-flex align-center" style="cursor: pointer;" @click="goHome">
-        <img :src="logo" alt="almakare" class="top-logo" width="auto" height="40" />
+        <img :src="logo" alt="almakare" class="top-logo" width="auto" height="60" />
       </div>
       <v-btn v-if="!selfStore.item.id && !hasQuery" color="primary" variant="flat" rounded="lg" class="text-none"
         @click="goToLogin">
@@ -233,9 +234,7 @@ function signUpAsSpecialty() {
       <v-fade-transition mode="out-in">
         <div v-if="step === 'role'" key="role">
           <div class="text-center mb-10 mb-md-12">
-            <h1 class="text-headline-large font-weight-bold mb-3" style="font-family: title !important;">
-              Bienvenue sur Almakare
-            </h1>
+            <img :src="logoText" alt="almakare" class="top-logo mx-auto" width="auto" height="60" />
             <p class="text-body-large text-medium-emphasis">
               La plateforme dédiée à la prise en charge de l'apnée du sommeil
             </p>
@@ -363,7 +362,6 @@ function signUpAsSpecialty() {
 }
 
 .top-logo {
-  height: 40px;
   width: auto;
   display: block;
   object-fit: contain;
@@ -429,7 +427,7 @@ function signUpAsSpecialty() {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-color: rgba(88, 173, 50, 0.12);
+  background-color: #202F4E1f;
 }
 
 .specialty-icon-badge-large {
@@ -452,6 +450,6 @@ function signUpAsSpecialty() {
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background-color: rgba(88, 173, 50, 0.10);
+  background-color: #202F4E1a;
 }
 </style>

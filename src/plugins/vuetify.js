@@ -11,9 +11,9 @@ import 'vuetify/styles'
 
 // Composables
 import { createVuetify } from 'vuetify'
+import { VTimePicker } from 'vuetify/components/VTimePicker'
 import { VDateInput } from 'vuetify/labs/VDateInput'
 import { VMaskInput } from 'vuetify/labs/VMaskInput'
-import { VTimePicker } from 'vuetify/components/VTimePicker'
 
 
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
@@ -33,7 +33,7 @@ export default createVuetify({
     themes: {
       light: {
         colors: {
-          primary: '#58AD32',
+          primary: '#202F4E',
           secondary: '#7B93BB',
           accent: '#82B1FF',
           error: '#FF5252',

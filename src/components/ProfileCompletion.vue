@@ -102,6 +102,6 @@ const completionColor = computed(() => {
 }
 
 .completion-banner-primary {
-  background: linear-gradient(90deg, #58AD32, #0988ac);
+  background: linear-gradient(90deg, #202F4E, #0988ac);
 }
 </style>
