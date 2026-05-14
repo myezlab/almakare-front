@@ -65,7 +65,13 @@ const router = createRouter({
       path: '/profile',
       name: 'Profile',
       component: () => import('./views/ProfileView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, roles: ['patient'] },
+    },
+    {
+      path: '/profil-professionnel',
+      name: 'ProfileProfessional',
+      component: () => import('./views/ProfileProfessionalView.vue'),
+      meta: { requiresAuth: true, roles: ['doctor', 'coordinator', 'technician'] },
     },
     {
       path: '/test-epworth',
@@ -113,8 +119,19 @@ function userRole(selfStore) {
   return selfStore.item?.role || 'patient'
 }
 
+const PROFILE_BY_ROLE = {
+  patient: 'Profile',
+  doctor: 'ProfileProfessional',
+  coordinator: 'ProfileProfessional',
+  technician: 'ProfileProfessional',
+}
+
+function profileRouteFor(role) {
+  return PROFILE_BY_ROLE[role] || 'Profile'
+}
+
 function landingRouteFor(role) {
-  return DASHBOARD_BY_ROLE[role] || 'Profile'
+  return DASHBOARD_BY_ROLE[role] || profileRouteFor(role)
 }
 
 function hasAccess(to, selfStore) {

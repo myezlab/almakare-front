@@ -15,12 +15,16 @@ const MINI_STORAGE_KEY = "mini"
 
 const selfStore = useSelfStore()
 const mini = ref(localStorage.getItem(MINI_STORAGE_KEY) === "true")
-const { items } = useNavigationItems()
+const { items, profileRoute } = useNavigationItems()
 const route = useRoute()
 
 const active = computed(() => items.value.length > 0)
 
 const activeRouteName = computed(() => route.name)
+
+const isProfileActive = computed(() =>
+  activeRouteName.value === 'Profile' || activeRouteName.value === 'ProfileProfessional',
+)
 
 const needsName = computed(() => {
   const { id, firstName, lastName } = selfStore.item
@@ -60,8 +64,8 @@ watch(mini, (val) => {
           <span class="nav-label">{{ item.text }}</span>
         </span>
       </button>
-      <button class="nav-item" :class="{ active: activeRouteName === 'Profile' }" aria-label="Profil"
-        @click="$router.push({ name: 'Profile' })">
+      <button class="nav-item" :class="{ active: isProfileActive }" aria-label="Profil"
+        @click="$router.push(profileRoute)">
         <span class="nav-pill">
           <v-icon size="22" :icon="mdiAccountOutline"></v-icon>
           <span class="nav-label">Profil</span>
@@ -103,7 +107,7 @@ watch(mini, (val) => {
     </v-list>
 
     <v-list density="compact" nav :selected="[activeRouteName]" style="position: absolute; bottom: 70px; width: 100%">
-      <v-list-item value="Profile" color="primary" :to="{ name: 'Profile' }" class="rounded-15">
+      <v-list-item :value="profileRoute.name" color="primary" :to="profileRoute" class="rounded-15">
         <template v-slot:title v-if="!mini">
           {{ selfStore.item.fullName }}
         </template>

@@ -14,6 +14,17 @@ export function useNavigationItems() {
     doctor: "DashboardDoctor",
   }
 
+  const profileRouteByRole = {
+    patient: "Profile",
+    doctor: "ProfileProfessional",
+    coordinator: "ProfileProfessional",
+    technician: "ProfileProfessional",
+  }
+
+  const profileRoute = computed(() => ({
+    name: profileRouteByRole[selfStore.item.role] || "Profile",
+  }))
+
   const items = computed(() => {
     if (!selfStore.item.id) return []
     const role = selfStore.item.role
@@ -30,5 +41,6 @@ export function useNavigationItems() {
 
   return {
     items,
+    profileRoute,
   }
 }

@@ -22,5 +22,11 @@ export function useRules() {
     return !!value || 'Ce champ est requis'
   }
 
-  return { emailValidation, passwordValidation, passwordSymbols, checkboxRequired, required }
+  function phoneNumberValidation(phone) {
+    if (!phone) return true
+    const cleaned = String(phone).replace(/[\s.\-()]/g, '')
+    return /^(?:(?:\+|00)33|0)[1-9]\d{8}$/.test(cleaned) || 'Numéro de téléphone français invalide'
+  }
+
+  return { emailValidation, passwordValidation, passwordSymbols, checkboxRequired, required, phoneNumberValidation }
 }
