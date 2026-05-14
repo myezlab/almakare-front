@@ -250,7 +250,7 @@ async function handlePasswordReset() {
         <img v-if="roleIllustration" :src="roleIllustration" alt="" class="header-illustration mb-4" />
         <v-icon v-else :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
         <div class="text-headline-small font-weight-bold mb-2">Créer un compte</div>
-        <div class="text-body-medium text-medium-emphasis mb-6">Rejoignez myEZlab en créant votre compte</div>
+        <div class="text-body-medium text-medium-emphasis mb-6">Rejoignez Almakare en créant votre compte</div>
 
         <v-form ref="signUpForm" @submit.prevent="handleSignUp">
           <v-text-field v-model="signUpEmail" label="Email" type="email" variant="outlined" rounded="lg"

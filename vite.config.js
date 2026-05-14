@@ -13,9 +13,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'MyEZlab',
-        short_name: 'MyEZlab',
-        description: 'MyEZlab est une application web qui permet aux utilisateurs de gérer efficacement leurs expériences de laboratoire et leurs données.',
+        name: 'Almakare',
+        short_name: 'Almakare',
+        description: 'Almakare est une application web qui permet aux utilisateurs de gérer efficacement leurs expériences de laboratoire et leurs données.',
         theme_color: '#F9FCFD',
         start_url: "/",
         icons: [

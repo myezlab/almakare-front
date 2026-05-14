@@ -216,9 +216,10 @@ function signUpAsSpecialty() {
     <!-- Top bar -->
     <div class="top-bar d-flex align-center justify-space-between px-6 px-md-10 py-4">
       <div class="d-flex align-center" style="cursor: pointer;" @click="goHome">
-        <img :src="logo" alt="myEZlab" class="top-logo" width="auto" height="40" />
+        <img :src="logo" alt="almakare" class="top-logo" width="auto" height="40" />
       </div>
-      <v-btn v-if="!selfStore.item.id && !hasQuery" color="primary" variant="flat" rounded="lg" class="text-none" @click="goToLogin">
+      <v-btn v-if="!selfStore.item.id && !hasQuery" color="primary" variant="flat" rounded="lg" class="text-none"
+        @click="goToLogin">
         Se connecter
       </v-btn>
       <v-btn v-else-if="selfStore.item.id && !hasQuery" color="primary" variant="tonal" rounded="lg" class="text-none"
@@ -233,7 +234,7 @@ function signUpAsSpecialty() {
         <div v-if="step === 'role'" key="role">
           <div class="text-center mb-10 mb-md-12">
             <h1 class="text-headline-large font-weight-bold mb-3" style="font-family: title !important;">
-              Bienvenue sur myEZlab
+              Bienvenue sur Almakare
             </h1>
             <p class="text-body-large text-medium-emphasis">
               La plateforme dédiée à la prise en charge de l'apnée du sommeil

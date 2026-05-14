@@ -1,4 +1,4 @@
-# myEZlab
+# Almakare
 
 Web application (PWA) to help users manage their lab experiments and data.
 
@@ -40,7 +40,7 @@ npm -v
 
    ```bash
    git clone <repo-url>
-   cd myEZlab
+   cd almakare
    ```
 
 2. Install dependencies:
@@ -80,7 +80,7 @@ npm run preview
 ## Project structure
 
 ```
-myEZlab/
+almakare/
 ├── index.html              # Vite entry HTML
 ├── vite.config.js          # Vite + PWA + Vuetify config
 ├── package.json

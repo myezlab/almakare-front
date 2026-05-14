@@ -37,7 +37,7 @@ function installApp() {
           Installer l'application
         </div>
         <div class="text-body-medium text-medium-emphasis mb-3">
-          Ajoutez myEZlab à votre écran d'accueil pour un accès rapide, même hors connexion.
+          Ajoutez Almakare à votre écran d'accueil pour un accès rapide, même hors connexion.
         </div>
         <v-btn :prepend-icon="mdiDownloadOutline" variant="tonal" color="primary" rounded="lg" class="text-none">
           Installer

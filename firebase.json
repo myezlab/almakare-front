@@ -1,6 +1,6 @@
 {
   "hosting": [{
-    "site": "myezlab",
+    "site": "almakare",
     "public": "dist",
     "ignore": [
       "firebase.json",
