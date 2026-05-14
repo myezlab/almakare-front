@@ -1,5 +1,6 @@
 <script setup>
 import doctorIllustration from "@/assets/illustrations/doctor.svg"
+import professionalIllustration from "@/assets/illustrations/doctors.svg"
 import patientIllustration from "@/assets/illustrations/patient.svg"
 import coordinatorIllustration from "@/assets/illustrations/team.svg"
 import technicianIllustration from "@/assets/illustrations/technician.svg"
@@ -28,6 +29,7 @@ const { required, emailValidation, passwordValidation } = useRules()
 const status = ref(route.query.mode === "signup" ? "sign-up" : "sign-in")
 const roleIllustrations = {
   patient: patientIllustration,
+  professional: professionalIllustration,
   coordinator: coordinatorIllustration,
   doctor: doctorIllustration,
   technician: technicianIllustration,
