@@ -35,9 +35,9 @@ const messagesStore = useMessagesStore()
 const selfStore = useSelfStore()
 
 const ROLE_OPTIONS = [
-  { value: 'doctor', label: 'Médecin', icon: mdiDoctor, color: 'primary', illustration: doctorIllustration },
-  { value: 'coordinator', label: 'Coordinateur', icon: mdiAccountGroupOutline, color: 'secondary', illustration: teamIllustration },
-  { value: 'technician', label: 'Technicien', icon: mdiHeadset, color: 'info', illustration: technicianIllustration },
+  { value: 'doctor', label: 'Médecin', icon: mdiDoctor, illustration: doctorIllustration },
+  { value: 'coordinator', label: 'Coordinateur', icon: mdiAccountGroupOutline, illustration: teamIllustration },
+  { value: 'technician', label: 'Technicien', icon: mdiHeadset, illustration: technicianIllustration },
 ]
 
 const roleByValue = computed(() =>
@@ -341,11 +341,8 @@ function formattedInvitedAt(iso) {
             <template v-for="(member, idx) in teamStore.items" :key="member.id">
               <v-list-item class="px-2 py-3 rounded-lg member-item" @click="openMember(member)">
                 <template #prepend>
-                  <v-avatar :color="roleByValue[member.role]?.color || 'primary'" variant="tonal" size="48"
-                    class="mr-3">
+                  <v-avatar color="primary" variant="tonal" size="48" class="mr-3">
                     <v-img v-if="member.avatarUrl" :src="member.avatarUrl" cover />
-                    <img v-else-if="roleByValue[member.role]?.illustration" :src="roleByValue[member.role].illustration"
-                      :alt="roleByValue[member.role].label" class="role-avatar-img" />
                     <span v-else class="text-title-small font-weight-bold">{{ initials(member) }}</span>
                   </v-avatar>
                 </template>
@@ -359,16 +356,20 @@ function formattedInvitedAt(iso) {
                 </v-list-item-subtitle>
 
                 <div class="d-flex flex-wrap ga-2 mt-2">
-                  <v-chip size="small" variant="tonal" :color="roleByValue[member.role]?.color || 'primary'"
-                    :prepend-icon="roleByValue[member.role]?.icon" class="font-weight-bold role-chip">
+                  <v-chip size="small" variant="flat" color="white" class="border-light">
+                    <template #prepend>
+                      <img v-if="roleByValue[member.role]?.illustration" :src="roleByValue[member.role].illustration"
+                        :alt="roleByValue[member.role]?.label" class="role-chip-img" />
+                    </template>
                     {{ roleByValue[member.role]?.label || member.role }}
                   </v-chip>
-                  <v-chip size="small" variant="tonal" color="grey-darken-2" :prepend-icon="mdiShieldKeyOutline">
+                  <v-chip size="small" variant="flat" color="white" class="border-light text-primary"
+                    :prepend-icon="mdiShieldKeyOutline">
                     {{ (member.permissions || []).length }} permission{{ (member.permissions || []).length > 1 ? 's' :
                       '' }}
                   </v-chip>
-                  <v-chip v-if="member.invitationStatus === 'pending'" size="small" variant="tonal" color="warning"
-                    :prepend-icon="mdiClockOutline" class="font-weight-medium">
+                  <v-chip v-if="member.invitationStatus === 'pending'" size="small" variant="flat" color="white"
+                    class="border-light text-warning" :prepend-icon="mdiClockOutline">
                     Compte en attente
                   </v-chip>
                 </div>
@@ -613,19 +614,21 @@ function formattedInvitedAt(iso) {
 
         <v-card-text class="px-6 py-5">
           <div class="member-hero mb-5">
-            <v-avatar :color="roleByValue[(editMode ? editRole : selectedMember.role)]?.color || 'primary'"
-              variant="tonal" size="80" class="mb-3">
+            <v-avatar color="primary" variant="tonal" size="96" class="mb-3">
               <v-img v-if="selectedMember.avatarUrl" :src="selectedMember.avatarUrl" cover />
-              <img v-else :src="roleByValue[(editMode ? editRole : selectedMember.role)]?.illustration"
-                :alt="roleByValue[(editMode ? editRole : selectedMember.role)]?.label"
-                class="member-hero-img" />
+              <span v-else class="text-headline-small font-weight-bold">{{ initials(selectedMember) }}</span>
             </v-avatar>
-            <div class="text-title-large font-weight-bold">
-              {{ editMode ? `${editFirstName || '…'} ${editLastName || ''}`.trim() : `${selectedMember.firstName} ${selectedMember.lastName}` }}
+            <div class="text-headline-small font-weight-bold">
+              {{ editMode ? `${editFirstName || '…'} ${editLastName || ''}`.trim() : `${selectedMember.firstName}
+              ${selectedMember.lastName}` }}
             </div>
-            <div class="text-body-medium text-medium-emphasis">
+            <v-chip size="large" variant="flat" color="white" class="border-light mt-3">
+              <template #prepend>
+                <img :src="roleByValue[(editMode ? editRole : selectedMember.role)]?.illustration"
+                  :alt="roleByValue[(editMode ? editRole : selectedMember.role)]?.label" class="role-chip-img" />
+              </template>
               {{ roleByValue[(editMode ? editRole : selectedMember.role)]?.label }}
-            </div>
+            </v-chip>
           </div>
 
           <template v-if="!editMode">
@@ -657,15 +660,15 @@ function formattedInvitedAt(iso) {
             </div>
 
             <div class="info-row">
-              <v-icon
-                :icon="selectedMember.invitationStatus === 'accepted' ? mdiCheckCircleOutline : mdiClockOutline"
+              <v-icon :icon="selectedMember.invitationStatus === 'accepted' ? mdiCheckCircleOutline : mdiClockOutline"
                 size="20" :color="selectedMember.invitationStatus === 'accepted' ? 'success' : 'warning'"
                 class="info-row-icon" />
               <div class="info-row-content">
                 <div class="info-row-label">Statut</div>
                 <div class="info-row-value">
                   <template v-if="selectedMember.invitationStatus === 'accepted'">Compte actif</template>
-                  <template v-else>Invitation en attente · envoyée le {{ formattedInvitedAt(selectedMember.invitedAt) }}</template>
+                  <template v-else>Invitation en attente · envoyée le {{ formattedInvitedAt(selectedMember.invitedAt)
+                  }}</template>
                 </div>
               </div>
             </div>
@@ -769,8 +772,8 @@ function formattedInvitedAt(iso) {
                 <div class="permission-item-label">{{ perm.label }}</div>
                 <div class="permission-item-desc">{{ perm.description }}</div>
               </div>
-              <v-switch :model-value="editPermissionsSet.has(perm.id)" color="primary" hide-details
-                density="compact" inset @update:model-value="(v) => toggleEditPermission(perm.id, v)" />
+              <v-switch :model-value="editPermissionsSet.has(perm.id)" color="primary" hide-details density="compact"
+                inset @update:model-value="(v) => toggleEditPermission(perm.id, v)" />
             </div>
           </div>
         </v-card-text>
@@ -824,14 +827,6 @@ function formattedInvitedAt(iso) {
 </template>
 
 <style scoped>
-.card-shadow {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
-}
-
-.rounded-15 {
-  border-radius: 15px !important;
-}
-
 .role-picker {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -871,12 +866,6 @@ function formattedInvitedAt(iso) {
 .role-card-img {
   height: 48px;
   width: auto;
-  object-fit: contain;
-}
-
-.role-avatar-img {
-  height: 70%;
-  width: 70%;
   object-fit: contain;
 }
 
@@ -933,90 +922,6 @@ function formattedInvitedAt(iso) {
 .fade-illustration-leave-to {
   opacity: 0;
   transform: scale(0.95);
-}
-
-.permissions-row {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: 12px 14px;
-  background: rgba(0, 0, 0, 0.025);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.permissions-row:hover {
-  background: rgba(var(--v-theme-primary), 0.06);
-  border-color: rgba(var(--v-theme-primary), 0.3);
-}
-
-.permissions-row:active {
-  transform: scale(0.98);
-}
-
-.permissions-row-text {
-  flex: 1;
-  text-align: left;
-}
-
-.permissions-row-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.85);
-}
-
-.permissions-row-sub {
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
-  margin-top: 2px;
-}
-
-.permissions-row-tag {
-  color: rgb(var(--v-theme-primary));
-  font-weight: 600;
-}
-
-.permissions-scroll {
-  max-height: 60vh;
-}
-
-.permissions-card {
-  display: flex;
-  flex-direction: column;
-}
-
-.permission-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.permission-item:last-child {
-  border-bottom: none;
-}
-
-.permission-item-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.permission-item-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.85);
-}
-
-.permission-item-desc {
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
-  margin-top: 2px;
 }
 
 .preview-card {
@@ -1114,8 +1019,16 @@ function formattedInvitedAt(iso) {
   font-size: 13px;
 }
 
-.role-chip {
-  letter-spacing: 0.2px;
+.role-chip-img {
+  height: 18px;
+  width: 18px;
+  object-fit: contain;
+  margin-right: 6px;
+}
+
+.member-hero .role-chip-img {
+  height: 22px;
+  width: 22px;
 }
 
 .remove-icon-wrap {
@@ -1147,12 +1060,6 @@ function formattedInvitedAt(iso) {
   flex-direction: column;
   align-items: center;
   text-align: center;
-}
-
-.member-hero-img {
-  height: 60%;
-  width: 60%;
-  object-fit: contain;
 }
 
 .info-row {

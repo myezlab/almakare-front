@@ -3,12 +3,12 @@ import doctorIllustration from '@/assets/illustrations/doctor.svg'
 import teamIllustration from '@/assets/illustrations/team.svg'
 import technicianIllustration from '@/assets/illustrations/technician.svg'
 import Picture from '@/components/Picture.vue'
+import { useRules } from '@/composables/useRules'
 import {
   getPresetFor,
   PERMISSION_CATEGORIES,
   PERMISSIONS,
 } from '@/data/permissions'
-import { useRules } from '@/composables/useRules'
 import { useMessagesStore } from '@/stores/messages'
 import { useSelfStore } from '@/stores/self'
 import {
@@ -29,9 +29,9 @@ const messagesStore = useMessagesStore()
 const router = useRouter()
 
 const ROLE_OPTIONS = [
-  { value: 'doctor', label: 'Médecin', icon: mdiDoctor, color: 'primary', illustration: doctorIllustration },
-  { value: 'coordinator', label: 'Coordinateur', icon: mdiAccountGroupOutline, color: 'secondary', illustration: teamIllustration },
-  { value: 'technician', label: 'Technicien', icon: mdiHeadset, color: 'info', illustration: technicianIllustration },
+  { value: 'doctor', label: 'Médecin', icon: mdiDoctor, illustration: doctorIllustration },
+  { value: 'coordinator', label: 'Coordinateur', icon: mdiAccountGroupOutline, illustration: teamIllustration },
+  { value: 'technician', label: 'Technicien', icon: mdiHeadset, illustration: technicianIllustration },
 ]
 
 const roleByValue = computed(() =>
@@ -139,6 +139,12 @@ const displayName = computed(() => {
   const full = `${fn} ${ln}`.trim()
   return full || 'Votre profil'
 })
+
+const initials = computed(() => {
+  const fn = currentUser.value.firstName?.[0] ?? ''
+  const ln = currentUser.value.lastName?.[0] ?? ''
+  return `${fn}${ln}`.toUpperCase()
+})
 </script>
 
 <template>
@@ -155,28 +161,27 @@ const displayName = computed(() => {
               <v-btn :icon="mdiPencilOutline" variant="text" size="small" color="primary" @click="startEdit"
                 aria-label="Modifier le profil" />
             </div>
-            <div class="hero-inner">
-              <v-avatar :color="selectedRoleInfo.color" variant="tonal" size="96" class="hero-avatar mb-3">
+            <div class="d-flex flex-column align-center text-center">
+              <v-avatar color="primary" variant="tonal" size="96" class="mb-3">
                 <v-img v-if="currentUser.avatarUrl" :src="currentUser.avatarUrl" cover />
-                <img v-else :src="selectedRoleInfo.illustration" :alt="selectedRoleInfo.label"
-                  class="hero-avatar-img" />
+                <span v-else class="text-headline-small font-weight-bold">{{ initials }}</span>
               </v-avatar>
               <div class="text-headline-small font-weight-bold">{{ displayName }}</div>
-              <div class="role-badge mt-3" :style="{ '--role-color': `rgb(var(--v-theme-${selectedRoleInfo.color}))` }">
-                <img :src="selectedRoleInfo.illustration" :alt="selectedRoleInfo.label" class="role-badge-img" />
-                <div class="role-badge-text">
-                  <div class="role-badge-eyebrow">Rôle</div>
-                  <div class="role-badge-label">{{ selectedRoleInfo.label }}</div>
-                </div>
-              </div>
+              <v-chip size="large" variant="flat" color="white" class="border-light mt-3">
+                <template #prepend>
+                  <img :src="selectedRoleInfo.illustration" :alt="selectedRoleInfo.label" class="role-chip-img" />
+                </template>
+                {{ selectedRoleInfo.label }}
+              </v-chip>
 
-              <div class="info-stack mt-4">
-                <div v-if="currentUser.email" class="info-row">
-                  <v-icon :icon="mdiEmailOutline" size="18" class="info-row-icon" />
+              <div class="d-flex flex-column align-center ga-1 mt-4">
+                <div v-if="currentUser.email" class="d-flex align-center ga-1 text-body-small text-medium-emphasis">
+                  <v-icon :icon="mdiEmailOutline" size="18" />
                   <span>{{ currentUser.email }}</span>
                 </div>
-                <div v-if="currentUser.phoneNumber" class="info-row">
-                  <v-icon :icon="mdiPhoneOutline" size="18" class="info-row-icon" />
+                <div v-if="currentUser.phoneNumber"
+                  class="d-flex align-center ga-1 text-body-small text-medium-emphasis">
+                  <v-icon :icon="mdiPhoneOutline" size="18" />
                   <span>{{ currentUser.phoneNumber }}</span>
                 </div>
               </div>
@@ -218,8 +223,7 @@ const displayName = computed(() => {
               </v-col>
               <v-col cols="12" md="6">
                 <v-text-field v-model.trim="generalModel.phoneNumber" label="Téléphone professionnel" variant="outlined"
-                  rounded="lg" inputmode="tel" :prepend-inner-icon="mdiPhoneOutline"
-                  :rules="[phoneNumberValidation]" />
+                  rounded="lg" inputmode="tel" :prepend-inner-icon="mdiPhoneOutline" :rules="[phoneNumberValidation]" />
               </v-col>
             </v-row>
           </v-form>
@@ -362,87 +366,16 @@ const displayName = computed(() => {
 </template>
 
 <style scoped>
-.card-shadow {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
-}
-
-.rounded-15 {
-  border-radius: 15px !important;
-}
-
-.hero-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.hero-avatar-img {
-  height: 70%;
-  width: 70%;
-  object-fit: contain;
-}
-
-.role-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 18px 10px 12px;
-  background: white;
-  border: 1px solid color-mix(in srgb, var(--role-color) 25%, transparent);
-  border-radius: 999px;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--role-color) 18%, transparent);
-}
-
-.role-badge-img {
-  height: 44px;
-  width: 44px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.role-badge-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  line-height: 1.1;
-}
-
-.role-badge-eyebrow {
-  font-size: 10px;
+.role-chip {
+  letter-spacing: 0.2px;
   font-weight: 600;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--role-color) 75%, black);
-  opacity: 0.7;
 }
 
-.role-badge-label {
-  display: flex;
-  align-items: center;
-  font-size: 15px;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--role-color) 80%, black);
-  margin-top: 2px;
-}
-
-.info-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: center;
-}
-
-.info-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: rgba(0, 0, 0, 0.6);
-}
-
-.info-row-icon {
-  opacity: 0.7;
+.role-chip-img {
+  height: 22px;
+  width: 22px;
+  object-fit: contain;
+  margin-right: 6px;
 }
 
 .category-grid {
@@ -482,89 +415,5 @@ const displayName = computed(() => {
 .category-tile-total {
   font-size: 13px;
   color: rgba(0, 0, 0, 0.5);
-}
-
-.permissions-row {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: 12px 14px;
-  background: rgba(0, 0, 0, 0.025);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.permissions-row:hover {
-  background: rgba(var(--v-theme-primary), 0.06);
-  border-color: rgba(var(--v-theme-primary), 0.3);
-}
-
-.permissions-row:active {
-  transform: scale(0.98);
-}
-
-.permissions-row-text {
-  flex: 1;
-  text-align: left;
-}
-
-.permissions-row-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.85);
-}
-
-.permissions-row-sub {
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
-  margin-top: 2px;
-}
-
-.permissions-scroll {
-  max-height: 60vh;
-}
-
-.permissions-card {
-  display: flex;
-  flex-direction: column;
-}
-
-.permission-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.permission-item:last-child {
-  border-bottom: none;
-}
-
-.permission-item-inactive .permission-item-label,
-.permission-item-inactive .permission-item-desc {
-  opacity: 0.55;
-}
-
-.permission-item-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.permission-item-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.85);
-}
-
-.permission-item-desc {
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
-  margin-top: 2px;
 }
 </style>

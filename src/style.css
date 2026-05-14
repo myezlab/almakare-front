@@ -199,3 +199,99 @@ h1{
 .first-letter-uppercase::first-letter {
   text-transform: uppercase;
 }
+
+/* ============ Shared permission UI (profile + team) ============ */
+.role-avatar-img {
+  height: 70%;
+  width: 70%;
+  object-fit: contain;
+}
+
+.permissions-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.permissions-row:hover {
+  background: rgba(var(--v-theme-primary), 0.06);
+  border-color: rgba(var(--v-theme-primary), 0.3);
+}
+
+.permissions-row:active {
+  transform: scale(0.98);
+}
+
+.permissions-row-text {
+  flex: 1;
+  text-align: left;
+}
+
+.permissions-row-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.permissions-row-sub {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  margin-top: 2px;
+}
+
+.permissions-row-tag {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
+}
+
+.permissions-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.permissions-scroll {
+  max-height: 60vh;
+}
+
+.permission-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.permission-item:last-child {
+  border-bottom: none;
+}
+
+.permission-item-inactive .permission-item-label,
+.permission-item-inactive .permission-item-desc {
+  opacity: 0.55;
+}
+
+.permission-item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.permission-item-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.permission-item-desc {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  margin-top: 2px;
+}
