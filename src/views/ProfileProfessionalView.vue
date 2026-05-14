@@ -124,6 +124,12 @@ async function handleSaveGeneral() {
   }
 }
 
+function setRole(role) {
+  if (!selfStore.item?.id) return
+  selfStore.item.role = role
+  messagesStore.add({ type: 'success', text: `Rôle changé : ${roleByValue.value[role]?.label || role}` })
+}
+
 async function logOut() {
   try {
     selfStore.item = {}
@@ -230,6 +236,36 @@ const initials = computed(() => {
         </v-card>
 
         <v-row>
+
+          <!-- =================== DEV-ONLY: ROLE SWITCHER =================== -->
+          <v-col cols="12">
+            <v-card class="card-shadow pa-2 dev-card" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+              <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
+                <span class="text-headline-small font-weight-bold text-truncate">Changer mon rôle</span>
+                <v-spacer />
+                <v-chip size="small" variant="tonal" color="warning" class="font-weight-bold">
+                  DEV ONLY
+                </v-chip>
+              </v-card-title>
+
+              <v-card-text class="px-4 pt-4">
+                <div class="text-body-small text-medium-emphasis mb-4">
+                  Cette section est destinée uniquement au développement. Elle permet de basculer rapidement
+                  entre les rôles pour tester l'interface.
+                </div>
+
+                <v-row density="comfortable">
+                  <v-col v-for="role in ROLE_OPTIONS" :key="role.value" cols="12" sm="4">
+                    <v-btn block variant="outlined" rounded="lg" class="text-none role-btn"
+                      :color="currentRole === role.value ? 'primary' : undefined" :prepend-icon="role.icon"
+                      @click="setRole(role.value)">
+                      {{ role.label }}
+                    </v-btn>
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+          </v-col>
 
           <!-- =================== PERMISSIONS (read-only) =================== -->
           <v-col cols="12">
@@ -415,5 +451,13 @@ const initials = computed(() => {
 .category-tile-total {
   font-size: 13px;
   color: rgba(0, 0, 0, 0.5);
+}
+
+.dev-card {
+  border: 1px dashed rgba(var(--v-theme-warning), 0.5);
+}
+
+.role-btn {
+  min-height: 44px;
 }
 </style>
