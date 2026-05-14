@@ -1,5 +1,6 @@
 import { useSelfStore } from "@/stores/self"
 import {
+  mdiAccountGroupOutline,
   mdiBellOutline,
   mdiViewDashboardOutline
 } from "@mdi/js"
@@ -15,11 +16,16 @@ export function useNavigationItems() {
 
   const items = computed(() => {
     if (!selfStore.item.id) return []
-    const dashboardName = dashboardRouteByRole[selfStore.item.role] || "DashboardPatient"
-    return [
+    const role = selfStore.item.role
+    const dashboardName = dashboardRouteByRole[role] || "DashboardPatient"
+    const list = [
       { id: 'dashboard', text: 'Accueil', icon: mdiViewDashboardOutline, to: { name: dashboardName } },
       { id: 'notifications', text: 'Notifications', icon: mdiBellOutline, to: { name: "Notifications" } },
     ]
+    if (role === 'coordinator') {
+      list.push({ id: 'team', text: 'Équipe', icon: mdiAccountGroupOutline, to: { name: "Team" } })
+    }
+    return list
   })
 
   return {

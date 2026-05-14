@@ -1,0 +1,1193 @@
+<script setup>
+import doctorIllustration from '@/assets/illustrations/doctor.svg'
+import teamIllustration from '@/assets/illustrations/team.svg'
+import technicianIllustration from '@/assets/illustrations/technician.svg'
+import {
+  getPresetFor,
+  PERMISSION_CATEGORIES,
+  PERMISSIONS,
+} from '@/data/permissions'
+import { useMessagesStore } from '@/stores/messages'
+import { useSelfStore } from '@/stores/self'
+import { useTeamStore } from '@/stores/team'
+import {
+  mdiAccountGroupOutline,
+  mdiAccountPlusOutline,
+  mdiAlertOutline,
+  mdiCheckCircleOutline,
+  mdiChevronRight,
+  mdiClockOutline,
+  mdiClose,
+  mdiDoctor,
+  mdiEmailOutline,
+  mdiHeadset,
+  mdiPencilOutline,
+  mdiPlus,
+  mdiRestore,
+  mdiSendOutline,
+  mdiShieldKeyOutline,
+  mdiTrashCanOutline,
+} from '@mdi/js'
+import { computed, ref, watch } from 'vue'
+
+const teamStore = useTeamStore()
+const messagesStore = useMessagesStore()
+const selfStore = useSelfStore()
+
+const ROLE_OPTIONS = [
+  { value: 'doctor', label: 'Médecin', icon: mdiDoctor, color: 'primary', illustration: doctorIllustration },
+  { value: 'coordinator', label: 'Coordinateur', icon: mdiAccountGroupOutline, color: 'secondary', illustration: teamIllustration },
+  { value: 'technician', label: 'Technicien', icon: mdiHeadset, color: 'info', illustration: technicianIllustration },
+]
+
+const roleByValue = computed(() =>
+  Object.fromEntries(ROLE_OPTIONS.map((r) => [r.value, r])),
+)
+
+const selectedRole = computed(() => roleByValue.value[role.value] || ROLE_OPTIONS[0])
+
+const dialog = ref(false)
+const permissionsDialog = ref(false)
+const previewDialog = ref(false)
+const sending = ref(false)
+const formRef = ref(null)
+const firstName = ref('')
+const lastName = ref('')
+const email = ref('')
+const role = ref('doctor')
+const saving = ref(false)
+const permissions = ref(getPresetFor('doctor'))
+const permissionsTouched = ref(false)
+
+const permissionsSet = computed(() => new Set(permissions.value))
+const activeCount = computed(() => permissions.value.length)
+
+const permissionsByCategory = computed(() => {
+  const map = {}
+  for (const cat of PERMISSION_CATEGORIES) map[cat.id] = []
+  for (const p of PERMISSIONS) {
+    if (map[p.category]) map[p.category].push(p)
+  }
+  return map
+})
+
+watch(role, (newRole) => {
+  if (!permissionsTouched.value) {
+    permissions.value = getPresetFor(newRole)
+  }
+})
+
+function togglePermission(id, value) {
+  permissionsTouched.value = true
+  if (value) {
+    if (!permissionsSet.value.has(id)) permissions.value = [...permissions.value, id]
+  } else {
+    permissions.value = permissions.value.filter((p) => p !== id)
+  }
+}
+
+function resetPermissionsToPreset() {
+  permissions.value = getPresetFor(role.value)
+  permissionsTouched.value = false
+}
+
+function categoryActiveCount(categoryId) {
+  return permissionsByCategory.value[categoryId].filter((p) => permissionsSet.value.has(p.id)).length
+}
+
+const required = (v) => !!v?.trim() || 'Ce champ est requis'
+const emailRule = (v) => /.+@.+\..+/.test(v) || 'Email invalide'
+
+function resetForm() {
+  firstName.value = ''
+  lastName.value = ''
+  email.value = ''
+  role.value = 'doctor'
+  permissions.value = getPresetFor('doctor')
+  permissionsTouched.value = false
+}
+
+function openDialog() {
+  resetForm()
+  dialog.value = true
+}
+
+async function handleSubmit() {
+  const { valid } = await formRef.value.validate()
+  if (!valid) return
+  previewDialog.value = true
+}
+
+async function sendInvitation() {
+  sending.value = true
+  try {
+    teamStore.add({
+      firstName: firstName.value.trim(),
+      lastName: lastName.value.trim(),
+      email: email.value.trim(),
+      role: role.value,
+      permissions: [...permissions.value],
+      invitedAt: new Date().toISOString(),
+      invitationStatus: 'pending',
+    })
+    messagesStore.add({ type: 'success', text: 'Invitation envoyée' })
+    previewDialog.value = false
+    dialog.value = false
+  } catch {
+    messagesStore.add({ type: 'error', text: 'Erreur lors de l\'envoi de l\'invitation' })
+  } finally {
+    sending.value = false
+  }
+}
+
+const inviterName = computed(() => {
+  const name = selfStore.item.fullName?.trim()
+  return name || 'Votre coordinateur'
+})
+
+const inviterFirstName = computed(() => {
+  return selfStore.item.firstName?.trim() || inviterName.value
+})
+
+const inviterEmail = computed(() => selfStore.item.email || 'no-reply@almakare.app')
+
+const invitationSubject = computed(() =>
+  `${inviterFirstName.value} vous invite à rejoindre son équipe sur Almakare`,
+)
+
+const removeDialog = ref(false)
+const memberToRemove = ref(null)
+
+function askRemove(member) {
+  memberToRemove.value = member
+  removeDialog.value = true
+}
+
+function confirmRemove() {
+  if (memberToRemove.value) {
+    teamStore.remove(memberToRemove.value.id)
+    messagesStore.add({ type: 'success', text: 'Membre retiré de l\'équipe' })
+  }
+  removeDialog.value = false
+  memberToRemove.value = null
+}
+
+function cancelRemove() {
+  removeDialog.value = false
+  memberToRemove.value = null
+}
+
+function initials(member) {
+  return `${member.firstName?.[0] ?? ''}${member.lastName?.[0] ?? ''}`.toUpperCase()
+}
+
+const memberDialog = ref(false)
+const editMode = ref(false)
+const selectedMember = ref(null)
+const editFormRef = ref(null)
+const editFirstName = ref('')
+const editLastName = ref('')
+const editEmail = ref('')
+const editRole = ref('doctor')
+const editPermissions = ref([])
+const editPermissionsTouched = ref(false)
+const editPermissionsDialog = ref(false)
+const updating = ref(false)
+
+const editPermissionsSet = computed(() => new Set(editPermissions.value))
+const editActiveCount = computed(() => editPermissions.value.length)
+const editSelectedRole = computed(() => roleByValue.value[editRole.value] || ROLE_OPTIONS[0])
+
+watch(editRole, (newRole) => {
+  if (!editPermissionsTouched.value) {
+    editPermissions.value = getPresetFor(newRole)
+  }
+})
+
+function openMember(member) {
+  selectedMember.value = member
+  editMode.value = false
+  memberDialog.value = true
+}
+
+function startEdit() {
+  if (!selectedMember.value) return
+  editFirstName.value = selectedMember.value.firstName
+  editLastName.value = selectedMember.value.lastName
+  editEmail.value = selectedMember.value.email
+  editRole.value = selectedMember.value.role
+  editPermissions.value = [...(selectedMember.value.permissions || [])]
+  const preset = getPresetFor(selectedMember.value.role)
+  const sameAsPreset =
+    preset.length === editPermissions.value.length &&
+    preset.every((p) => editPermissionsSet.value.has(p))
+  editPermissionsTouched.value = !sameAsPreset
+  editMode.value = true
+}
+
+function cancelEdit() {
+  editMode.value = false
+}
+
+function toggleEditPermission(id, value) {
+  editPermissionsTouched.value = true
+  if (value) {
+    if (!editPermissionsSet.value.has(id)) editPermissions.value = [...editPermissions.value, id]
+  } else {
+    editPermissions.value = editPermissions.value.filter((p) => p !== id)
+  }
+}
+
+function resetEditPermissionsToPreset() {
+  editPermissions.value = getPresetFor(editRole.value)
+  editPermissionsTouched.value = false
+}
+
+function editCategoryActiveCount(categoryId) {
+  return permissionsByCategory.value[categoryId].filter((p) => editPermissionsSet.value.has(p.id)).length
+}
+
+async function saveMember() {
+  if (!selectedMember.value) return
+
+  try {
+    if (editFormRef.value?.validate) {
+      const result = await editFormRef.value.validate()
+      if (result && result.valid === false) return
+    }
+  } catch (e) {
+    console.warn('Validation failed, continuing with manual check:', e)
+  }
+
+  const firstNameTrim = (editFirstName.value || '').trim()
+  const lastNameTrim = (editLastName.value || '').trim()
+  if (!firstNameTrim || !lastNameTrim) {
+    messagesStore.add({ type: 'error', text: 'Prénom et nom sont requis' })
+    return
+  }
+
+  updating.value = true
+  try {
+    const patch = {
+      firstName: firstNameTrim,
+      lastName: lastNameTrim,
+      role: editRole.value,
+      permissions: [...editPermissions.value],
+    }
+    teamStore.update(selectedMember.value.id, patch)
+    selectedMember.value = { ...selectedMember.value, ...patch }
+    messagesStore.add({ type: 'success', text: 'Membre mis à jour' })
+    editMode.value = false
+  } catch (e) {
+    console.error('Update member error:', e)
+    messagesStore.add({
+      type: 'error',
+      text: `Erreur lors de la mise à jour : ${e?.message || 'inconnue'}`,
+    })
+  } finally {
+    updating.value = false
+  }
+}
+
+function formattedInvitedAt(iso) {
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+  } catch {
+    return ''
+  }
+}
+</script>
+
+<template>
+  <div>
+    <v-row justify="center" class="mt-8 mb-16 pb-10">
+      <v-col :cols="$vuetify.display.mobile ? 12 : 10">
+
+        <v-row class="mb-6" align="center" :class="{ 'mx-6': $vuetify.display.mobile }">
+          <v-col align-self="center">
+            <div class="text-headline-medium font-weight-bold">Équipe</div>
+            <div class="text-body-medium text-medium-emphasis mt-1">
+              <v-icon :icon="mdiAccountGroupOutline" size="18" class="mr-1" />
+              Membres de votre équipe
+            </div>
+          </v-col>
+          <v-col cols="auto">
+            <v-btn color="primary" rounded="lg" flat :prepend-icon="mdiPlus" class="text-none" @click="openDialog">
+              Inviter un membre
+            </v-btn>
+          </v-col>
+        </v-row>
+
+        <v-card class="pa-6 card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+          <v-row align="center" class="mb-2">
+            <v-col>
+              <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
+                Mon équipe
+              </div>
+              <div class="text-body-medium text-medium-emphasis">
+                {{ teamStore.items.length }} membre{{ teamStore.items.length > 1 ? 's' : '' }}
+              </div>
+            </v-col>
+          </v-row>
+
+          <v-divider class="my-4" />
+
+          <v-list lines="two" class="pa-0">
+            <template v-for="(member, idx) in teamStore.items" :key="member.id">
+              <v-list-item class="px-2 py-3 rounded-lg member-item" @click="openMember(member)">
+                <template #prepend>
+                  <v-avatar :color="roleByValue[member.role]?.color || 'primary'" variant="tonal" size="48"
+                    class="mr-3">
+                    <v-img v-if="member.avatarUrl" :src="member.avatarUrl" cover />
+                    <img v-else-if="roleByValue[member.role]?.illustration" :src="roleByValue[member.role].illustration"
+                      :alt="roleByValue[member.role].label" class="role-avatar-img" />
+                    <span v-else class="text-title-small font-weight-bold">{{ initials(member) }}</span>
+                  </v-avatar>
+                </template>
+
+                <v-list-item-title class="font-weight-bold">
+                  {{ member.firstName }} {{ member.lastName }}
+                </v-list-item-title>
+
+                <v-list-item-subtitle class="text-body-small text-medium-emphasis mt-1">
+                  {{ member.email }}
+                </v-list-item-subtitle>
+
+                <div class="d-flex flex-wrap ga-2 mt-2">
+                  <v-chip size="small" variant="tonal" :color="roleByValue[member.role]?.color || 'primary'"
+                    :prepend-icon="roleByValue[member.role]?.icon" class="font-weight-bold role-chip">
+                    {{ roleByValue[member.role]?.label || member.role }}
+                  </v-chip>
+                  <v-chip size="small" variant="tonal" color="grey-darken-2" :prepend-icon="mdiShieldKeyOutline">
+                    {{ (member.permissions || []).length }} permission{{ (member.permissions || []).length > 1 ? 's' :
+                      '' }}
+                  </v-chip>
+                  <v-chip v-if="member.invitationStatus === 'pending'" size="small" variant="tonal" color="warning"
+                    :prepend-icon="mdiClockOutline" class="font-weight-medium">
+                    Compte en attente
+                  </v-chip>
+                </div>
+
+                <template #append>
+                  <v-btn :icon="mdiTrashCanOutline" variant="text" color="medium-emphasis" size="small"
+                    @click.stop="askRemove(member)" />
+                </template>
+              </v-list-item>
+              <v-divider v-if="idx < teamStore.items.length - 1" />
+            </template>
+
+            <v-list-item v-if="teamStore.items.length === 0" class="py-8 text-center flex-column">
+              <v-icon :icon="mdiAccountPlusOutline" size="48" color="medium-emphasis" class="mb-3" />
+              <div class="text-body-medium text-medium-emphasis mb-4">
+                Aucun membre dans votre équipe pour le moment.
+              </div>
+              <v-btn color="primary" rounded="lg" flat :prepend-icon="mdiPlus" class="text-none" @click="openDialog">
+                Inviter un premier membre
+              </v-btn>
+            </v-list-item>
+          </v-list>
+        </v-card>
+
+      </v-col>
+    </v-row>
+
+    <v-dialog v-model="dialog" max-width="500" :fullscreen="$vuetify.display.mobile">
+      <v-card class="pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+        <v-card-text class="px-6 pt-6 pb-6">
+          <div class="text-headline-small font-weight-bold mb-2 text-center">Inviter un membre</div>
+          <div class="text-body-medium text-medium-emphasis mb-5 text-center">
+            Choisissez le rôle, puis renseignez les informations.
+          </div>
+
+          <div class="role-picker mb-5">
+            <button v-for="opt in ROLE_OPTIONS" :key="opt.value" type="button" class="role-card"
+              :class="{ active: role === opt.value }" @click="role = opt.value">
+              <img :src="opt.illustration" :alt="opt.label" class="role-card-img" />
+              <span class="role-card-label">{{ opt.label }}</span>
+            </button>
+          </div>
+
+          <div class="selected-illustration-wrap mb-6 mt-6">
+            <Transition name="fade-illustration" mode="out-in">
+              <div :key="selectedRole.value" class="selected-illustration-inner">
+                <img :src="selectedRole.illustration" :alt="selectedRole.label" class="selected-illustration" />
+                <div class="selected-illustration-label">{{ selectedRole.label }}</div>
+              </div>
+            </Transition>
+          </div>
+
+          <v-form ref="formRef" @submit.prevent="handleSubmit">
+            <v-text-field v-model.trim="firstName" label="Prénom" variant="outlined" rounded="lg" density="comfortable"
+              autofocus :rules="[required]" class="mb-2" />
+            <v-text-field v-model.trim="lastName" label="Nom" variant="outlined" rounded="lg" density="comfortable"
+              :rules="[required]" class="mb-2" />
+            <v-text-field v-model.trim="email" label="Email" type="email" variant="outlined" rounded="lg"
+              density="comfortable" :rules="[required, emailRule]" class="mb-3" />
+
+            <button type="button" class="permissions-row mb-4" @click="permissionsDialog = true">
+              <v-icon :icon="mdiShieldKeyOutline" size="22" color="primary" class="mr-3" />
+              <div class="permissions-row-text">
+                <div class="permissions-row-label">Permissions</div>
+                <div class="permissions-row-sub">
+                  {{ activeCount }} / {{ PERMISSIONS.length }} actives
+                  <span v-if="permissionsTouched" class="permissions-row-tag">· personnalisées</span>
+                </div>
+              </div>
+              <v-icon :icon="mdiChevronRight" size="22" color="medium-emphasis" />
+            </button>
+
+            <v-row class="ga-2" no-gutters>
+              <v-col>
+                <v-btn variant="text" rounded="lg" size="large" block class="text-none" @click="dialog = false"
+                  :disabled="saving">
+                  Annuler
+                </v-btn>
+              </v-col>
+              <v-col>
+                <v-btn color="primary" rounded="lg" flat size="large" block class="text-none" type="submit"
+                  :loading="saving">
+                  Inviter
+                </v-btn>
+              </v-col>
+            </v-row>
+          </v-form>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="permissionsDialog" max-width="560" :fullscreen="$vuetify.display.mobile" scrollable>
+      <v-card :class="['permissions-card', { 'pa-2 rounded-15': !$vuetify.display.mobile }]">
+        <v-card-title class="px-6 pt-6 pb-2">
+          <v-row align="center" no-gutters>
+            <v-col>
+              <div class="text-headline-small font-weight-bold">Permissions</div>
+              <div class="text-body-small text-medium-emphasis mt-1">
+                {{ activeCount }} / {{ PERMISSIONS.length }} actives
+                · Rôle {{ selectedRole.label.toLowerCase() }}
+              </div>
+            </v-col>
+            <v-col cols="auto">
+              <v-btn variant="text" rounded="lg" size="small" :prepend-icon="mdiRestore" class="text-none"
+                :disabled="!permissionsTouched" @click="resetPermissionsToPreset">
+                Réinitialiser
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="px-6 py-4" :class="{ 'permissions-scroll': !$vuetify.display.mobile }">
+          <div v-for="cat in PERMISSION_CATEGORIES" :key="cat.id" class="mb-5">
+            <div class="d-flex align-center mb-2">
+              <div class="text-title-small text-medium-emphasis text-uppercase font-weight-bold">
+                {{ cat.label }}
+              </div>
+              <v-spacer />
+              <div class="text-body-small text-medium-emphasis">
+                {{ categoryActiveCount(cat.id) }} / {{ permissionsByCategory[cat.id].length }}
+              </div>
+            </div>
+
+            <div v-for="perm in permissionsByCategory[cat.id]" :key="perm.id" class="permission-item">
+              <div class="permission-item-text">
+                <div class="permission-item-label">{{ perm.label }}</div>
+                <div class="permission-item-desc">{{ perm.description }}</div>
+              </div>
+              <v-switch :model-value="permissionsSet.has(perm.id)" color="primary" hide-details density="compact" inset
+                @update:model-value="(v) => togglePermission(perm.id, v)" />
+            </div>
+          </div>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="px-6 py-4">
+          <v-spacer />
+          <v-btn color="primary" rounded="lg" flat class="text-none" @click="permissionsDialog = false">
+            Terminé
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="previewDialog" max-width="560" :fullscreen="$vuetify.display.mobile" scrollable>
+      <v-card :class="['preview-card', { 'pa-2 rounded-15': !$vuetify.display.mobile }]">
+        <v-card-title class="px-6 pt-6 pb-2">
+          <div class="text-headline-small font-weight-bold">Aperçu de l'invitation</div>
+          <div class="text-body-small text-medium-emphasis mt-1">
+            Voici l'email qui sera envoyé à {{ firstName }}.
+          </div>
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="px-6 py-4">
+          <div class="email-meta mb-4">
+            <div class="email-meta-row">
+              <span class="email-meta-key">De</span>
+              <span class="email-meta-value">{{ inviterName }} &lt;{{ inviterEmail }}&gt;</span>
+            </div>
+            <div class="email-meta-row">
+              <span class="email-meta-key">À</span>
+              <span class="email-meta-value">{{ firstName }} {{ lastName }} &lt;{{ email }}&gt;</span>
+            </div>
+            <div class="email-meta-row">
+              <span class="email-meta-key">Sujet</span>
+              <span class="email-meta-value font-weight-bold">{{ invitationSubject }}</span>
+            </div>
+          </div>
+
+          <div class="email-body">
+            <div class="email-body-header">
+              <img :src="selectedRole.illustration" :alt="selectedRole.label" class="email-body-illustration" />
+              <div class="email-body-title">Bienvenue dans l'équipe !</div>
+            </div>
+
+            <p>Bonjour <strong>{{ firstName }}</strong>,</p>
+
+            <p>
+              <strong>{{ inviterFirstName }}</strong> vous invite à rejoindre son équipe sur
+              <strong>Almakare</strong> en tant que
+              <strong>{{ selectedRole.label.toLowerCase() }}</strong>.
+            </p>
+
+            <p>
+              Cliquez sur le bouton ci-dessous pour activer votre compte, définir votre mot de passe et
+              commencer à collaborer avec votre équipe.
+            </p>
+
+            <div class="email-cta-wrap">
+              <span class="email-cta">Rejoindre l'équipe</span>
+            </div>
+
+            <p class="text-body-small text-medium-emphasis">
+              Vous aurez accès à {{ activeCount }} permission{{ activeCount > 1 ? 's' : '' }} configurée{{ activeCount >
+                1 ?
+                's' : '' }}
+              par {{ inviterFirstName }}. Ces droits pourront être ajustés à tout moment.
+            </p>
+
+            <p class="text-body-small text-medium-emphasis mb-0">
+              Si vous n'attendiez pas cette invitation, vous pouvez ignorer ce message en toute sécurité.
+            </p>
+
+            <div class="email-footer">
+              À très vite,<br />
+              L'équipe Almakare
+            </div>
+          </div>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="px-6 py-4">
+          <v-btn variant="text" rounded="lg" class="text-none" @click="previewDialog = false" :disabled="sending">
+            Annuler
+          </v-btn>
+          <v-spacer />
+          <v-btn color="primary" rounded="lg" flat :prepend-icon="mdiSendOutline" class="text-none" :loading="sending"
+            @click="sendInvitation">
+            Envoyer
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="memberDialog" max-width="520" :fullscreen="$vuetify.display.mobile" scrollable>
+      <v-card :class="['member-card', { 'pa-2 rounded-15': !$vuetify.display.mobile }]" v-if="selectedMember">
+
+        <v-card-title class="px-6 pt-6 pb-2 d-flex align-center">
+          <div class="text-headline-small font-weight-bold flex-grow-1">
+            {{ editMode ? 'Modifier le membre' : 'Détails du membre' }}
+          </div>
+          <v-btn :icon="mdiClose" variant="text" size="small" @click="memberDialog = false" />
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="px-6 py-5">
+          <div class="member-hero mb-5">
+            <v-avatar :color="roleByValue[(editMode ? editRole : selectedMember.role)]?.color || 'primary'"
+              variant="tonal" size="80" class="mb-3">
+              <v-img v-if="selectedMember.avatarUrl" :src="selectedMember.avatarUrl" cover />
+              <img v-else :src="roleByValue[(editMode ? editRole : selectedMember.role)]?.illustration"
+                :alt="roleByValue[(editMode ? editRole : selectedMember.role)]?.label"
+                class="member-hero-img" />
+            </v-avatar>
+            <div class="text-title-large font-weight-bold">
+              {{ editMode ? `${editFirstName || '…'} ${editLastName || ''}`.trim() : `${selectedMember.firstName} ${selectedMember.lastName}` }}
+            </div>
+            <div class="text-body-medium text-medium-emphasis">
+              {{ roleByValue[(editMode ? editRole : selectedMember.role)]?.label }}
+            </div>
+          </div>
+
+          <template v-if="!editMode">
+            <div class="info-row">
+              <v-icon :icon="mdiEmailOutline" size="20" color="medium-emphasis" class="info-row-icon" />
+              <div class="info-row-content">
+                <div class="info-row-label">Email</div>
+                <div class="info-row-value">{{ selectedMember.email }}</div>
+              </div>
+            </div>
+
+            <div class="info-row">
+              <v-icon :icon="roleByValue[selectedMember.role]?.icon" size="20" color="medium-emphasis"
+                class="info-row-icon" />
+              <div class="info-row-content">
+                <div class="info-row-label">Rôle</div>
+                <div class="info-row-value">{{ roleByValue[selectedMember.role]?.label || selectedMember.role }}</div>
+              </div>
+            </div>
+
+            <div class="info-row">
+              <v-icon :icon="mdiShieldKeyOutline" size="20" color="medium-emphasis" class="info-row-icon" />
+              <div class="info-row-content">
+                <div class="info-row-label">Permissions</div>
+                <div class="info-row-value">
+                  {{ (selectedMember.permissions || []).length }} / {{ PERMISSIONS.length }} actives
+                </div>
+              </div>
+            </div>
+
+            <div class="info-row">
+              <v-icon
+                :icon="selectedMember.invitationStatus === 'accepted' ? mdiCheckCircleOutline : mdiClockOutline"
+                size="20" :color="selectedMember.invitationStatus === 'accepted' ? 'success' : 'warning'"
+                class="info-row-icon" />
+              <div class="info-row-content">
+                <div class="info-row-label">Statut</div>
+                <div class="info-row-value">
+                  <template v-if="selectedMember.invitationStatus === 'accepted'">Compte actif</template>
+                  <template v-else>Invitation en attente · envoyée le {{ formattedInvitedAt(selectedMember.invitedAt) }}</template>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="role-picker mb-5">
+              <button v-for="opt in ROLE_OPTIONS" :key="opt.value" type="button" class="role-card"
+                :class="{ active: editRole === opt.value }" @click="editRole = opt.value">
+                <img :src="opt.illustration" :alt="opt.label" class="role-card-img" />
+                <span class="role-card-label">{{ opt.label }}</span>
+              </button>
+            </div>
+
+            <v-form ref="editFormRef" @submit.prevent="saveMember">
+              <v-text-field v-model.trim="editFirstName" label="Prénom" variant="outlined" rounded="lg"
+                density="comfortable" :rules="[required]" class="mb-2" />
+              <v-text-field v-model.trim="editLastName" label="Nom" variant="outlined" rounded="lg"
+                density="comfortable" :rules="[required]" class="mb-2" />
+              <v-text-field v-model.trim="editEmail" label="Email" type="email" variant="outlined" rounded="lg"
+                density="comfortable" disabled persistent-hint
+                hint="L'email ne peut pas être modifié après envoi de l'invitation." class="mb-4" />
+
+              <button type="button" class="permissions-row" @click="editPermissionsDialog = true">
+                <v-icon :icon="mdiShieldKeyOutline" size="22" color="primary" class="mr-3" />
+                <div class="permissions-row-text">
+                  <div class="permissions-row-label">Permissions</div>
+                  <div class="permissions-row-sub">
+                    {{ editActiveCount }} / {{ PERMISSIONS.length }} actives
+                    <span v-if="editPermissionsTouched" class="permissions-row-tag">· personnalisées</span>
+                  </div>
+                </div>
+                <v-icon :icon="mdiChevronRight" size="22" color="medium-emphasis" />
+              </button>
+            </v-form>
+          </template>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="px-6 py-4">
+          <template v-if="!editMode">
+            <v-spacer />
+            <v-btn variant="text" rounded="lg" class="text-none" @click="memberDialog = false">
+              Fermer
+            </v-btn>
+            <v-btn color="primary" rounded="lg" flat :prepend-icon="mdiPencilOutline" class="text-none"
+              @click="startEdit">
+              Modifier
+            </v-btn>
+          </template>
+          <template v-else>
+            <v-btn variant="text" rounded="lg" class="text-none" @click="cancelEdit" :disabled="updating">
+              Annuler
+            </v-btn>
+            <v-spacer />
+            <v-btn color="primary" rounded="lg" flat class="text-none" :loading="updating" @click="saveMember">
+              Enregistrer
+            </v-btn>
+          </template>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="editPermissionsDialog" max-width="560" :fullscreen="$vuetify.display.mobile" scrollable>
+      <v-card :class="['permissions-card', { 'pa-2 rounded-15': !$vuetify.display.mobile }]">
+        <v-card-title class="px-6 pt-6 pb-2">
+          <v-row align="center" no-gutters>
+            <v-col>
+              <div class="text-headline-small font-weight-bold">Permissions</div>
+              <div class="text-body-small text-medium-emphasis mt-1">
+                {{ editActiveCount }} / {{ PERMISSIONS.length }} actives
+                · Rôle {{ editSelectedRole.label.toLowerCase() }}
+              </div>
+            </v-col>
+            <v-col cols="auto">
+              <v-btn variant="text" rounded="lg" size="small" :prepend-icon="mdiRestore" class="text-none"
+                :disabled="!editPermissionsTouched" @click="resetEditPermissionsToPreset">
+                Réinitialiser
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="px-6 py-4" :class="{ 'permissions-scroll': !$vuetify.display.mobile }">
+          <div v-for="cat in PERMISSION_CATEGORIES" :key="cat.id" class="mb-5">
+            <div class="d-flex align-center mb-2">
+              <div class="text-title-small text-medium-emphasis text-uppercase font-weight-bold">
+                {{ cat.label }}
+              </div>
+              <v-spacer />
+              <div class="text-body-small text-medium-emphasis">
+                {{ editCategoryActiveCount(cat.id) }} / {{ permissionsByCategory[cat.id].length }}
+              </div>
+            </div>
+
+            <div v-for="perm in permissionsByCategory[cat.id]" :key="perm.id" class="permission-item">
+              <div class="permission-item-text">
+                <div class="permission-item-label">{{ perm.label }}</div>
+                <div class="permission-item-desc">{{ perm.description }}</div>
+              </div>
+              <v-switch :model-value="editPermissionsSet.has(perm.id)" color="primary" hide-details
+                density="compact" inset @update:model-value="(v) => toggleEditPermission(perm.id, v)" />
+            </div>
+          </div>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="px-6 py-4">
+          <v-spacer />
+          <v-btn color="primary" rounded="lg" flat class="text-none" @click="editPermissionsDialog = false">
+            Terminé
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="removeDialog" max-width="420" :fullscreen="false">
+      <v-card class="pa-2 rounded-15">
+        <v-card-text class="px-6 pt-6 pb-2 text-center">
+          <div class="remove-icon-wrap mb-4">
+            <v-icon :icon="mdiAlertOutline" size="40" color="error" />
+          </div>
+          <div class="text-headline-small font-weight-bold mb-2">Retirer ce membre ?</div>
+          <div class="text-body-medium text-medium-emphasis">
+            <template v-if="memberToRemove">
+              <strong>{{ memberToRemove.firstName }} {{ memberToRemove.lastName }}</strong>
+              perdra immédiatement l'accès à l'équipe et à ses
+              {{ (memberToRemove.permissions || []).length }} permission{{ (memberToRemove.permissions || []).length > 1
+                ? 's' : '' }}.
+              Cette action est irréversible.
+            </template>
+          </div>
+        </v-card-text>
+        <v-card-actions class="px-6 py-4">
+          <v-row class="ga-2" no-gutters>
+            <v-col>
+              <v-btn variant="text" rounded="lg" size="large" block class="text-none" @click="cancelRemove">
+                Annuler
+              </v-btn>
+            </v-col>
+            <v-col>
+              <v-btn color="error" rounded="lg" flat size="large" block class="text-none"
+                :prepend-icon="mdiTrashCanOutline" @click="confirmRemove">
+                Retirer
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </div>
+</template>
+
+<style scoped>
+.card-shadow {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+.rounded-15 {
+  border-radius: 15px !important;
+}
+
+.role-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.role-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 6px;
+  background: rgba(0, 0, 0, 0.025);
+  border: 2px solid transparent;
+  border-radius: 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.role-card:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.role-card:active {
+  transform: scale(0.96);
+}
+
+.role-card.active {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+.role-card-img {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+}
+
+.role-avatar-img {
+  height: 70%;
+  width: 70%;
+  object-fit: contain;
+}
+
+.role-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.role-card.active .role-card-label {
+  color: rgb(var(--v-theme-primary));
+}
+
+.selected-illustration-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+.selected-illustration-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.selected-illustration {
+  height: 120px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.selected-illustration-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+  letter-spacing: 0.2px;
+}
+
+.fade-illustration-enter-active,
+.fade-illustration-leave-active {
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fade-illustration-enter-from {
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+.fade-illustration-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.permissions-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.permissions-row:hover {
+  background: rgba(var(--v-theme-primary), 0.06);
+  border-color: rgba(var(--v-theme-primary), 0.3);
+}
+
+.permissions-row:active {
+  transform: scale(0.98);
+}
+
+.permissions-row-text {
+  flex: 1;
+  text-align: left;
+}
+
+.permissions-row-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.permissions-row-sub {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  margin-top: 2px;
+}
+
+.permissions-row-tag {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
+}
+
+.permissions-scroll {
+  max-height: 60vh;
+}
+
+.permissions-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.permission-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.permission-item:last-child {
+  border-bottom: none;
+}
+
+.permission-item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.permission-item-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.permission-item-desc {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  margin-top: 2px;
+}
+
+.preview-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.email-meta {
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.email-meta-row {
+  display: flex;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.email-meta-key {
+  width: 64px;
+  flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.5);
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  padding-top: 2px;
+}
+
+.email-meta-value {
+  color: rgba(0, 0, 0, 0.85);
+  word-break: break-word;
+}
+
+.email-body {
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 24px;
+  color: rgba(0, 0, 0, 0.85);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.email-body p {
+  margin: 0 0 14px 0;
+}
+
+.email-body-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.email-body-illustration {
+  height: 90px;
+  width: auto;
+  margin-bottom: 10px;
+}
+
+.email-body-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+}
+
+.email-cta-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 22px 0;
+}
+
+.email-cta {
+  display: inline-block;
+  background: rgb(var(--v-theme-primary));
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px 28px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.3);
+}
+
+.email-footer {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 13px;
+}
+
+.role-chip {
+  letter-spacing: 0.2px;
+}
+
+.remove-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-error), 0.12);
+}
+
+.member-item {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.member-item:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.member-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.member-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.member-hero-img {
+  height: 60%;
+  width: 60%;
+  object-fit: contain;
+}
+
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-row-icon {
+  margin-top: 2px;
+}
+
+.info-row-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.info-row-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(0, 0, 0, 0.5);
+  margin-bottom: 2px;
+}
+
+.info-row-value {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.85);
+  word-break: break-word;
+}
+</style>

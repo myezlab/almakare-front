@@ -55,6 +55,12 @@ const agreementChecked = ref(false)
 const showAgreementDialog = ref(false)
 
 const isPatient = computed(() => route.query.role === "patient")
+
+function resolveSignUpRole() {
+  const queryRole = route.query.role
+  if (queryRole === "professional") return "coordinator"
+  return queryRole || "patient"
+}
 const parsedAgreement = computed(() => marked(personalDataAuthorizationContent["fr-FR"] || ""))
 
 const DASHBOARD_BY_ROLE = {
@@ -108,7 +114,7 @@ async function handleSignUp() {
   try {
     selfStore.item.id = "123456"
     selfStore.item.email = signUpEmail.value
-    const role = route.query.role || "patient"
+    const role = resolveSignUpRole()
     selfStore.item.role = role
     if (isPatient.value) {
       selfStore.item.agreementPersonal = true
@@ -136,7 +142,8 @@ async function handleGoogleSignIn() {
   pendingGoogle.value = true
   try {
     selfStore.item.id = "123456"
-    const role = route.query.role || selfStore.item.role || "patient"
+    const isSignUp = status.value === "sign-up"
+    const role = isSignUp ? resolveSignUpRole() : (route.query.role || selfStore.item.role || "patient")
     selfStore.item.role = role
     if (status.value === "sign-up" && isPatient.value) {
       selfStore.item.agreementPersonal = true
