@@ -7,6 +7,9 @@ import {
   PERMISSION_CATEGORIES,
   PERMISSIONS,
 } from '@/data/permissions'
+import DialogLogs from '@/components/DialogLogs.vue'
+import { LOG_ACTIONS, LOG_FIELDS } from '@/data/logs'
+import { useLogsStore } from '@/stores/logs'
 import { useMessagesStore } from '@/stores/messages'
 import { useSelfStore } from '@/stores/self'
 import { useTeamStore } from '@/stores/team'
@@ -28,11 +31,20 @@ import {
   mdiShieldKeyOutline,
   mdiTrashCanOutline,
 } from '@mdi/js'
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 const teamStore = useTeamStore()
 const messagesStore = useMessagesStore()
 const selfStore = useSelfStore()
+const logsStore = useLogsStore()
+
+function logTeamAction(payload) {
+  logsStore.add('teamLogs', {
+    adminId: selfStore.item?.id,
+    adminFullName: selfStore.item?.fullName,
+    ...payload,
+  })
+}
 
 const ROLE_OPTIONS = [
   { value: 'doctor', label: 'Médecin', icon: mdiDoctor, illustration: doctorIllustration },
@@ -44,7 +56,26 @@ const roleByValue = computed(() =>
   Object.fromEntries(ROLE_OPTIONS.map((r) => [r.value, r])),
 )
 
-const selectedRole = computed(() => roleByValue.value[role.value] || ROLE_OPTIONS[0])
+function getRoles(member) {
+  if (!member) return []
+  if (Array.isArray(member.roles) && member.roles.length > 0) return member.roles
+  if (member.role) return [member.role]
+  return []
+}
+
+function combinedPresetFor(roleList) {
+  const set = new Set()
+  for (const r of roleList) {
+    for (const p of getPresetFor(r)) set.add(p)
+  }
+  return [...set]
+}
+
+function rolesLabel(roleList) {
+  return roleList
+    .map((r) => roleByValue.value[r]?.label || r)
+    .join(', ')
+}
 
 const dialog = ref(false)
 const permissionsDialog = ref(false)
@@ -54,10 +85,31 @@ const formRef = ref(null)
 const firstName = ref('')
 const lastName = ref('')
 const email = ref('')
-const role = ref('doctor')
+const roles = ref(['doctor'])
 const saving = ref(false)
 const permissions = ref(getPresetFor('doctor'))
 const permissionsTouched = ref(false)
+
+const selectedRoles = computed(() =>
+  roles.value.map((r) => roleByValue.value[r]).filter(Boolean),
+)
+const selectedRolesSet = computed(() => new Set(roles.value))
+const selectedRolesLabel = computed(() =>
+  selectedRoles.value.map((r) => r.label.toLowerCase()).join(', '),
+)
+const primaryRole = computed(() => selectedRoles.value[0] || ROLE_OPTIONS[0])
+
+function toggleRole(value) {
+  if (selectedRolesSet.value.has(value)) {
+    if (roles.value.length <= 1) return
+    roles.value = roles.value.filter((r) => r !== value)
+  } else {
+    roles.value = [...roles.value, value]
+  }
+  if (!permissionsTouched.value) {
+    permissions.value = combinedPresetFor(roles.value)
+  }
+}
 
 const permissionsSet = computed(() => new Set(permissions.value))
 const activeCount = computed(() => permissions.value.length)
@@ -71,12 +123,6 @@ const permissionsByCategory = computed(() => {
   return map
 })
 
-watch(role, (newRole) => {
-  if (!permissionsTouched.value) {
-    permissions.value = getPresetFor(newRole)
-  }
-})
-
 function togglePermission(id, value) {
   permissionsTouched.value = true
   if (value) {
@@ -87,7 +133,7 @@ function togglePermission(id, value) {
 }
 
 function resetPermissionsToPreset() {
-  permissions.value = getPresetFor(role.value)
+  permissions.value = combinedPresetFor(roles.value)
   permissionsTouched.value = false
 }
 
@@ -102,7 +148,7 @@ function resetForm() {
   firstName.value = ''
   lastName.value = ''
   email.value = ''
-  role.value = 'doctor'
+  roles.value = ['doctor']
   permissions.value = getPresetFor('doctor')
   permissionsTouched.value = false
 }
@@ -121,14 +167,20 @@ async function handleSubmit() {
 async function sendInvitation() {
   sending.value = true
   try {
+    const fullName = `${firstName.value.trim()} ${lastName.value.trim()}`.trim()
     teamStore.add({
       firstName: firstName.value.trim(),
       lastName: lastName.value.trim(),
       email: email.value.trim(),
-      role: role.value,
+      roles: [...roles.value],
       permissions: [...permissions.value],
       invitedAt: new Date().toISOString(),
       invitationStatus: 'pending',
+    })
+    logTeamAction({
+      type: 'success',
+      action: LOG_ACTIONS.MEMBER_INVITED,
+      params: { name: fullName || email.value.trim() },
     })
     messagesStore.add({ type: 'success', text: 'Invitation envoyée' })
     previewDialog.value = false
@@ -165,8 +217,17 @@ function askRemove(member) {
 
 function confirmRemove() {
   if (memberToRemove.value) {
+    const fullName = `${memberToRemove.value.firstName || ''} ${memberToRemove.value.lastName || ''}`.trim()
     teamStore.remove(memberToRemove.value.id)
+    logTeamAction({
+      type: 'error',
+      action: LOG_ACTIONS.MEMBER_REMOVED,
+      params: { name: fullName || memberToRemove.value.email },
+    })
     messagesStore.add({ type: 'success', text: 'Membre retiré de l\'équipe' })
+    memberDialog.value = false
+    editMode.value = false
+    selectedMember.value = null
   }
   removeDialog.value = false
   memberToRemove.value = null
@@ -188,7 +249,7 @@ const editFormRef = ref(null)
 const editFirstName = ref('')
 const editLastName = ref('')
 const editEmail = ref('')
-const editRole = ref('doctor')
+const editRoles = ref(['doctor'])
 const editPermissions = ref([])
 const editPermissionsTouched = ref(false)
 const editPermissionsDialog = ref(false)
@@ -196,13 +257,26 @@ const updating = ref(false)
 
 const editPermissionsSet = computed(() => new Set(editPermissions.value))
 const editActiveCount = computed(() => editPermissions.value.length)
-const editSelectedRole = computed(() => roleByValue.value[editRole.value] || ROLE_OPTIONS[0])
+const editSelectedRoles = computed(() =>
+  editRoles.value.map((r) => roleByValue.value[r]).filter(Boolean),
+)
+const editSelectedRolesSet = computed(() => new Set(editRoles.value))
+const editPrimaryRole = computed(() => editSelectedRoles.value[0] || ROLE_OPTIONS[0])
+const editRolesLabel = computed(() =>
+  editSelectedRoles.value.map((r) => r.label.toLowerCase()).join(', '),
+)
 
-watch(editRole, (newRole) => {
-  if (!editPermissionsTouched.value) {
-    editPermissions.value = getPresetFor(newRole)
+function toggleEditRole(value) {
+  if (editSelectedRolesSet.value.has(value)) {
+    if (editRoles.value.length <= 1) return
+    editRoles.value = editRoles.value.filter((r) => r !== value)
+  } else {
+    editRoles.value = [...editRoles.value, value]
   }
-})
+  if (!editPermissionsTouched.value) {
+    editPermissions.value = combinedPresetFor(editRoles.value)
+  }
+}
 
 function openMember(member) {
   selectedMember.value = member
@@ -215,9 +289,10 @@ function startEdit() {
   editFirstName.value = selectedMember.value.firstName
   editLastName.value = selectedMember.value.lastName
   editEmail.value = selectedMember.value.email
-  editRole.value = selectedMember.value.role
+  editRoles.value = getRoles(selectedMember.value)
+  if (editRoles.value.length === 0) editRoles.value = ['doctor']
   editPermissions.value = [...(selectedMember.value.permissions || [])]
-  const preset = getPresetFor(selectedMember.value.role)
+  const preset = combinedPresetFor(editRoles.value)
   const sameAsPreset =
     preset.length === editPermissions.value.length &&
     preset.every((p) => editPermissionsSet.value.has(p))
@@ -239,7 +314,7 @@ function toggleEditPermission(id, value) {
 }
 
 function resetEditPermissionsToPreset() {
-  editPermissions.value = getPresetFor(editRole.value)
+  editPermissions.value = combinedPresetFor(editRoles.value)
   editPermissionsTouched.value = false
 }
 
@@ -268,14 +343,39 @@ async function saveMember() {
 
   updating.value = true
   try {
+    const previous = selectedMember.value
     const patch = {
       firstName: firstNameTrim,
       lastName: lastNameTrim,
-      role: editRole.value,
+      roles: [...editRoles.value],
+      role: editRoles.value[0],
       permissions: [...editPermissions.value],
+    }
+    const changes = []
+    if (previous.firstName !== patch.firstName) {
+      changes.push({ field: LOG_FIELDS.FIRST_NAME, from: previous.firstName, to: patch.firstName })
+    }
+    if (previous.lastName !== patch.lastName) {
+      changes.push({ field: LOG_FIELDS.LAST_NAME, from: previous.lastName, to: patch.lastName })
+    }
+    const prevRoles = getRoles(previous).join(', ')
+    const nextRoles = patch.roles.join(', ')
+    if (prevRoles !== nextRoles) {
+      changes.push({ field: LOG_FIELDS.ROLES, from: prevRoles, to: nextRoles })
+    }
+    const prevPerms = (previous.permissions || []).length
+    const nextPerms = patch.permissions.length
+    if (prevPerms !== nextPerms) {
+      changes.push({ field: LOG_FIELDS.PERMISSIONS, from: String(prevPerms), to: String(nextPerms) })
     }
     teamStore.update(selectedMember.value.id, patch)
     selectedMember.value = { ...selectedMember.value, ...patch }
+    logTeamAction({
+      type: 'info',
+      action: LOG_ACTIONS.MEMBER_UPDATED,
+      params: { name: `${firstNameTrim} ${lastNameTrim}` },
+      changes,
+    })
     messagesStore.add({ type: 'success', text: 'Membre mis à jour' })
     editMode.value = false
   } catch (e) {
@@ -316,7 +416,8 @@ function formattedInvitedAt(iso) {
               Membres de votre équipe
             </div>
           </v-col>
-          <v-col cols="auto">
+          <v-col cols="auto" class="d-flex align-center ga-2">
+            <DialogLogs collectionName="teamLogs" title="Historique de l'équipe" />
             <v-btn color="primary" rounded="lg" flat :prepend-icon="mdiPlus" class="text-none" @click="openDialog">
               Inviter un membre
             </v-btn>
@@ -356,12 +457,13 @@ function formattedInvitedAt(iso) {
                 </v-list-item-subtitle>
 
                 <div class="d-flex flex-wrap ga-2 mt-2">
-                  <v-chip size="small" variant="flat" color="white" class="border-light">
+                  <v-chip v-for="r in getRoles(member)" :key="r" size="small" variant="flat" color="white"
+                    class="border-light">
                     <template #prepend>
-                      <img v-if="roleByValue[member.role]?.illustration" :src="roleByValue[member.role].illustration"
-                        :alt="roleByValue[member.role]?.label" class="role-chip-img" />
+                      <img v-if="roleByValue[r]?.illustration" :src="roleByValue[r].illustration"
+                        :alt="roleByValue[r]?.label" class="role-chip-img" />
                     </template>
-                    {{ roleByValue[member.role]?.label || member.role }}
+                    {{ roleByValue[r]?.label || r }}
                   </v-chip>
                   <v-chip size="small" variant="flat" color="white" class="border-light text-primary"
                     :prepend-icon="mdiShieldKeyOutline">
@@ -373,11 +475,6 @@ function formattedInvitedAt(iso) {
                     Compte en attente
                   </v-chip>
                 </div>
-
-                <template #append>
-                  <v-btn :icon="mdiTrashCanOutline" variant="text" color="medium-emphasis" size="small"
-                    @click.stop="askRemove(member)" />
-                </template>
               </v-list-item>
               <v-divider v-if="idx < teamStore.items.length - 1" />
             </template>
@@ -402,24 +499,15 @@ function formattedInvitedAt(iso) {
         <v-card-text class="px-6 pt-6 pb-6">
           <div class="text-headline-small font-weight-bold mb-2 text-center">Inviter un membre</div>
           <div class="text-body-medium text-medium-emphasis mb-5 text-center">
-            Choisissez le rôle, puis renseignez les informations.
+            Choisissez un ou plusieurs rôles, puis renseignez les informations.
           </div>
 
-          <div class="role-picker mb-5">
+          <div class="role-picker mb-6">
             <button v-for="opt in ROLE_OPTIONS" :key="opt.value" type="button" class="role-card"
-              :class="{ active: role === opt.value }" @click="role = opt.value">
+              :class="{ active: selectedRolesSet.has(opt.value) }" @click="toggleRole(opt.value)">
               <img :src="opt.illustration" :alt="opt.label" class="role-card-img" />
               <span class="role-card-label">{{ opt.label }}</span>
             </button>
-          </div>
-
-          <div class="selected-illustration-wrap mb-6 mt-6">
-            <Transition name="fade-illustration" mode="out-in">
-              <div :key="selectedRole.value" class="selected-illustration-inner">
-                <img :src="selectedRole.illustration" :alt="selectedRole.label" class="selected-illustration" />
-                <div class="selected-illustration-label">{{ selectedRole.label }}</div>
-              </div>
-            </Transition>
           </div>
 
           <v-form ref="formRef" @submit.prevent="handleSubmit">
@@ -469,7 +557,7 @@ function formattedInvitedAt(iso) {
               <div class="text-headline-small font-weight-bold">Permissions</div>
               <div class="text-body-small text-medium-emphasis mt-1">
                 {{ activeCount }} / {{ PERMISSIONS.length }} actives
-                · Rôle {{ selectedRole.label.toLowerCase() }}
+                · {{ roles.length > 1 ? 'Rôles' : 'Rôle' }} {{ selectedRolesLabel }}
               </div>
             </v-col>
             <v-col cols="auto">
@@ -546,7 +634,7 @@ function formattedInvitedAt(iso) {
 
           <div class="email-body">
             <div class="email-body-header">
-              <img :src="selectedRole.illustration" :alt="selectedRole.label" class="email-body-illustration" />
+              <img :src="primaryRole.illustration" :alt="primaryRole.label" class="email-body-illustration" />
               <div class="email-body-title">Bienvenue dans l'équipe !</div>
             </div>
 
@@ -555,7 +643,7 @@ function formattedInvitedAt(iso) {
             <p>
               <strong>{{ inviterFirstName }}</strong> vous invite à rejoindre son équipe sur
               <strong>Almakare</strong> en tant que
-              <strong>{{ selectedRole.label.toLowerCase() }}</strong>.
+              <strong>{{ selectedRolesLabel }}</strong>.
             </p>
 
             <p>
@@ -622,13 +710,16 @@ function formattedInvitedAt(iso) {
               {{ editMode ? `${editFirstName || '…'} ${editLastName || ''}`.trim() : `${selectedMember.firstName}
               ${selectedMember.lastName}` }}
             </div>
-            <v-chip size="large" variant="flat" color="white" class="border-light mt-3">
-              <template #prepend>
-                <img :src="roleByValue[(editMode ? editRole : selectedMember.role)]?.illustration"
-                  :alt="roleByValue[(editMode ? editRole : selectedMember.role)]?.label" class="role-chip-img" />
-              </template>
-              {{ roleByValue[(editMode ? editRole : selectedMember.role)]?.label }}
-            </v-chip>
+            <div class="d-flex flex-wrap justify-center ga-2 mt-3">
+              <v-chip v-for="r in (editMode ? editRoles : getRoles(selectedMember))" :key="r" size="large"
+                variant="flat" color="white" class="border-light">
+                <template #prepend>
+                  <img v-if="roleByValue[r]?.illustration" :src="roleByValue[r].illustration"
+                    :alt="roleByValue[r]?.label" class="role-chip-img" />
+                </template>
+                {{ roleByValue[r]?.label || r }}
+              </v-chip>
+            </div>
           </div>
 
           <template v-if="!editMode">
@@ -641,11 +732,11 @@ function formattedInvitedAt(iso) {
             </div>
 
             <div class="info-row">
-              <v-icon :icon="roleByValue[selectedMember.role]?.icon" size="20" color="medium-emphasis"
+              <v-icon :icon="roleByValue[getRoles(selectedMember)[0]]?.icon" size="20" color="medium-emphasis"
                 class="info-row-icon" />
               <div class="info-row-content">
-                <div class="info-row-label">Rôle</div>
-                <div class="info-row-value">{{ roleByValue[selectedMember.role]?.label || selectedMember.role }}</div>
+                <div class="info-row-label">{{ getRoles(selectedMember).length > 1 ? 'Rôles' : 'Rôle' }}</div>
+                <div class="info-row-value">{{ rolesLabel(getRoles(selectedMember)) }}</div>
               </div>
             </div>
 
@@ -677,7 +768,7 @@ function formattedInvitedAt(iso) {
           <template v-else>
             <div class="role-picker mb-5">
               <button v-for="opt in ROLE_OPTIONS" :key="opt.value" type="button" class="role-card"
-                :class="{ active: editRole === opt.value }" @click="editRole = opt.value">
+                :class="{ active: editSelectedRolesSet.has(opt.value) }" @click="toggleEditRole(opt.value)">
                 <img :src="opt.illustration" :alt="opt.label" class="role-card-img" />
                 <span class="role-card-label">{{ opt.label }}</span>
               </button>
@@ -721,10 +812,14 @@ function formattedInvitedAt(iso) {
             </v-btn>
           </template>
           <template v-else>
+            <v-btn variant="text" color="error" rounded="lg" class="text-none" :prepend-icon="mdiTrashCanOutline"
+              :disabled="updating" @click="askRemove(selectedMember)">
+              Supprimer
+            </v-btn>
+            <v-spacer />
             <v-btn variant="text" rounded="lg" class="text-none" @click="cancelEdit" :disabled="updating">
               Annuler
             </v-btn>
-            <v-spacer />
             <v-btn color="primary" rounded="lg" flat class="text-none" :loading="updating" @click="saveMember">
               Enregistrer
             </v-btn>
@@ -741,7 +836,7 @@ function formattedInvitedAt(iso) {
               <div class="text-headline-small font-weight-bold">Permissions</div>
               <div class="text-body-small text-medium-emphasis mt-1">
                 {{ editActiveCount }} / {{ PERMISSIONS.length }} actives
-                · Rôle {{ editSelectedRole.label.toLowerCase() }}
+                · {{ editRoles.length > 1 ? 'Rôles' : 'Rôle' }} {{ editRolesLabel }}
               </div>
             </v-col>
             <v-col cols="auto">
@@ -877,51 +972,6 @@ function formattedInvitedAt(iso) {
 
 .role-card.active .role-card-label {
   color: rgb(var(--v-theme-primary));
-}
-
-.selected-illustration-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 120px;
-}
-
-.selected-illustration-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.selected-illustration {
-  height: 120px;
-  width: auto;
-  max-width: 100%;
-  object-fit: contain;
-}
-
-.selected-illustration-label {
-  font-size: 16px;
-  font-weight: 700;
-  color: rgb(var(--v-theme-primary));
-  letter-spacing: 0.2px;
-}
-
-.fade-illustration-enter-active,
-.fade-illustration-leave-active {
-  transition:
-    opacity 0.25s ease,
-    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.fade-illustration-enter-from {
-  opacity: 0;
-  transform: scale(0.85);
-}
-
-.fade-illustration-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
 }
 
 .preview-card {

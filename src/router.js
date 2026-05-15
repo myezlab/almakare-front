@@ -62,6 +62,12 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: ['coordinator'] },
     },
     {
+      path: '/centre-sommeil',
+      name: 'CentreSommeil',
+      component: () => import('./views/CentreSommeilView.vue'),
+      meta: { requiresAuth: true, roles: ['coordinator'] },
+    },
+    {
       path: '/profile',
       name: 'Profile',
       component: () => import('./views/ProfileView.vue'),

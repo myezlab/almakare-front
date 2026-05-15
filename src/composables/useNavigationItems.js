@@ -2,6 +2,7 @@ import { useSelfStore } from "@/stores/self"
 import {
   mdiAccountGroupOutline,
   mdiBellOutline,
+  mdiOfficeBuildingOutline,
   mdiViewDashboardOutline
 } from "@mdi/js"
 import { computed } from "vue"
@@ -35,6 +36,7 @@ export function useNavigationItems() {
     ]
     if (role === 'coordinator') {
       list.push({ id: 'team', text: 'Équipe', icon: mdiAccountGroupOutline, to: { name: "Team" } })
+      list.push({ id: 'centre', text: 'Centre du sommeil', icon: mdiOfficeBuildingOutline, to: { name: "CentreSommeil" } })
     }
     return list
   })

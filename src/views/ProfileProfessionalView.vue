@@ -19,6 +19,7 @@ import {
   mdiHeadset,
   mdiPencilOutline,
   mdiPhoneOutline,
+  mdiRestore,
   mdiShieldKeyOutline,
 } from '@mdi/js'
 import { computed, ref, watch } from 'vue'
@@ -40,13 +41,44 @@ const roleByValue = computed(() =>
 
 const currentUser = computed(() => selfStore.item || {})
 
-const currentRole = computed(() => currentUser.value.role || 'doctor')
-const selectedRoleInfo = computed(() => roleByValue.value[currentRole.value] || ROLE_OPTIONS[0])
+const currentRoles = computed(() => {
+  const u = currentUser.value
+  if (Array.isArray(u.roles) && u.roles.length > 0) return u.roles
+  if (u.role) return [u.role]
+  return ['doctor']
+})
+const currentRole = computed(() => currentRoles.value[0])
+const currentRolesLabel = computed(() =>
+  currentRoles.value.map((r) => (roleByValue.value[r]?.label || r).toLowerCase()).join(', '),
+)
 
 const generalFormRef = ref(null)
 const savingGeneral = ref(false)
 const permissionsDialog = ref(false)
 const isEditing = ref(false)
+const isCoordinator = computed(() => currentRoles.value.includes('coordinator'))
+const roleChangeDialog = ref(false)
+
+const editRoles = ref([])
+const editRolesSet = computed(() => new Set(editRoles.value))
+const rolesDirty = computed(() => {
+  if (editRoles.value.length !== currentRoles.value.length) return true
+  const set = new Set(currentRoles.value)
+  return editRoles.value.some((r) => !set.has(r))
+})
+
+function hydrateRoles() {
+  editRoles.value = [...currentRoles.value]
+}
+
+function toggleRoleSelection(value) {
+  if (editRolesSet.value.has(value)) {
+    if (editRoles.value.length <= 1) return
+    editRoles.value = editRoles.value.filter((r) => r !== value)
+  } else {
+    editRoles.value = [...editRoles.value, value]
+  }
+}
 
 const generalModel = ref({
   firstName: '',
@@ -65,6 +97,7 @@ function hydrateModel(item) {
 watch(() => currentUser.value, (item) => {
   if (!item?.id) return
   hydrateModel(item)
+  hydrateRoles()
 }, { immediate: true })
 
 function startEdit() {
@@ -80,7 +113,7 @@ function cancelEdit() {
 const userPermissions = computed(() => {
   const perms = currentUser.value.permissions
   if (Array.isArray(perms) && perms.length > 0) return perms
-  return getPresetFor(currentRole.value)
+  return combinedPresetFor(currentRoles.value)
 })
 
 const permissionsSet = computed(() => new Set(userPermissions.value))
@@ -98,6 +131,104 @@ const permissionsByCategory = computed(() => {
 function categoryActiveCount(categoryId) {
   return permissionsByCategory.value[categoryId].filter((p) => permissionsSet.value.has(p.id)).length
 }
+
+function combinedPresetFor(roleList) {
+  const set = new Set()
+  for (const r of roleList) {
+    for (const p of getPresetFor(r)) set.add(p)
+  }
+  return [...set]
+}
+
+const editPermissions = ref([])
+const editPermissionsSet = computed(() => new Set(editPermissions.value))
+const editActiveCount = computed(() => editPermissions.value.length)
+const editPermissionsDirty = computed(() => {
+  if (editPermissions.value.length !== userPermissions.value.length) return true
+  const set = new Set(userPermissions.value)
+  return editPermissions.value.some((p) => !set.has(p))
+})
+const savingPermissions = ref(false)
+const categoryDialog = ref(false)
+const selectedCategoryId = ref(null)
+const selectedCategory = computed(() =>
+  PERMISSION_CATEGORIES.find((c) => c.id === selectedCategoryId.value) || null,
+)
+
+function hydratePermissions() {
+  editPermissions.value = [...userPermissions.value]
+}
+
+function openCategoryDialog(categoryId) {
+  selectedCategoryId.value = categoryId
+  hydratePermissions()
+  categoryDialog.value = true
+}
+
+function cancelCategoryEdit() {
+  hydratePermissions()
+  categoryDialog.value = false
+}
+
+async function handleSaveCategoryPermissions() {
+  if (await persistPermissions()) categoryDialog.value = false
+}
+
+function resetCategoryToPreset() {
+  if (!selectedCategoryId.value) return
+  const preset = new Set(combinedPresetFor(currentRoles.value))
+  const catPerms = permissionsByCategory.value[selectedCategoryId.value] || []
+  const catIds = new Set(catPerms.map((p) => p.id))
+  const next = editPermissions.value.filter((p) => !catIds.has(p))
+  for (const p of catPerms) {
+    if (preset.has(p.id)) next.push(p.id)
+  }
+  editPermissions.value = next
+}
+
+function editCategoryActiveCount(categoryId) {
+  return permissionsByCategory.value[categoryId].filter((p) => editPermissionsSet.value.has(p.id)).length
+}
+
+function toggleEditPermission(id, value) {
+  if (value) {
+    if (!editPermissionsSet.value.has(id)) editPermissions.value = [...editPermissions.value, id]
+  } else {
+    editPermissions.value = editPermissions.value.filter((p) => p !== id)
+  }
+}
+
+function resetEditPermissionsToPreset() {
+  editPermissions.value = combinedPresetFor(currentRoles.value)
+}
+
+function cancelPermissionsEdit() {
+  hydratePermissions()
+  permissionsDialog.value = false
+}
+
+async function persistPermissions() {
+  if (!selfStore.item?.id) return false
+  savingPermissions.value = true
+  try {
+    selfStore.item.permissions = [...editPermissions.value]
+    messagesStore.add({ type: 'success', text: 'Permissions mises à jour' })
+    return true
+  } catch {
+    messagesStore.add({ type: 'error', text: 'Erreur lors de la mise à jour des permissions' })
+    return false
+  } finally {
+    savingPermissions.value = false
+  }
+}
+
+async function handleSavePermissions() {
+  if (await persistPermissions()) permissionsDialog.value = false
+}
+
+watch(permissionsDialog, (open) => {
+  if (open) hydratePermissions()
+})
 
 const required = (v) => !!v?.trim() || 'Ce champ est requis'
 const { phoneNumberValidation } = useRules()
@@ -124,10 +255,33 @@ async function handleSaveGeneral() {
   }
 }
 
-function setRole(role) {
+function applyRoles(rolesArr) {
   if (!selfStore.item?.id) return
-  selfStore.item.role = role
-  messagesStore.add({ type: 'success', text: `Rôle changé : ${roleByValue.value[role]?.label || role}` })
+  selfStore.item.roles = [...rolesArr]
+  selfStore.item.role = rolesArr[0]
+  messagesStore.add({ type: 'success', text: 'Rôles mis à jour' })
+}
+
+function handleSaveRoles() {
+  if (!selfStore.item?.id || !rolesDirty.value) return
+  if (isCoordinator.value && !editRolesSet.value.has('coordinator')) {
+    roleChangeDialog.value = true
+    return
+  }
+  applyRoles(editRoles.value)
+}
+
+function cancelRoleEdit() {
+  hydrateRoles()
+}
+
+function confirmRoleChange() {
+  applyRoles(editRoles.value)
+  roleChangeDialog.value = false
+}
+
+function cancelRoleChange() {
+  roleChangeDialog.value = false
 }
 
 async function logOut() {
@@ -173,12 +327,16 @@ const initials = computed(() => {
                 <span v-else class="text-headline-small font-weight-bold">{{ initials }}</span>
               </v-avatar>
               <div class="text-headline-small font-weight-bold">{{ displayName }}</div>
-              <v-chip size="large" variant="flat" color="white" class="border-light mt-3">
-                <template #prepend>
-                  <img :src="selectedRoleInfo.illustration" :alt="selectedRoleInfo.label" class="role-chip-img" />
-                </template>
-                {{ selectedRoleInfo.label }}
-              </v-chip>
+              <div class="d-flex flex-wrap justify-center ga-2 mt-3">
+                <v-chip v-for="r in currentRoles" :key="r" size="large" variant="flat" color="white"
+                  class="border-light">
+                  <template #prepend>
+                    <img v-if="roleByValue[r]?.illustration" :src="roleByValue[r].illustration"
+                      :alt="roleByValue[r]?.label" class="role-chip-img" />
+                  </template>
+                  {{ roleByValue[r]?.label || r }}
+                </v-chip>
+              </div>
 
               <div class="d-flex flex-column align-center ga-1 mt-4">
                 <div v-if="currentUser.email" class="d-flex align-center ga-1 text-body-small text-medium-emphasis">
@@ -196,17 +354,7 @@ const initials = computed(() => {
 
           <!-- EDIT MODE -->
           <v-form v-else ref="generalFormRef">
-            <div class="d-flex align-center mb-4">
-              <span class="text-headline-small font-weight-bold">Modifier mon profil</span>
-              <v-spacer />
-              <v-btn variant="text" rounded="lg" size="small" class="text-none" @click="cancelEdit">
-                Annuler
-              </v-btn>
-              <v-btn color="primary" rounded="lg" size="small" flat :loading="savingGeneral" class="ml-2"
-                @click="handleSaveGeneral">
-                Enregistrer
-              </v-btn>
-            </div>
+            <div class="text-headline-small font-weight-bold mb-4">Modifier mon profil</div>
 
             <v-row>
               <v-col cols="12" class="d-flex flex-column align-center">
@@ -232,37 +380,51 @@ const initials = computed(() => {
                   rounded="lg" inputmode="tel" :prepend-inner-icon="mdiPhoneOutline" :rules="[phoneNumberValidation]" />
               </v-col>
             </v-row>
+
+            <div class="d-flex justify-end ga-2 mt-2">
+              <v-btn variant="text" rounded="lg" size="small" class="text-none" :disabled="savingGeneral"
+                @click="cancelEdit">
+                Annuler
+              </v-btn>
+              <v-btn color="primary" rounded="lg" size="small" flat class="text-none" :loading="savingGeneral"
+                @click="handleSaveGeneral">
+                Enregistrer
+              </v-btn>
+            </div>
           </v-form>
         </v-card>
 
         <v-row>
 
-          <!-- =================== DEV-ONLY: ROLE SWITCHER =================== -->
-          <v-col cols="12">
-            <v-card class="card-shadow pa-2 dev-card" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+          <!-- =================== ROLE SWITCHER (coordinator only) =================== -->
+          <v-col v-if="isCoordinator" cols="12">
+            <v-card class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
               <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
-                <span class="text-headline-small font-weight-bold text-truncate">Changer mon rôle</span>
-                <v-spacer />
-                <v-chip size="small" variant="tonal" color="warning" class="font-weight-bold">
-                  DEV ONLY
-                </v-chip>
+                <span class="text-headline-small font-weight-bold text-truncate">Mon rôle</span>
               </v-card-title>
 
               <v-card-text class="px-4 pt-4">
                 <div class="text-body-small text-medium-emphasis mb-4">
-                  Cette section est destinée uniquement au développement. Elle permet de basculer rapidement
-                  entre les rôles pour tester l'interface.
+                  En tant que coordinateur, vous pouvez modifier vos propres rôles. Sélectionnez un ou
+                  plusieurs rôles.
                 </div>
 
-                <v-row density="comfortable">
-                  <v-col v-for="role in ROLE_OPTIONS" :key="role.value" cols="12" sm="4">
-                    <v-btn block variant="outlined" rounded="lg" class="text-none role-btn"
-                      :color="currentRole === role.value ? 'primary' : undefined" :prepend-icon="role.icon"
-                      @click="setRole(role.value)">
-                      {{ role.label }}
-                    </v-btn>
-                  </v-col>
-                </v-row>
+                <div class="role-picker mb-4">
+                  <button v-for="opt in ROLE_OPTIONS" :key="opt.value" type="button" class="role-card"
+                    :class="{ active: editRolesSet.has(opt.value) }" @click="toggleRoleSelection(opt.value)">
+                    <img :src="opt.illustration" :alt="opt.label" class="role-card-img" />
+                    <span class="role-card-label">{{ opt.label }}</span>
+                  </button>
+                </div>
+
+                <div v-if="rolesDirty" class="d-flex justify-end ga-2">
+                  <v-btn variant="text" rounded="lg" size="small" class="text-none" @click="cancelRoleEdit">
+                    Annuler
+                  </v-btn>
+                  <v-btn color="primary" rounded="lg" size="small" flat class="text-none" @click="handleSaveRoles">
+                    Enregistrer
+                  </v-btn>
+                </div>
               </v-card-text>
             </v-card>
           </v-col>
@@ -281,11 +443,17 @@ const initials = computed(() => {
 
               <v-card-text class="px-4 pt-4">
                 <div class="text-body-small text-medium-emphasis mb-4">
-                  Vos droits sont définis par le coordinateur de votre équipe. Contactez-le pour les modifier.
+                  <template v-if="isCoordinator">
+                    En tant que coordinateur, vous pouvez modifier vos propres permissions.
+                  </template>
+                  <template v-else>
+                    Vos droits sont définis par le coordinateur de votre équipe. Contactez-le pour les modifier.
+                  </template>
                 </div>
 
                 <div class="category-grid">
-                  <div v-for="cat in PERMISSION_CATEGORIES" :key="cat.id" class="category-tile">
+                  <button v-for="cat in PERMISSION_CATEGORIES" :key="cat.id" type="button" class="category-tile"
+                    @click="openCategoryDialog(cat.id)">
                     <div class="category-tile-label">{{ cat.label }}</div>
                     <div class="category-tile-count">
                       <span class="category-tile-active">{{ categoryActiveCount(cat.id) }}</span>
@@ -294,7 +462,7 @@ const initials = computed(() => {
                     <v-progress-linear
                       :model-value="permissionsByCategory[cat.id].length ? (categoryActiveCount(cat.id) / permissionsByCategory[cat.id].length) * 100 : 0"
                       color="primary" rounded height="4" class="mt-2" />
-                  </div>
+                  </button>
                 </div>
 
                 <button type="button" class="permissions-row mt-4" @click="permissionsDialog = true">
@@ -345,17 +513,24 @@ const initials = computed(() => {
       </v-col>
     </v-row>
 
-    <!-- =================== PERMISSIONS DETAIL DIALOG (read-only) =================== -->
-    <v-dialog v-model="permissionsDialog" max-width="560" :fullscreen="$vuetify.display.mobile" scrollable>
+    <!-- =================== PERMISSIONS DETAIL DIALOG =================== -->
+    <v-dialog v-model="permissionsDialog" max-width="560" :fullscreen="$vuetify.display.mobile" scrollable
+      :persistent="isCoordinator && editPermissionsDirty">
       <v-card :class="['permissions-card', { 'pa-2 rounded-15': !$vuetify.display.mobile }]">
         <v-card-title class="px-6 pt-6 pb-2">
           <v-row align="center" no-gutters>
             <v-col>
               <div class="text-headline-small font-weight-bold">Mes permissions</div>
               <div class="text-body-small text-medium-emphasis mt-1">
-                {{ activeCount }} / {{ PERMISSIONS.length }} actives
-                · Rôle {{ selectedRoleInfo.label.toLowerCase() }}
+                {{ isCoordinator ? editActiveCount : activeCount }} / {{ PERMISSIONS.length }} actives
+                · {{ currentRoles.length > 1 ? 'Rôles' : 'Rôle' }} {{ currentRolesLabel }}
               </div>
+            </v-col>
+            <v-col v-if="isCoordinator" cols="auto">
+              <v-btn variant="text" rounded="lg" size="small" :prepend-icon="mdiRestore" class="text-none"
+                @click="resetEditPermissionsToPreset">
+                Réinitialiser
+              </v-btn>
             </v-col>
           </v-row>
         </v-card-title>
@@ -370,18 +545,20 @@ const initials = computed(() => {
               </div>
               <v-spacer />
               <div class="text-body-small text-medium-emphasis">
-                {{ categoryActiveCount(cat.id) }} / {{ permissionsByCategory[cat.id].length }}
+                {{ isCoordinator ? editCategoryActiveCount(cat.id) : categoryActiveCount(cat.id) }} / {{ permissionsByCategory[cat.id].length }}
               </div>
             </div>
 
             <div v-for="perm in permissionsByCategory[cat.id]" :key="perm.id" class="permission-item"
-              :class="{ 'permission-item-inactive': !permissionsSet.has(perm.id) }">
+              :class="{ 'permission-item-inactive': !isCoordinator && !permissionsSet.has(perm.id) }">
               <div class="permission-item-text">
                 <div class="permission-item-label">{{ perm.label }}</div>
                 <div class="permission-item-desc">{{ perm.description }}</div>
               </div>
-              <v-chip size="x-small" variant="tonal" :color="permissionsSet.has(perm.id) ? 'success' : 'grey-darken-1'"
-                class="font-weight-medium">
+              <v-switch v-if="isCoordinator" :model-value="editPermissionsSet.has(perm.id)" color="primary" hide-details
+                density="compact" inset @update:model-value="(v) => toggleEditPermission(perm.id, v)" />
+              <v-chip v-else size="x-small" variant="tonal"
+                :color="permissionsSet.has(perm.id) ? 'success' : 'grey-darken-1'" class="font-weight-medium">
                 {{ permissionsSet.has(perm.id) ? 'Activée' : 'Désactivée' }}
               </v-chip>
             </div>
@@ -392,8 +569,106 @@ const initials = computed(() => {
 
         <v-card-actions class="px-6 py-4">
           <v-spacer />
-          <v-btn color="primary" rounded="lg" flat class="text-none" @click="permissionsDialog = false">
+          <template v-if="isCoordinator">
+            <v-btn variant="text" rounded="lg" class="text-none" :disabled="savingPermissions"
+              @click="cancelPermissionsEdit">
+              Annuler
+            </v-btn>
+            <v-btn color="primary" rounded="lg" flat class="text-none ml-2" :disabled="!editPermissionsDirty"
+              :loading="savingPermissions" @click="handleSavePermissions">
+              Enregistrer
+            </v-btn>
+          </template>
+          <v-btn v-else color="primary" rounded="lg" flat class="text-none" @click="permissionsDialog = false">
             Fermer
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- =================== CATEGORY PERMISSIONS DIALOG =================== -->
+    <v-dialog v-model="categoryDialog" max-width="520" :fullscreen="$vuetify.display.mobile" scrollable
+      :persistent="isCoordinator && editPermissionsDirty">
+      <v-card v-if="selectedCategory" :class="['permissions-card', { 'pa-2 rounded-15': !$vuetify.display.mobile }]">
+        <v-card-title class="px-6 pt-6 pb-2">
+          <v-row align="center" no-gutters>
+            <v-col>
+              <div class="text-headline-small font-weight-bold">{{ selectedCategory.label }}</div>
+              <div class="text-body-small text-medium-emphasis mt-1">
+                {{ isCoordinator ? editCategoryActiveCount(selectedCategory.id) : categoryActiveCount(selectedCategory.id) }}
+                / {{ permissionsByCategory[selectedCategory.id].length }} actives
+              </div>
+            </v-col>
+            <v-col v-if="isCoordinator" cols="auto">
+              <v-btn variant="text" rounded="lg" size="small" :prepend-icon="mdiRestore" class="text-none"
+                @click="resetCategoryToPreset">
+                Réinitialiser
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="px-6 py-4" :class="{ 'permissions-scroll': !$vuetify.display.mobile }">
+          <div v-for="perm in permissionsByCategory[selectedCategory.id]" :key="perm.id" class="permission-item"
+            :class="{ 'permission-item-inactive': !isCoordinator && !permissionsSet.has(perm.id) }">
+            <div class="permission-item-text">
+              <div class="permission-item-label">{{ perm.label }}</div>
+              <div class="permission-item-desc">{{ perm.description }}</div>
+            </div>
+            <v-switch v-if="isCoordinator" :model-value="editPermissionsSet.has(perm.id)" color="primary" hide-details
+              density="compact" inset @update:model-value="(v) => toggleEditPermission(perm.id, v)" />
+            <v-chip v-else size="x-small" variant="tonal"
+              :color="permissionsSet.has(perm.id) ? 'success' : 'grey-darken-1'" class="font-weight-medium">
+              {{ permissionsSet.has(perm.id) ? 'Activée' : 'Désactivée' }}
+            </v-chip>
+          </div>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="px-6 py-4">
+          <v-spacer />
+          <template v-if="isCoordinator">
+            <v-btn variant="text" rounded="lg" class="text-none" :disabled="savingPermissions"
+              @click="cancelCategoryEdit">
+              Annuler
+            </v-btn>
+            <v-btn color="primary" rounded="lg" flat class="text-none ml-2" :disabled="!editPermissionsDirty"
+              :loading="savingPermissions" @click="handleSaveCategoryPermissions">
+              Enregistrer
+            </v-btn>
+          </template>
+          <v-btn v-else color="primary" rounded="lg" flat class="text-none" @click="categoryDialog = false">
+            Fermer
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- =================== ROLE CHANGE CONFIRMATION DIALOG =================== -->
+    <v-dialog v-model="roleChangeDialog" max-width="480" persistent>
+      <v-card :class="['pa-2', { 'rounded-15': !$vuetify.display.mobile }]">
+        <v-card-title class="px-6 pt-6 pb-2 text-headline-small font-weight-bold">
+          Abandonner le rôle de coordinateur ?
+        </v-card-title>
+        <v-card-text class="px-6 pt-2 pb-4">
+          <p class="text-body-medium mb-2">
+            Vous êtes sur le point de retirer le rôle de <strong>coordinateur</strong> de votre profil.
+          </p>
+          <p class="text-body-small text-medium-emphasis">
+            Une fois ce changement enregistré, vous ne pourrez plus modifier vos rôles vous-même.
+            Seul un coordinateur pourra modifier vos rôles ou ceux des autres utilisateurs.
+          </p>
+        </v-card-text>
+        <v-card-actions class="px-6 pb-6">
+          <v-spacer />
+          <v-btn variant="text" rounded="lg" class="text-none" @click="cancelRoleChange">
+            Annuler
+          </v-btn>
+          <v-btn color="primary" rounded="lg" flat class="text-none ml-2" @click="confirmRoleChange">
+            Confirmer
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -425,6 +700,24 @@ const initials = computed(() => {
   background: rgba(0, 0, 0, 0.025);
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.category-tile:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.category-tile:active {
+  transform: scale(0.98);
 }
 
 .category-tile-label {
@@ -453,11 +746,55 @@ const initials = computed(() => {
   color: rgba(0, 0, 0, 0.5);
 }
 
-.dev-card {
-  border: 1px dashed rgba(var(--v-theme-warning), 0.5);
+.role-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
 }
 
-.role-btn {
-  min-height: 44px;
+.role-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 6px;
+  background: rgba(0, 0, 0, 0.025);
+  border: 2px solid transparent;
+  border-radius: 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.role-card:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.role-card:active {
+  transform: scale(0.96);
+}
+
+.role-card.active {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+.role-card-img {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+}
+
+.role-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.role-card.active .role-card-label {
+  color: rgb(var(--v-theme-primary));
 }
 </style>
