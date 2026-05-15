@@ -1,5 +1,5 @@
 <script setup>
-import ProfileCompletion from '@/components/ProfileCompletion.vue'
+import sleepingCenterIllustration from '@/assets/illustrations/sleeping-center.svg'
 import { useProfileCompletion } from '@/composables/useProfileCompletion'
 import { useMessagesStore } from '@/stores/messages'
 import { usePatientsStore } from '@/stores/patients'
@@ -9,13 +9,13 @@ import {
   mdiCalendar,
   mdiCalendarQuestion,
   mdiCheck,
+  mdiCheckCircleOutline,
   mdiChevronLeft,
   mdiClockOutline,
   mdiEmailOutline,
   mdiLockOutline,
   mdiPhoneOutline,
   mdiPlayCircleOutline,
-  mdiRocketLaunchOutline,
 } from '@mdi/js'
 import { useClipboard } from '@vueuse/core'
 import dayjs from 'dayjs'
@@ -102,7 +102,7 @@ const patient = computed(() =>
   patientsStore.items.find((p) => p.id === route.params.id) || null,
 )
 
-const { completionPercent, profileSections } = useProfileCompletion(patient)
+const { completionPercent } = useProfileCompletion(patient)
 
 const journeyStarted = computed(() => (patient.value?.hospitalizationStep || 0) > 0)
 const journeyComplete = computed(
@@ -201,6 +201,12 @@ function startJourney() {
                 color="grey" style="cursor: pointer;" @click="copyToClipboard(patient.phoneNumber, 'Téléphone')">
                 {{ patient.phoneNumber }}
               </v-chip>
+              <v-chip
+                :prepend-icon="completionPercent >= 100 ? mdiCheckCircleOutline : mdiAlertCircleOutline"
+                variant="tonal" size="small"
+                :color="completionPercent >= 100 ? 'success' : 'warning'">
+                {{ completionPercent >= 100 ? 'Profil complet' : `Profil ${completionPercent}%` }}
+              </v-chip>
             </div>
           </template>
 
@@ -212,14 +218,6 @@ function startJourney() {
         </div>
 
         <template v-if="patient">
-          <!-- Profile completion banner -->
-          <div :class="{ 'mx-6': $vuetify.display.mobile }" class="mb-4">
-            <ProfileCompletion :completionPercent="completionPercent"
-              completionTitle="Profil patient incomplet" completeTitle="Profil patient complet"
-              completionSubtitle="Le parcours d'hospitalisation pourra être lancé une fois le profil complété."
-              completeSubtitle="Toutes les informations sont renseignées." :sections="profileSections" />
-          </div>
-
           <!-- Journey launch CTA (only when not yet started) -->
           <v-card v-if="!journeyStarted" class="card-shadow pa-6 mb-4"
             :class="{ 'rounded-15': !$vuetify.display.mobile }">
@@ -227,30 +225,31 @@ function startJourney() {
               <v-col cols="12" sm="8">
                 <v-chip :color="canStartJourney ? 'primary' : 'warning'" variant="tonal" size="small" class="mb-3"
                   :prepend-icon="canStartJourney ? mdiPlayCircleOutline : mdiLockOutline">
-                  {{ canStartJourney ? 'Prêt à lancer' : 'Action verrouillée' }}
+                  {{ canStartJourney ? 'Prêt à programmer' : 'Action verrouillée' }}
                 </v-chip>
                 <div class="text-headline-small font-weight-bold mb-3">
                   Parcours d'hospitalisation
                 </div>
                 <div class="text-body-medium text-medium-emphasis mb-4">
                   <template v-if="canStartJourney">
-                    Le dossier patient est complet. Vous pouvez démarrer le parcours :
+                    Le dossier patient est complet. Vous pouvez programmer l'acte :
                     l'ordonnance sera générée et transmise au médecin spécialiste du sommeil.
                   </template>
                   <template v-else>
-                    Le parcours ne peut être lancé que lorsque le profil patient est complet
+                    L'acte ne peut être programmé que lorsque le profil patient est complet
                     à 100 %. Il manque encore des informations dans le dossier.
                   </template>
                 </div>
                 <v-btn color="primary" rounded="lg" size="large" :disabled="!canStartJourney"
-                  :prepend-icon="canStartJourney ? mdiRocketLaunchOutline : mdiLockOutline" class="text-none"
+                  :prepend-icon="canStartJourney ? undefined : mdiLockOutline" class="text-none"
                   @click="startJourney" flat>
-                  {{ canStartJourney ? "Lancer le parcours d'hospitalisation" : "Profil incomplet" }}
+                  {{ canStartJourney ? "Programmer un acte" : "Profil incomplet" }}
                 </v-btn>
               </v-col>
               <v-col cols="12" sm="4" class="text-center">
-                <v-icon :icon="canStartJourney ? mdiRocketLaunchOutline : mdiAlertCircleOutline"
-                  :color="canStartJourney ? 'primary' : 'warning'" size="96" />
+                <v-img v-if="canStartJourney" :src="sleepingCenterIllustration" :width="160" :height="140"
+                  contain class="mx-auto" />
+                <v-icon v-else :icon="mdiAlertCircleOutline" color="warning" size="96" />
               </v-col>
             </v-row>
           </v-card>

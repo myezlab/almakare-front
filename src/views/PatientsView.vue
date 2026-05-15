@@ -151,19 +151,17 @@ function openPatient(patient) {
 
                 <template #append>
                   <div class="d-flex align-center ga-3">
-                    <div class="text-right d-none d-sm-block">
-                      <div class="text-body-small text-medium-emphasis">Profil</div>
-                      <div class="text-body-small font-weight-bold"
-                        :class="`text-${completionColor(patient.profileCompletion)}`">
-                        {{ patient.profileCompletion }}%
-                      </div>
-                    </div>
-                    <v-progress-circular :model-value="patient.profileCompletion"
-                      :color="completionColor(patient.profileCompletion)" size="42" width="4">
-                      <span class="text-body-small font-weight-bold">
-                        {{ patient.profileCompletion }}
-                      </span>
-                    </v-progress-circular>
+                    <v-tooltip location="top" open-delay="200">
+                      <template #activator="{ props }">
+                        <v-progress-circular v-bind="props" :model-value="patient.profileCompletion"
+                          :color="completionColor(patient.profileCompletion)" size="42" width="4">
+                          <span class="text-body-small font-weight-bold">
+                            {{ patient.profileCompletion }}
+                          </span>
+                        </v-progress-circular>
+                      </template>
+                      Complétion du profil patient : {{ patient.profileCompletion }}%
+                    </v-tooltip>
                     <v-icon :icon="mdiChevronRight" color="medium-emphasis" />
                   </div>
                 </template>

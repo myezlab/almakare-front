@@ -178,5 +178,25 @@
     "epworthScore": 15,
     "lastVisit": "2026-05-12",
     "hospitalizationStep": 0
+  },
+  {
+    "id": "p-010",
+    "firstName": "Antoine",
+    "lastName": "Lacroix",
+    "gender": "male",
+    "dob": "1971-02-18",
+    "email": "antoine.lacroix@example.com",
+    "phoneNumber": "06 11 22 33 44",
+    "socialSecurityNumber": "1 71 02 75 987 654 32",
+    "dietaryRestrictions": "Aucun",
+    "medicalHistory": "Apnées du sommeil suspectées. Surpoids modéré. Ronflements importants signalés par la conjointe.",
+    "currentTreatments": "Aucun traitement en cours",
+    "weight": 92,
+    "height": 1.76,
+    "iah": 28,
+    "agreementPersonal": true,
+    "epworthScore": 14,
+    "lastVisit": "2026-05-14",
+    "hospitalizationStep": 0
   }
 ]
