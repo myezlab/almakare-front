@@ -59,12 +59,20 @@ const router = createRouter({
       path: '/equipe',
       name: 'Team',
       component: () => import('./views/TeamView.vue'),
-      meta: { requiresAuth: true, roles: ['coordinator'] },
+      meta: { requiresAuth: true, roles: ['coordinator', 'centre'] },
     },
     {
       path: '/centre-sommeil',
       name: 'CentreSommeil',
       component: () => import('./views/CentreSommeilView.vue'),
+      props: { variant: 'centre' },
+      meta: { requiresAuth: true, roles: ['centre'] },
+    },
+    {
+      path: '/cabinet-medical',
+      name: 'CabinetMedical',
+      component: () => import('./views/CentreSommeilView.vue'),
+      props: { variant: 'cabinet' },
       meta: { requiresAuth: true, roles: ['coordinator'] },
     },
     {
@@ -77,7 +85,7 @@ const router = createRouter({
       path: '/profil-professionnel',
       name: 'ProfileProfessional',
       component: () => import('./views/ProfileProfessionalView.vue'),
-      meta: { requiresAuth: true, roles: ['doctor', 'coordinator', 'technician'] },
+      meta: { requiresAuth: true, roles: ['doctor', 'coordinator', 'technician', 'centre'] },
     },
     {
       path: '/test-epworth',
@@ -115,6 +123,7 @@ const router = createRouter({
 const DASHBOARD_BY_ROLE = {
   patient: 'DashboardPatient',
   doctor: 'DashboardDoctor',
+  centre: 'CentreSommeil',
 }
 
 function isAuthenticated(selfStore) {
@@ -130,6 +139,7 @@ const PROFILE_BY_ROLE = {
   doctor: 'ProfileProfessional',
   coordinator: 'ProfileProfessional',
   technician: 'ProfileProfessional',
+  centre: 'ProfileProfessional',
 }
 
 function profileRouteFor(role) {

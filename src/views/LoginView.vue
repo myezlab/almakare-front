@@ -2,6 +2,7 @@
 import doctorIllustration from "@/assets/illustrations/doctor.svg"
 import professionalIllustration from "@/assets/illustrations/doctors.svg"
 import patientIllustration from "@/assets/illustrations/patient.svg"
+import centreIllustration from "@/assets/illustrations/sleeping-center.svg"
 import coordinatorIllustration from "@/assets/illustrations/team.svg"
 import technicianIllustration from "@/assets/illustrations/technician.svg"
 import { useRules } from "@/composables/useRules"
@@ -33,6 +34,7 @@ const roleIllustrations = {
   coordinator: coordinatorIllustration,
   doctor: doctorIllustration,
   technician: technicianIllustration,
+  centre: centreIllustration,
 }
 const roleIllustration = computed(() => roleIllustrations[route.query.role] || null)
 const pendingEmail = ref(false)
@@ -66,6 +68,7 @@ const parsedAgreement = computed(() => marked(personalDataAuthorizationContent["
 const DASHBOARD_BY_ROLE = {
   patient: "DashboardPatient",
   doctor: "DashboardDoctor",
+  centre: "CentreSommeil",
 }
 
 function dashboardRouteFor(role) {

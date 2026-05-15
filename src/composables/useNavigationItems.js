@@ -1,8 +1,8 @@
 import { useSelfStore } from "@/stores/self"
 import {
   mdiAccountGroupOutline,
-  mdiBellOutline,
   mdiOfficeBuildingOutline,
+  mdiStethoscope,
   mdiViewDashboardOutline
 } from "@mdi/js"
 import { computed } from "vue"
@@ -13,6 +13,7 @@ export function useNavigationItems() {
   const dashboardRouteByRole = {
     patient: "DashboardPatient",
     doctor: "DashboardDoctor",
+    centre: "CentreSommeil",
   }
 
   const profileRouteByRole = {
@@ -20,6 +21,7 @@ export function useNavigationItems() {
     doctor: "ProfileProfessional",
     coordinator: "ProfileProfessional",
     technician: "ProfileProfessional",
+    centre: "ProfileProfessional",
   }
 
   const profileRoute = computed(() => ({
@@ -29,14 +31,19 @@ export function useNavigationItems() {
   const items = computed(() => {
     if (!selfStore.item.id) return []
     const role = selfStore.item.role
+    if (role === 'centre') {
+      return [
+        { id: 'centre', text: 'Centre du sommeil', icon: mdiOfficeBuildingOutline, to: { name: "CentreSommeil" } },
+        { id: 'team', text: 'Équipe', icon: mdiAccountGroupOutline, to: { name: "Team" } },
+      ]
+    }
     const dashboardName = dashboardRouteByRole[role] || "DashboardPatient"
     const list = [
-      { id: 'dashboard', text: 'Accueil', icon: mdiViewDashboardOutline, to: { name: dashboardName } },
-      { id: 'notifications', text: 'Notifications', icon: mdiBellOutline, to: { name: "Notifications" } },
+      { id: 'dashboard', text: 'Accueil', icon: mdiViewDashboardOutline, to: { name: dashboardName } }
     ]
     if (role === 'coordinator') {
       list.push({ id: 'team', text: 'Équipe', icon: mdiAccountGroupOutline, to: { name: "Team" } })
-      list.push({ id: 'centre', text: 'Centre du sommeil', icon: mdiOfficeBuildingOutline, to: { name: "CentreSommeil" } })
+      list.push({ id: 'cabinet', text: 'Cabinet médical', icon: mdiStethoscope, to: { name: "CabinetMedical" } })
     }
     return list
   })

@@ -419,7 +419,7 @@ function formattedInvitedAt(iso) {
           <v-col cols="auto" class="d-flex align-center ga-2">
             <DialogLogs collectionName="teamLogs" title="Historique de l'équipe" />
             <v-btn color="primary" rounded="lg" flat :prepend-icon="mdiPlus" class="text-none" @click="openDialog">
-              Inviter un membre
+              {{ $vuetify.display.mobile ? 'Inviter' : 'Inviter un membre' }}
             </v-btn>
           </v-col>
         </v-row>

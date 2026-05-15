@@ -268,6 +268,31 @@ export const CENTRE_SOMMEIL_SEED = {
   ],
 }
 
+export const CABINET_AVAILABLE_SERVICE_IDS = [
+  'patient-journey',
+  'teleconsultation',
+  'sleep-diary',
+  'epworth',
+  'secure-messaging',
+  'billing',
+  'documents',
+]
+
+export const CABINET_MEDICAL_SEED = {
+  id: 'cabinet-medical-001',
+  logoUrl: '',
+  name: 'Cabinet médical',
+  description:
+    'Notre cabinet médical assure le suivi ambulatoire des patients et coordonne la prise en charge avec les spécialistes du sommeil.',
+  createdAt: '2024-09-01',
+  selectedServiceIds: [
+    'patient-journey',
+    'sleep-diary',
+    'epworth',
+    'secure-messaging',
+  ],
+}
+
 export const CENTRE_FIELDS = {
   NAME: 'CENTRE_NAME',
   DESCRIPTION: 'CENTRE_DESCRIPTION',

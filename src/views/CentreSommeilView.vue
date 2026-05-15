@@ -7,12 +7,14 @@ import {
   ALMAKARE_FREE_SERVICES,
   ALMAKARE_INVOICES_SEED,
   ALMAKARE_SERVICES,
+  CABINET_AVAILABLE_SERVICE_IDS,
   CENTRE_DASHBOARD_ICON,
   CENTRE_FIELDS,
   INVOICE_STATUS,
   INVOICE_STATUS_LABELS,
 } from '@/data/centre-sommeil'
 import { LOG_ACTIONS } from '@/data/logs'
+import { useCabinetStore } from '@/stores/cabinet'
 import { useCentreStore } from '@/stores/centre'
 import { useLogsStore } from '@/stores/logs'
 import { useMessagesStore } from '@/stores/messages'
@@ -32,10 +34,61 @@ import {
   mdiPencilOutline,
   mdiReceiptTextOutline,
   mdiShieldCheckOutline,
+  mdiStethoscope,
 } from '@mdi/js'
 import { computed, ref, watch } from 'vue'
 
-const centreStore = useCentreStore()
+const props = defineProps({
+  variant: {
+    type: String,
+    default: 'centre',
+    validator: (v) => ['centre', 'cabinet'].includes(v),
+  },
+})
+
+const isCabinet = props.variant === 'cabinet'
+
+const variantConfig = isCabinet
+  ? {
+      defaultTitle: 'Cabinet médical',
+      subtitle: 'Espace de gestion du cabinet',
+      editTitle: 'Modifier le cabinet',
+      editAriaLabel: 'Modifier les détails du cabinet',
+      successMessage: 'Cabinet mis à jour',
+      logCollection: 'cabinetLogs',
+      logsTitle: 'Historique du cabinet',
+      avatarIcon: mdiStethoscope,
+      services: ALMAKARE_SERVICES.filter((s) => CABINET_AVAILABLE_SERVICE_IDS.includes(s.id)),
+      pictureFor: 'cabinet-logo',
+      pictureDocPath: 'cabinets/main',
+      pictureStoragePath: 'cabinets/main',
+      logoLabel: 'Logo du cabinet',
+      nameLabel: 'Nom du cabinet',
+      servicesHint: 'Activez ou désactivez les modules utilisés par votre cabinet.',
+      allActivatedHint: 'Tous les services Almakare sont activés pour votre cabinet.',
+      partnersHint: 'Offert par Almakare SAS à tous les cabinets partenaires.',
+    }
+  : {
+      defaultTitle: 'Centre du sommeil',
+      subtitle: 'Espace de gestion du centre',
+      editTitle: 'Modifier le centre',
+      editAriaLabel: 'Modifier les détails du centre',
+      successMessage: 'Centre mis à jour',
+      logCollection: 'centreLogs',
+      logsTitle: 'Historique du centre',
+      avatarIcon: mdiOfficeBuildingOutline,
+      services: ALMAKARE_SERVICES,
+      pictureFor: 'centre-logo',
+      pictureDocPath: 'centres/main',
+      pictureStoragePath: 'centres/main',
+      logoLabel: 'Logo du centre',
+      nameLabel: 'Nom du centre',
+      servicesHint: 'Activez ou désactivez les modules utilisés par votre centre.',
+      allActivatedHint: 'Tous les services Almakare sont activés pour votre centre.',
+      partnersHint: 'Offert par Almakare SAS à tous les centres partenaires.',
+    }
+
+const centreStore = isCabinet ? useCabinetStore() : useCentreStore()
 const messagesStore = useMessagesStore()
 const selfStore = useSelfStore()
 const logsStore = useLogsStore()
@@ -90,7 +143,7 @@ const draftDirty = computed(() => {
 })
 
 function logCentre(payload) {
-  logsStore.add('centreLogs', {
+  logsStore.add(variantConfig.logCollection, {
     adminId: selfStore.item?.id,
     adminFullName: selfStore.item?.fullName,
     ...payload,
@@ -126,7 +179,7 @@ async function saveDetails() {
     if (changes.length) {
       logCentre({ type: 'info', action: LOG_ACTIONS.CENTRE_UPDATED, changes })
     }
-    messagesStore.add({ type: 'success', text: 'Centre mis à jour' })
+    messagesStore.add({ type: 'success', text: variantConfig.successMessage })
     editing.value = false
   } catch {
     messagesStore.add({ type: 'error', text: 'Erreur lors de la mise à jour' })
@@ -138,10 +191,10 @@ async function saveDetails() {
 const selectedSet = computed(() => new Set(centre.value.selectedServiceIds || []))
 
 const selectedServices = computed(() =>
-  ALMAKARE_SERVICES.filter((s) => selectedSet.value.has(s.id)),
+  variantConfig.services.filter((s) => selectedSet.value.has(s.id)),
 )
 const availableServices = computed(() =>
-  ALMAKARE_SERVICES.filter((s) => !selectedSet.value.has(s.id)),
+  variantConfig.services.filter((s) => !selectedSet.value.has(s.id)),
 )
 
 const monthlyTotal = computed(() =>
@@ -242,14 +295,14 @@ function downloadInvoice(invoice) {
         <!-- =================== HEADER =================== -->
         <v-row class="mb-6" align="center" :class="{ 'mx-6': $vuetify.display.mobile }">
           <v-col align-self="center">
-            <div class="text-headline-medium font-weight-bold">{{ centre.name || 'Centre du sommeil' }}</div>
+            <div class="text-headline-medium font-weight-bold">{{ centre.name || variantConfig.defaultTitle }}</div>
             <div class="text-body-medium text-medium-emphasis mt-1">
               <v-icon :icon="CENTRE_DASHBOARD_ICON" size="18" class="mr-1" />
-              Espace de gestion du centre
+              {{ variantConfig.subtitle }}
             </div>
           </v-col>
           <v-col cols="auto" class="d-flex align-center ga-2">
-            <DialogLogs collectionName="centreLogs" title="Historique du centre" />
+            <DialogLogs :collectionName="variantConfig.logCollection" :title="variantConfig.logsTitle" />
           </v-col>
         </v-row>
 
@@ -261,13 +314,13 @@ function downloadInvoice(invoice) {
           <div v-if="!editing">
             <div class="d-flex justify-end">
               <v-btn :icon="mdiPencilOutline" variant="text" size="small" color="primary" @click="startEdit"
-                aria-label="Modifier les détails du centre" />
+                :aria-label="variantConfig.editAriaLabel" />
             </div>
 
             <div class="d-flex flex-column align-center text-center">
               <v-avatar color="primary" variant="tonal" size="96" class="mb-3" rounded="15">
                 <v-img v-if="centre.logoUrl" :src="centre.logoUrl" />
-                <v-icon v-else :icon="mdiOfficeBuildingOutline" size="48" />
+                <v-icon v-else :icon="variantConfig.avatarIcon" size="48" />
               </v-avatar>
               <div class="text-headline-small font-weight-bold">{{ centre.name }}</div>
               <div class="text-body-medium text-medium-emphasis mt-3 centre-description">
@@ -290,20 +343,21 @@ function downloadInvoice(invoice) {
           <!-- EDIT MODE -->
           <v-form v-else ref="formRef">
             <div class="d-flex align-center mb-4">
-              <div class="text-headline-small font-weight-bold flex-grow-1">Modifier le centre</div>
+              <div class="text-headline-small font-weight-bold flex-grow-1">{{ variantConfig.editTitle }}</div>
               <v-btn :icon="mdiClose" variant="text" size="small" :disabled="saving" @click="cancelEdit"
                 aria-label="Fermer l'édition" />
             </div>
 
             <v-row>
               <v-col cols="12" class="d-flex flex-column align-center">
-                <Picture docPath="centres/main" storagePath="centres/main" v-model:source="draft.logoUrl"
-                  pictureName="logo" :size="100" for="centre-logo" :cover="false" />
-                <div class="text-body-small text-medium-emphasis mt-2">Logo du centre</div>
+                <Picture :docPath="variantConfig.pictureDocPath" :storagePath="variantConfig.pictureStoragePath"
+                  v-model:source="draft.logoUrl" pictureName="logo" :size="100" :for="variantConfig.pictureFor"
+                  :cover="false" />
+                <div class="text-body-small text-medium-emphasis mt-2">{{ variantConfig.logoLabel }}</div>
               </v-col>
 
               <v-col cols="12">
-                <v-text-field v-model.trim="draft.name" label="Nom du centre" variant="outlined" rounded="lg"
+                <v-text-field v-model.trim="draft.name" :label="variantConfig.nameLabel" variant="outlined" rounded="lg"
                   density="comfortable" :rules="[required]" />
               </v-col>
 
@@ -387,13 +441,13 @@ function downloadInvoice(invoice) {
                 <div>
                   <div class="text-headline-small font-weight-bold">Services Almakare</div>
                   <div class="text-body-small text-medium-emphasis mt-1">
-                    Activez ou désactivez les modules utilisés par votre centre.
+                    {{ variantConfig.servicesHint }}
                   </div>
                 </div>
                 <v-spacer />
                 <v-chip size="small" variant="tonal" color="primary" :prepend-icon="mdiCheckCircleOutline"
                   class="font-weight-bold">
-                  {{ selectedServices.length }} / {{ ALMAKARE_SERVICES.length }}
+                  {{ selectedServices.length }} / {{ variantConfig.services.length }}
                 </v-chip>
               </div>
 
@@ -433,7 +487,7 @@ function downloadInvoice(invoice) {
               </div>
               <div v-if="availableServices.length === 0"
                 class="text-body-small text-medium-emphasis pa-4 text-center service-empty">
-                Tous les services Almakare sont activés pour votre centre.
+                {{ variantConfig.allActivatedHint }}
               </div>
               <div class="service-grid">
                 <div v-for="s in availableServices" :key="s.id" class="service-card service-card-inactive"
@@ -464,7 +518,7 @@ function downloadInvoice(invoice) {
                 <div>
                   <div class="text-headline-small font-weight-bold">Inclus gratuitement</div>
                   <div class="text-body-small text-medium-emphasis mt-1">
-                    Offert par Almakare SAS à tous les centres partenaires.
+                    {{ variantConfig.partnersHint }}
                   </div>
                 </div>
                 <v-spacer />
