@@ -32,11 +32,13 @@ import {
   mdiTrashCanOutline,
 } from '@mdi/js'
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 const teamStore = useTeamStore()
 const messagesStore = useMessagesStore()
 const selfStore = useSelfStore()
 const logsStore = useLogsStore()
+const router = useRouter()
 
 function logTeamAction(payload) {
   logsStore.add('teamLogs', {
@@ -62,6 +64,29 @@ function getRoles(member) {
   if (member.role) return [member.role]
   return []
 }
+
+const selfAsMember = computed(() => {
+  const s = selfStore.item || {}
+  const selfRoles = Array.isArray(s.roles) && s.roles.length > 0
+    ? s.roles
+    : (s.role ? [s.role] : ['doctor'])
+  return {
+    id: s.id || 'self',
+    firstName: s.firstName || '',
+    lastName: s.lastName || '',
+    fullName: s.fullName || `${s.firstName || ''} ${s.lastName || ''}`.trim(),
+    email: s.email || '',
+    avatarUrl: s.avatarUrl,
+    roles: selfRoles,
+    role: selfRoles[0],
+    permissions: Array.isArray(s.permissions) ? s.permissions : combinedPresetFor(selfRoles),
+    invitationStatus: 'accepted',
+    invitedAt: s.invitedAt || null,
+    isSelf: true,
+  }
+})
+
+const allMembers = computed(() => [selfAsMember.value, ...teamStore.items])
 
 function combinedPresetFor(roleList) {
   const set = new Set()
@@ -284,6 +309,11 @@ function openMember(member) {
   memberDialog.value = true
 }
 
+function goToOwnProfile() {
+  memberDialog.value = false
+  router.push({ name: 'ProfileProfessional' })
+}
+
 function startEdit() {
   if (!selectedMember.value) return
   editFirstName.value = selectedMember.value.firstName
@@ -431,7 +461,7 @@ function formattedInvitedAt(iso) {
                 Mon équipe
               </div>
               <div class="text-body-medium text-medium-emphasis">
-                {{ teamStore.items.length }} membre{{ teamStore.items.length > 1 ? 's' : '' }}
+                {{ allMembers.length }} membre{{ allMembers.length > 1 ? 's' : '' }}
               </div>
             </v-col>
           </v-row>
@@ -439,7 +469,7 @@ function formattedInvitedAt(iso) {
           <v-divider class="my-4" />
 
           <v-list lines="two" class="pa-0">
-            <template v-for="(member, idx) in teamStore.items" :key="member.id">
+            <template v-for="(member, idx) in allMembers" :key="member.id">
               <v-list-item class="px-2 py-3 rounded-lg member-item" @click="openMember(member)">
                 <template #prepend>
                   <v-avatar color="primary" variant="tonal" size="48" class="mr-3">
@@ -450,6 +480,9 @@ function formattedInvitedAt(iso) {
 
                 <v-list-item-title class="font-weight-bold">
                   {{ member.firstName }} {{ member.lastName }}
+                  <v-chip v-if="member.isSelf" size="x-small" variant="flat" color="primary" class="ml-2">
+                    Vous
+                  </v-chip>
                 </v-list-item-title>
 
                 <v-list-item-subtitle class="text-body-small text-medium-emphasis mt-1">
@@ -470,16 +503,16 @@ function formattedInvitedAt(iso) {
                     {{ (member.permissions || []).length }} permission{{ (member.permissions || []).length > 1 ? 's' :
                       '' }}
                   </v-chip>
-                  <v-chip v-if="member.invitationStatus === 'pending'" size="small" variant="flat" color="white"
+                  <v-chip v-if="!member.isSelf && member.invitationStatus === 'pending'" size="small" variant="flat" color="white"
                     class="border-light text-warning" :prepend-icon="mdiClockOutline">
                     Compte en attente
                   </v-chip>
                 </div>
               </v-list-item>
-              <v-divider v-if="idx < teamStore.items.length - 1" />
+              <v-divider v-if="idx < allMembers.length - 1" />
             </template>
 
-            <v-list-item v-if="teamStore.items.length === 0" class="py-8 text-center flex-column">
+            <v-list-item v-if="allMembers.length === 0" class="py-8 text-center flex-column">
               <v-icon :icon="mdiAccountPlusOutline" size="48" color="medium-emphasis" class="mb-3" />
               <div class="text-body-medium text-medium-emphasis mb-4">
                 Aucun membre dans votre équipe pour le moment.
@@ -709,6 +742,9 @@ function formattedInvitedAt(iso) {
             <div class="text-headline-small font-weight-bold">
               {{ editMode ? `${editFirstName || '…'} ${editLastName || ''}`.trim() : `${selectedMember.firstName}
               ${selectedMember.lastName}` }}
+              <v-chip v-if="selectedMember.isSelf && !editMode" size="small" variant="flat" color="primary" class="ml-2">
+                Vous
+              </v-chip>
             </div>
             <div class="d-flex flex-wrap justify-center ga-2 mt-3">
               <v-chip v-for="r in (editMode ? editRoles : getRoles(selectedMember))" :key="r" size="large"
@@ -806,7 +842,11 @@ function formattedInvitedAt(iso) {
             <v-btn variant="text" rounded="lg" class="text-none" @click="memberDialog = false">
               Fermer
             </v-btn>
-            <v-btn color="primary" rounded="lg" flat :prepend-icon="mdiPencilOutline" class="text-none"
+            <v-btn v-if="selectedMember.isSelf" color="primary" rounded="lg" flat :prepend-icon="mdiPencilOutline"
+              class="text-none" @click="goToOwnProfile">
+              Mon profil
+            </v-btn>
+            <v-btn v-else color="primary" rounded="lg" flat :prepend-icon="mdiPencilOutline" class="text-none"
               @click="startEdit">
               Modifier
             </v-btn>

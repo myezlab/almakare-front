@@ -61,17 +61,30 @@ const isPatient = computed(() => route.query.role === "patient")
 function resolveSignUpRole() {
   const queryRole = route.query.role
   if (queryRole === "professional") return "coordinator"
+  if (queryRole === "centre") return "coordinator"
   return queryRole || "patient"
 }
+
+function resolveSignUpEstablishment() {
+  const queryRole = route.query.role
+  if (queryRole === "professional") return "cabinet"
+  if (queryRole === "centre") return "centre"
+  return null
+}
+
 const parsedAgreement = computed(() => marked(personalDataAuthorizationContent["fr-FR"] || ""))
 
 const DASHBOARD_BY_ROLE = {
   patient: "DashboardPatient",
-  doctor: "DashboardDoctor",
-  centre: "CentreSommeil",
+  doctor: "Patients",
 }
 
-function dashboardRouteFor(role) {
+function landingRouteFor(role, establishment) {
+  if (role === "coordinator") {
+    if (establishment === "centre") return "CentreSommeil"
+    if (establishment === "cabinet") return "CabinetMedical"
+    return "ProfileProfessional"
+  }
   return DASHBOARD_BY_ROLE[role] || "DashboardPatient"
 }
 
@@ -84,9 +97,9 @@ const signUpPasswordsMatch = computed(() => {
   return (v) => v === signUpPassword.value || 'Les mots de passe ne correspondent pas'
 })
 
-function redirectToApp(role) {
+function redirectToApp(role, establishment) {
   status.value = "success"
-  setTimeout(() => router.push({ name: dashboardRouteFor(role) }), 1000)
+  setTimeout(() => router.push({ name: landingRouteFor(role, establishment) }), 1000)
 }
 
 async function handleSignIn() {
@@ -95,10 +108,13 @@ async function handleSignIn() {
   try {
     selfStore.item.id = "123456"
     selfStore.item.email = signInEmail.value
-    const role = route.query.role || selfStore.item.role || "patient"
+    const role = route.query.role ? resolveSignUpRole() : (selfStore.item.role || "patient")
+    const establishment = route.query.role ? resolveSignUpEstablishment() : (selfStore.item.establishment ?? null)
     selfStore.item.role = role
+    selfStore.item.roles = [role]
+    selfStore.item.establishment = establishment
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
-    redirectToApp(role)
+    redirectToApp(role, establishment)
   } catch (error) {
     console.error("Sign-in error:", error)
     messagesStore.add({ type: "error", text: 'Email ou mot de passe incorrect' })
@@ -118,13 +134,16 @@ async function handleSignUp() {
     selfStore.item.id = "123456"
     selfStore.item.email = signUpEmail.value
     const role = resolveSignUpRole()
+    const establishment = resolveSignUpEstablishment()
     selfStore.item.role = role
+    selfStore.item.roles = [role]
+    selfStore.item.establishment = establishment
     if (isPatient.value) {
       selfStore.item.agreementPersonal = true
       selfStore.item.agreementPersonalDate = new Date().toISOString()
     }
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
-    redirectToApp(role)
+    redirectToApp(role, establishment)
   } catch (error) {
     console.error("Sign-up error:", error)
     if (error.code === "auth/email-already-in-use") {
@@ -146,14 +165,21 @@ async function handleGoogleSignIn() {
   try {
     selfStore.item.id = "123456"
     const isSignUp = status.value === "sign-up"
-    const role = isSignUp ? resolveSignUpRole() : (route.query.role || selfStore.item.role || "patient")
+    const role = isSignUp
+      ? resolveSignUpRole()
+      : (route.query.role ? resolveSignUpRole() : (selfStore.item.role || "patient"))
+    const establishment = (isSignUp || route.query.role)
+      ? resolveSignUpEstablishment()
+      : (selfStore.item.establishment ?? null)
     selfStore.item.role = role
+    selfStore.item.roles = [role]
+    selfStore.item.establishment = establishment
     if (status.value === "sign-up" && isPatient.value) {
       selfStore.item.agreementPersonal = true
       selfStore.item.agreementPersonalDate = new Date().toISOString()
     }
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
-    redirectToApp(role)
+    redirectToApp(role, establishment)
   } catch (error) {
     console.error("Google sign-in error:", error)
     if (error.code !== "auth/popup-closed-by-user") {

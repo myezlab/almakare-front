@@ -1,9 +1,13 @@
 <script setup>
-import patientsData from '@/data/patients.json'
+import { getCompletionPercent } from '@/composables/useProfileCompletion'
+import { usePatientsStore } from '@/stores/patients'
 import { useSelfStore } from '@/stores/self'
 import {
   mdiAccountSearchOutline,
+  mdiAlertCircleOutline,
+  mdiCheckCircle,
   mdiChevronRight,
+  mdiClockOutline,
   mdiMagnify,
   mdiStethoscope,
 } from '@mdi/js'
@@ -16,35 +20,67 @@ dayjs.locale('fr')
 
 const router = useRouter()
 const selfStore = useSelfStore()
+const patientsStore = usePatientsStore()
 
 const HOSPITALIZATION_TOTAL_STEPS = 8
 const search = ref('')
 
+const enrichedPatients = computed(() =>
+  patientsStore.items.map((p) => ({
+    ...p,
+    profileCompletion: getCompletionPercent(p),
+  })),
+)
+
 const filteredPatients = computed(() => {
   const q = search.value.trim().toLowerCase()
-  if (!q) return patientsData
-  return patientsData.filter((p) =>
+  if (!q) return enrichedPatients.value
+  return enrichedPatients.value.filter((p) =>
     `${p.firstName} ${p.lastName} ${p.email}`.toLowerCase().includes(q),
   )
 })
 
-function age(birthDate) {
-  return dayjs().diff(dayjs(birthDate), 'year')
-}
-
-function progress(step) {
-  return Math.round((step / HOSPITALIZATION_TOTAL_STEPS) * 100)
-}
-
-function epworthColor(score) {
-  if (score == null) return 'grey'
-  if (score <= 10) return 'success'
-  if (score <= 15) return 'warning'
-  return 'error'
+function age(dob) {
+  return dayjs().diff(dayjs(dob), 'year')
 }
 
 function genderInitial(gender) {
   return gender === 'female' ? 'Mme' : 'M.'
+}
+
+function journeyStatus(patient) {
+  if (patient.hospitalizationStep === 0) {
+    if (patient.profileCompletion >= 100) {
+      return {
+        label: 'Parcours non lancé',
+        color: 'primary',
+        icon: mdiClockOutline,
+      }
+    }
+    return {
+      label: 'Profil incomplet',
+      color: 'warning',
+      icon: mdiAlertCircleOutline,
+    }
+  }
+  if (patient.hospitalizationStep >= HOSPITALIZATION_TOTAL_STEPS) {
+    return {
+      label: 'Parcours terminé',
+      color: 'success',
+      icon: mdiCheckCircle,
+    }
+  }
+  return {
+    label: `Étape ${patient.hospitalizationStep} / ${HOSPITALIZATION_TOTAL_STEPS}`,
+    color: 'primary',
+    icon: null,
+  }
+}
+
+function completionColor(percent) {
+  if (percent >= 100) return 'success'
+  if (percent >= 50) return 'primary'
+  return 'warning'
 }
 
 function openPatient(patient) {
@@ -102,26 +138,30 @@ function openPatient(patient) {
                 </v-list-item-title>
 
                 <v-list-item-subtitle class="text-body-small text-medium-emphasis mt-1">
-                  {{ age(patient.birthDate) }} ans · Dernière visite
+                  {{ age(patient.dob) }} ans · Dernière visite
                   {{ dayjs(patient.lastVisit).format('DD MMM YYYY') }}
                 </v-list-item-subtitle>
 
                 <div class="d-flex flex-wrap ga-2 mt-2">
-                  <v-chip size="x-small" variant="tonal" color="primary">
-                    Étape {{ patient.hospitalizationStep }} / {{ HOSPITALIZATION_TOTAL_STEPS }}
-                  </v-chip>
-                  <v-chip v-if="patient.epworthScore != null" size="x-small" variant="tonal"
-                    :color="epworthColor(patient.epworthScore)">
-                    Epworth {{ patient.epworthScore }}
+                  <v-chip size="x-small" variant="tonal" :color="journeyStatus(patient).color"
+                    :prepend-icon="journeyStatus(patient).icon || undefined">
+                    {{ journeyStatus(patient).label }}
                   </v-chip>
                 </div>
 
                 <template #append>
                   <div class="d-flex align-center ga-3">
-                    <v-progress-circular :model-value="progress(patient.hospitalizationStep)" color="primary" size="42"
-                      width="4">
+                    <div class="text-right d-none d-sm-block">
+                      <div class="text-body-small text-medium-emphasis">Profil</div>
+                      <div class="text-body-small font-weight-bold"
+                        :class="`text-${completionColor(patient.profileCompletion)}`">
+                        {{ patient.profileCompletion }}%
+                      </div>
+                    </div>
+                    <v-progress-circular :model-value="patient.profileCompletion"
+                      :color="completionColor(patient.profileCompletion)" size="42" width="4">
                       <span class="text-body-small font-weight-bold">
-                        {{ patient.hospitalizationStep }}
+                        {{ patient.profileCompletion }}
                       </span>
                     </v-progress-circular>
                     <v-icon :icon="mdiChevronRight" color="medium-emphasis" />
