@@ -186,8 +186,13 @@ function startJourney() {
                   {{ genderInitial }} {{ patient.firstName }} {{ patient.lastName }}
                 </div>
                 <div class="text-body-small text-medium-emphasis">
-                  {{ patientAge }} ans · Né(e) le
-                  {{ dayjs(patient.dob).format('DD MMM YYYY') }}
+                  <template v-if="patient.dob">
+                    {{ patientAge }} ans · Né(e) le
+                    {{ dayjs(patient.dob).format('DD MMM YYYY') }}
+                  </template>
+                  <template v-else>
+                    Date de naissance non renseignée
+                  </template>
                 </div>
               </div>
             </div>
@@ -240,16 +245,13 @@ function startJourney() {
                     à 100 %. Il manque encore des informations dans le dossier.
                   </template>
                 </div>
-                <v-btn color="primary" rounded="lg" size="large" :disabled="!canStartJourney"
-                  :prepend-icon="canStartJourney ? undefined : mdiLockOutline" class="text-none"
+                <v-btn color="primary" rounded="lg" size="large" :disabled="!canStartJourney" class="text-none"
                   @click="startJourney" flat>
                   {{ canStartJourney ? "Programmer un acte" : "Profil incomplet" }}
                 </v-btn>
               </v-col>
               <v-col cols="12" sm="4" class="text-center">
-                <v-img v-if="canStartJourney" :src="sleepingCenterIllustration" :width="160" :height="140"
-                  contain class="mx-auto" />
-                <v-icon v-else :icon="mdiAlertCircleOutline" color="warning" size="96" />
+                <v-img :src="sleepingCenterIllustration" :width="160" :height="140" contain class="mx-auto" />
               </v-col>
             </v-row>
           </v-card>

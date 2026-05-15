@@ -75,7 +75,7 @@ watch(dialog, (val) => {
 </script>
 
 <template>
-  <v-btn icon flat size="small" @click="dialog = true">
+  <v-btn icon flat size="small" @click="dialog = true" color="transparent">
     <v-icon size="18" color="tertiary" :icon="mdiHistory" />
     <v-tooltip activator="parent" location="top">Historique</v-tooltip>
   </v-btn>
@@ -94,8 +94,7 @@ watch(dialog, (val) => {
           <template v-for="log in logs" :key="log.id">
             <v-list-item>
               <v-list-item-title class="text-body-medium mb-1 d-flex align-center">
-                <v-icon :icon="getTypeConfig(log.type).icon" size="16" start
-                  :color="getTypeConfig(log.type).color" />
+                <v-icon :icon="getTypeConfig(log.type).icon" size="16" start :color="getTypeConfig(log.type).color" />
                 {{ formatLogTitle(log) }}
               </v-list-item-title>
               <v-list-item-subtitle class="text-body-small text-medium-emphasis">
@@ -113,7 +112,8 @@ watch(dialog, (val) => {
                 <v-icon :icon="mdiCircleSmall" size="16" />
                 <span class="font-weight-medium">{{ formatLogField(change.field) }}</span>
                 <template v-if="change.from && change.to">
-                  <span class="text-error text-decoration-line-through">{{ formatLogValue(change.field, change.from) }}</span>
+                  <span class="text-error text-decoration-line-through">{{ formatLogValue(change.field, change.from)
+                    }}</span>
                   <v-icon :icon="mdiArrowRight" size="12" />
                   <span class="text-success">{{ formatLogValue(change.field, change.to) }}</span>
                 </template>
@@ -121,7 +121,8 @@ watch(dialog, (val) => {
                   <span class="text-success">{{ formatLogValue(change.field, change.to) }}</span>
                 </template>
                 <template v-else-if="change.from">
-                  <span class="text-error text-decoration-line-through">{{ formatLogValue(change.field, change.from) }}</span>
+                  <span class="text-error text-decoration-line-through">{{ formatLogValue(change.field, change.from)
+                    }}</span>
                 </template>
               </div>
             </div>

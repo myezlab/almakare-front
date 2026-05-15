@@ -36,5 +36,34 @@ export const usePatientsStore = defineStore('patients', () => {
     items.value[idx] = { ...items.value[idx], hospitalizationStep: 1 }
   }
 
-  return { items, startHospitalization }
+  function add(patient) {
+    const id = `p-${Date.now().toString(36)}`
+    const newPatient = {
+      id,
+      firstName: '',
+      lastName: '',
+      gender: '',
+      dob: '',
+      email: '',
+      phoneNumber: '',
+      socialSecurityNumber: '',
+      dietaryRestrictions: '',
+      medicalHistory: '',
+      currentTreatments: '',
+      weight: null,
+      height: null,
+      iah: null,
+      agreementPersonal: false,
+      epworthScore: null,
+      lastVisit: new Date().toISOString().slice(0, 10),
+      hospitalizationStep: 0,
+      invitationStatus: 'pending',
+      invitedAt: new Date().toISOString(),
+      ...patient,
+    }
+    items.value = [newPatient, ...items.value]
+    return newPatient
+  }
+
+  return { items, startHospitalization, add }
 })

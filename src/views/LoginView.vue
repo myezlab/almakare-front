@@ -79,8 +79,9 @@ const DASHBOARD_BY_ROLE = {
   doctor: "Patients",
 }
 
-function landingRouteFor(role, establishment) {
+function landingRouteFor(role, establishment, { isSignUp = false } = {}) {
   if (role === "coordinator") {
+    if (isSignUp) return "Team"
     if (establishment === "centre") return "CentreSommeil"
     if (establishment === "cabinet") return "CabinetMedical"
     return "ProfileProfessional"
@@ -97,9 +98,9 @@ const signUpPasswordsMatch = computed(() => {
   return (v) => v === signUpPassword.value || 'Les mots de passe ne correspondent pas'
 })
 
-function redirectToApp(role, establishment) {
+function redirectToApp(role, establishment, options = {}) {
   status.value = "success"
-  setTimeout(() => router.push({ name: landingRouteFor(role, establishment) }), 1000)
+  setTimeout(() => router.push({ name: landingRouteFor(role, establishment, options) }), 1000)
 }
 
 async function handleSignIn() {
@@ -143,7 +144,7 @@ async function handleSignUp() {
       selfStore.item.agreementPersonalDate = new Date().toISOString()
     }
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
-    redirectToApp(role, establishment)
+    redirectToApp(role, establishment, { isSignUp: true })
   } catch (error) {
     console.error("Sign-up error:", error)
     if (error.code === "auth/email-already-in-use") {
@@ -179,7 +180,7 @@ async function handleGoogleSignIn() {
       selfStore.item.agreementPersonalDate = new Date().toISOString()
     }
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
-    redirectToApp(role, establishment)
+    redirectToApp(role, establishment, { isSignUp })
   } catch (error) {
     console.error("Google sign-in error:", error)
     if (error.code !== "auth/popup-closed-by-user") {
