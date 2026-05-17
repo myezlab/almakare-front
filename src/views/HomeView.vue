@@ -1,7 +1,6 @@
 <script setup>
 import professionalIllustration from '@/assets/illustrations/doctors.svg'
 import patientIllustration from '@/assets/illustrations/patient.svg'
-import centreIllustration from '@/assets/illustrations/sleeping-center.svg'
 import logoText from '@/assets/img/logo-text.svg'
 import logo from '@/assets/img/logo.svg'
 import HomeFooter from '@/components/HomeFooter.vue'
@@ -9,7 +8,6 @@ import { useSelfStore } from '@/stores/self'
 import {
   mdiAccountHeartOutline,
   mdiAccountTieOutline,
-  mdiOfficeBuildingOutline,
 } from '@mdi/js'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
@@ -34,14 +32,6 @@ const roleCards = [
     illustration: professionalIllustration,
     icon: mdiAccountTieOutline,
     color: '#123B6D',
-  },
-  {
-    key: 'centre',
-    title: 'Je suis un centre du sommeil',
-    description: 'Gérez votre centre, vos services et la facturation de votre établissement partenaire',
-    illustration: centreIllustration,
-    icon: mdiOfficeBuildingOutline,
-    color: '#2E7D8F',
   },
 ]
 

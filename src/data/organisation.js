@@ -10,6 +10,7 @@ import {
   mdiMessageTextOutline,
   mdiMonitorDashboard,
   mdiPlaylistCheck,
+  mdiToolboxOutline,
   mdiVideoOutline,
 } from '@mdi/js'
 
@@ -94,7 +95,7 @@ export const ALMAKARE_SERVICES = [
     name: 'Statistiques & rapports',
     description: 'Tableaux de bord d\'activité et indicateurs cliniques.',
     details:
-      'Suivez l\'activité de votre centre : nombre de patients, délais moyens de prise en charge, taux d\'observance, indicateurs cliniques agrégés. Les rapports mensuels sont générés automatiquement.',
+      'Suivez l\'activité de votre organisation : nombre de patients, délais moyens de prise en charge, taux d\'observance, indicateurs cliniques agrégés. Les rapports mensuels sont générés automatiquement.',
     features: [
       'Tableaux de bord temps réel',
       'Rapport d\'activité mensuel automatique',
@@ -171,7 +172,7 @@ export const ALMAKARE_FREE_SERVICES = [
     name: 'Hébergement HDS & sauvegardes',
     description: 'Hébergement de données de santé certifié et sauvegardes quotidiennes inclus.',
     details:
-      'Toutes les données de votre centre sont hébergées en France sur une infrastructure certifiée Hébergeur de Données de Santé (HDS). Sauvegardes chiffrées quotidiennes, conservées 30 jours, sans surcoût.',
+      'Toutes les données de votre organisation sont hébergées en France sur une infrastructure certifiée Hébergeur de Données de Santé (HDS). Sauvegardes chiffrées quotidiennes, conservées 30 jours, sans surcoût.',
     features: [
       'Hébergement HDS certifié en France',
       'Sauvegardes quotidiennes chiffrées',
@@ -251,12 +252,12 @@ export const ALMAKARE_INVOICES_SEED = [
   },
 ]
 
-export const CENTRE_SOMMEIL_SEED = {
-  id: 'centre-sommeil-001',
+export const ORGANISATION_SEED = {
+  id: 'organisation-001',
   logoUrl: '',
-  name: 'Centre du sommeil',
+  name: 'Organisation',
   description:
-    'Notre centre du sommeil accompagne les patients dans le diagnostic et la prise en charge des troubles du sommeil : apnées, insomnies, hypersomnies, parasomnies.',
+    'Notre organisation accompagne les patients dans le diagnostic et la prise en charge des troubles du sommeil : apnées, insomnies, hypersomnies, parasomnies.',
   createdAt: '2024-09-01',
   selectedServiceIds: [
     'patient-journey',
@@ -266,47 +267,79 @@ export const CENTRE_SOMMEIL_SEED = {
     'analytics',
     'secure-messaging',
   ],
-}
-
-export const CABINET_AVAILABLE_SERVICE_IDS = [
-  'patient-journey',
-  'teleconsultation',
-  'sleep-diary',
-  'epworth',
-  'secure-messaging',
-  'billing',
-  'documents',
-]
-
-export const CABINET_MEDICAL_SEED = {
-  id: 'cabinet-medical-001',
-  logoUrl: '',
-  name: 'Cabinet médical',
-  description:
-    'Notre cabinet médical assure le suivi ambulatoire des patients et coordonne la prise en charge avec les spécialistes du sommeil.',
-  createdAt: '2024-09-01',
-  selectedServiceIds: [
-    'patient-journey',
-    'sleep-diary',
-    'epworth',
-    'secure-messaging',
+  establishments: [
+    {
+      id: 'etablissement-paris',
+      name: 'Centre du sommeil — Paris',
+      location: 'Paris, France',
+      logoUrl: '',
+      devices: [
+        {
+          id: 'device-nox-a1',
+          name: 'Polysomnographe Nox A1',
+          acquiredAt: '2023-05-12',
+          bookings: [
+            { id: 'b-nox-1', startDate: '2026-05-18', endDate: '2026-05-21', label: 'M. Durand' },
+            { id: 'b-nox-2', startDate: '2026-05-25', endDate: '2026-05-28', label: 'Mme Lefèvre' },
+            { id: 'b-nox-3', startDate: '2026-06-02', endDate: '2026-06-04', label: 'M. Bernard' },
+            { id: 'b-nox-4', startDate: '2026-06-10', endDate: '2026-06-12', label: 'Mme Chevalier' },
+          ],
+        },
+        {
+          id: 'device-polygraphe',
+          name: 'Polygraphe ventilatoire SOMNOtouch',
+          acquiredAt: '2024-01-20',
+          bookings: [
+            { id: 'b-poly-1', startDate: '2026-05-19', endDate: '2026-05-20', label: 'Mme Martin' },
+            { id: 'b-poly-2', startDate: '2026-06-08', endDate: '2026-06-10', label: 'Maintenance constructeur' },
+          ],
+        },
+        {
+          id: 'device-actimetre',
+          name: 'Actimètre Philips Respironics',
+          acquiredAt: '2024-10-05',
+          bookings: [
+            { id: 'b-act-1', startDate: '2026-05-22', endDate: '2026-05-29', label: 'M. Petit' },
+          ],
+        },
+        {
+          id: 'device-cpap',
+          name: 'CPAP ResMed AirSense 11',
+          acquiredAt: '2022-08-30',
+          bookings: [
+            { id: 'b-cpap-1', startDate: '2026-05-18', endDate: '2026-06-15', label: 'M. Roux — essai 30 j' },
+          ],
+        },
+      ],
+    },
   ],
 }
 
-export const CENTRE_FIELDS = {
-  NAME: 'CENTRE_NAME',
-  DESCRIPTION: 'CENTRE_DESCRIPTION',
-  CREATED_AT: 'CENTRE_CREATED_AT',
-  LOGO: 'CENTRE_LOGO',
-  SERVICES: 'CENTRE_SERVICES',
+export const ORGANISATION_FIELDS = {
+  NAME: 'ORGANISATION_NAME',
+  DESCRIPTION: 'ORGANISATION_DESCRIPTION',
+  CREATED_AT: 'ORGANISATION_CREATED_AT',
+  LOGO: 'ORGANISATION_LOGO',
+  SERVICES: 'ORGANISATION_SERVICES',
+  ESTABLISHMENT_NAME: 'ESTABLISHMENT_NAME',
+  ESTABLISHMENT_LOCATION: 'ESTABLISHMENT_LOCATION',
+  ESTABLISHMENT_LOGO: 'ESTABLISHMENT_LOGO',
+  DEVICE_NAME: 'DEVICE_NAME',
+  DEVICE_ACQUIRED_AT: 'DEVICE_ACQUIRED_AT',
 }
 
-export const CENTRE_FIELD_LABELS = {
-  [CENTRE_FIELDS.NAME]: 'Nom',
-  [CENTRE_FIELDS.DESCRIPTION]: 'Description',
-  [CENTRE_FIELDS.CREATED_AT]: 'Date de création',
-  [CENTRE_FIELDS.LOGO]: 'Logo',
-  [CENTRE_FIELDS.SERVICES]: 'Services',
+export const ORGANISATION_FIELD_LABELS = {
+  [ORGANISATION_FIELDS.NAME]: 'Nom',
+  [ORGANISATION_FIELDS.DESCRIPTION]: 'Description',
+  [ORGANISATION_FIELDS.CREATED_AT]: 'Date de création',
+  [ORGANISATION_FIELDS.LOGO]: 'Logo',
+  [ORGANISATION_FIELDS.SERVICES]: 'Services',
+  [ORGANISATION_FIELDS.ESTABLISHMENT_NAME]: 'Nom de l\'établissement',
+  [ORGANISATION_FIELDS.ESTABLISHMENT_LOCATION]: 'Localisation',
+  [ORGANISATION_FIELDS.ESTABLISHMENT_LOGO]: 'Logo de l\'établissement',
+  [ORGANISATION_FIELDS.DEVICE_NAME]: 'Nom du matériel',
+  [ORGANISATION_FIELDS.DEVICE_ACQUIRED_AT]: 'Date d\'acquisition',
 }
 
-export const CENTRE_DASHBOARD_ICON = mdiMonitorDashboard
+export const ORGANISATION_DASHBOARD_ICON = mdiMonitorDashboard
+export const DEVICE_ICON = mdiToolboxOutline

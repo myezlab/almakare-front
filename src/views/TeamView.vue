@@ -438,31 +438,20 @@ function formattedInvitedAt(iso) {
     <v-row justify="center" class="mt-8 mb-16 pb-10">
       <v-col :cols="$vuetify.display.mobile ? 12 : 10">
 
-        <v-row class="mb-6" align="center" :class="{ 'mx-6': $vuetify.display.mobile }">
-          <v-col align-self="center">
-            <div class="text-headline-medium font-weight-bold">Équipe</div>
-            <div class="text-body-medium text-medium-emphasis mt-1">
-              <v-icon :icon="mdiAccountGroupOutline" size="18" class="mr-1" />
-              Membres de votre équipe
-            </div>
-          </v-col>
-          <v-col cols="auto" class="d-flex align-center ga-2">
-            <DialogLogs collectionName="teamLogs" title="Historique de l'équipe" />
-            <v-btn color="primary" rounded="lg" flat :prepend-icon="mdiPlus" class="text-none" @click="openDialog">
-              {{ $vuetify.display.mobile ? 'Inviter' : 'Inviter un membre' }}
-            </v-btn>
-          </v-col>
-        </v-row>
-
         <v-card class="pa-6 card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
           <v-row align="center" class="mb-2">
             <v-col>
-              <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-                Mon équipe
+              <div class="text-headline-small font-weight-bold">Équipe</div>
+              <div class="text-body-small text-medium-emphasis mt-1">
+                <v-icon :icon="mdiAccountGroupOutline" size="16" class="mr-1" />
+                Membres de votre équipe · {{ allMembers.length }} membre{{ allMembers.length > 1 ? 's' : '' }}
               </div>
-              <div class="text-body-medium text-medium-emphasis">
-                {{ allMembers.length }} membre{{ allMembers.length > 1 ? 's' : '' }}
-              </div>
+            </v-col>
+            <v-col cols="auto" class="d-flex align-center ga-2">
+              <DialogLogs collectionName="teamLogs" title="Historique de l'équipe" />
+              <v-btn color="primary" rounded="lg" flat :prepend-icon="mdiPlus" class="text-none" @click="openDialog">
+                {{ $vuetify.display.mobile ? 'Inviter' : 'Inviter un membre' }}
+              </v-btn>
             </v-col>
           </v-row>
 

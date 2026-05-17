@@ -62,18 +62,28 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: ['coordinator'] },
     },
     {
-      path: '/centre-sommeil',
-      name: 'CentreSommeil',
-      component: () => import('./views/CentreSommeilView.vue'),
-      props: { variant: 'centre' },
-      meta: { requiresAuth: true, roles: ['coordinator'], establishment: 'centre' },
+      path: '/organisation',
+      name: 'Organisation',
+      component: () => import('./views/OrganisationView.vue'),
+      meta: { requiresAuth: true, roles: ['coordinator'], establishment: 'organisation' },
     },
     {
-      path: '/cabinet-medical',
-      name: 'CabinetMedical',
-      component: () => import('./views/CentreSommeilView.vue'),
-      props: { variant: 'cabinet' },
-      meta: { requiresAuth: true, roles: ['coordinator'], establishment: 'cabinet' },
+      path: '/etablissement/:id',
+      name: 'Establishment',
+      component: () => import('./views/EstablishmentView.vue'),
+      meta: { requiresAuth: true, roles: ['coordinator'], establishment: 'organisation' },
+    },
+    {
+      path: '/calendrier',
+      name: 'Calendar',
+      component: () => import('./views/CalendarView.vue'),
+      meta: { requiresAuth: true, roles: ['doctor'] },
+    },
+    {
+      path: '/prendre-rendez-vous',
+      name: 'BookAppointment',
+      component: () => import('./views/BookAppointmentView.vue'),
+      meta: { requiresAuth: true, roles: ['patient'] },
     },
     {
       path: '/profile',
@@ -157,8 +167,7 @@ function profileRouteFor(role) {
 
 function landingRouteFor(role, establishment) {
   if (role === 'coordinator') {
-    if (establishment === 'centre') return 'CentreSommeil'
-    if (establishment === 'cabinet') return 'CabinetMedical'
+    if (establishment === 'organisation') return 'Organisation'
     return profileRouteFor(role)
   }
   return DASHBOARD_BY_ROLE[role] || profileRouteFor(role)

@@ -1,15 +1,17 @@
+import { useOrganisationStore } from "@/stores/organisation"
 import { useSelfStore } from "@/stores/self"
 import {
-  mdiAccountGroupOutline,
   mdiAccountMultipleOutline,
+  mdiCalendarClockOutline,
+  mdiDomain,
   mdiOfficeBuildingOutline,
-  mdiStethoscope,
   mdiViewDashboardOutline
 } from "@mdi/js"
 import { computed } from "vue"
 
 export function useNavigationItems() {
   const selfStore = useSelfStore()
+  const organisationStore = useOrganisationStore()
 
   const profileRouteByRole = {
     patient: "Profile",
@@ -46,13 +48,24 @@ export function useNavigationItems() {
         push({ id: 'dashboard-patient', text: 'Accueil', icon: mdiViewDashboardOutline, to: { name: "DashboardPatient" } })
       } else if (role === 'doctor') {
         push({ id: 'patients', text: 'Patients', icon: mdiAccountMultipleOutline, to: { name: "Patients" } })
+        push({ id: 'calendar', text: 'Calendrier', icon: mdiCalendarClockOutline, to: { name: "Calendar" } })
       } else if (role === 'coordinator') {
-        if (establishment === 'centre') {
-          push({ id: 'centre', text: 'Centre du sommeil', icon: mdiOfficeBuildingOutline, to: { name: "CentreSommeil" } })
-        } else if (establishment === 'cabinet') {
-          push({ id: 'cabinet', text: 'Cabinet médical', icon: mdiStethoscope, to: { name: "CabinetMedical" } })
+        if (establishment === 'organisation') {
+          const establishments = organisationStore.item?.establishments || []
+          push({
+            id: 'organisation',
+            text: 'Organisation',
+            icon: mdiOfficeBuildingOutline,
+            to: { name: "Organisation" },
+            children: establishments.map((e) => ({
+              id: `establishment-${e.id}`,
+              text: e.name,
+              icon: mdiDomain,
+              logoUrl: e.logoUrl,
+              to: { name: "Establishment", params: { id: e.id } },
+            })),
+          })
         }
-        push({ id: 'team', text: 'Équipe', icon: mdiAccountGroupOutline, to: { name: "Team" } })
       }
     }
     return list

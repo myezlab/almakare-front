@@ -1,7 +1,7 @@
 <script setup>
 import { useProfileCompletion } from '@/composables/useProfileCompletion'
 import { useSelfStore } from '@/stores/self'
-import { mdiAccountOutline, mdiChartBar, mdiClipboardPulseOutline, mdiHospitalBuilding, mdiMoonWaningCrescent } from '@mdi/js'
+import { mdiAccountOutline, mdiCalendarPlusOutline, mdiChartBar, mdiClipboardPulseOutline, mdiHospitalBuilding, mdiMoonWaningCrescent } from '@mdi/js'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -51,6 +51,29 @@ const epworthScoreLabel = computed(() => {
             </v-row>
           </v-col>
         </v-row>
+
+        <!-- Book appointment card -->
+        <v-card class="mt-6 pa-6 card-shadow rounded-15 cursor-pointer book-appt-card"
+          @click="router.push({ name: 'BookAppointment' })">
+          <v-row align="center">
+            <v-col>
+              <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
+                Rendez-vous
+              </div>
+              <div class="text-body-medium text-medium-emphasis mb-4">
+                Prenez rendez-vous avec l'un de vos médecins
+              </div>
+              <v-btn :prepend-icon="mdiCalendarPlusOutline" color="primary" rounded="lg" flat
+                @click.stop="router.push({ name: 'BookAppointment' })" class="text-none">
+                Prendre rendez-vous
+              </v-btn>
+            </v-col>
+            <v-col cols="auto">
+              <v-img src="@/assets/illustrations/doctor.svg" width="100" height="90" contain
+                transition="fade-transition" />
+            </v-col>
+          </v-row>
+        </v-card>
 
         <!-- Hospitalization journey card -->
         <v-card class="mt-6 pa-6 card-shadow rounded-15 cursor-pointer"

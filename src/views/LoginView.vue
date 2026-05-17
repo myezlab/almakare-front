@@ -2,7 +2,6 @@
 import doctorIllustration from "@/assets/illustrations/doctor.svg"
 import professionalIllustration from "@/assets/illustrations/doctors.svg"
 import patientIllustration from "@/assets/illustrations/patient.svg"
-import centreIllustration from "@/assets/illustrations/sleeping-center.svg"
 import coordinatorIllustration from "@/assets/illustrations/team.svg"
 import technicianIllustration from "@/assets/illustrations/technician.svg"
 import { useRules } from "@/composables/useRules"
@@ -34,7 +33,6 @@ const roleIllustrations = {
   coordinator: coordinatorIllustration,
   doctor: doctorIllustration,
   technician: technicianIllustration,
-  centre: centreIllustration,
 }
 const roleIllustration = computed(() => roleIllustrations[route.query.role] || null)
 const pendingEmail = ref(false)
@@ -61,14 +59,12 @@ const isPatient = computed(() => route.query.role === "patient")
 function resolveSignUpRole() {
   const queryRole = route.query.role
   if (queryRole === "professional") return "coordinator"
-  if (queryRole === "centre") return "coordinator"
   return queryRole || "patient"
 }
 
 function resolveSignUpEstablishment() {
   const queryRole = route.query.role
-  if (queryRole === "professional") return "cabinet"
-  if (queryRole === "centre") return "centre"
+  if (queryRole === "professional") return "organisation"
   return null
 }
 
@@ -82,8 +78,7 @@ const DASHBOARD_BY_ROLE = {
 function landingRouteFor(role, establishment, { isSignUp = false } = {}) {
   if (role === "coordinator") {
     if (isSignUp) return "Team"
-    if (establishment === "centre") return "CentreSommeil"
-    if (establishment === "cabinet") return "CabinetMedical"
+    if (establishment === "organisation") return "Organisation"
     return "ProfileProfessional"
   }
   return DASHBOARD_BY_ROLE[role] || "DashboardPatient"

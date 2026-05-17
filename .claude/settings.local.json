@@ -3,7 +3,8 @@
     "allow": [
       "Bash(grep -E \"\\\\.\\(json|ts|js|vue\\)$\")",
       "Bash(npm run *)",
-      "Bash(npx --no-install vite build)"
+      "Bash(npx --no-install vite build)",
+      "Bash(git mv *)"
     ]
   }
 }

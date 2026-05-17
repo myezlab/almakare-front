@@ -22,6 +22,15 @@ const active = computed(() => items.value.length > 0)
 
 const activeRouteName = computed(() => route.name)
 
+function isChildActive(child) {
+  if (activeRouteName.value !== child.to.name) return false
+  if (!child.to.params) return true
+  for (const [key, val] of Object.entries(child.to.params)) {
+    if (String(route.params[key]) !== String(val)) return false
+  }
+  return true
+}
+
 const isProfileActive = computed(() =>
   activeRouteName.value === 'Profile' || activeRouteName.value === 'ProfileProfessional',
 )
@@ -84,26 +93,40 @@ watch(mini, (val) => {
     </v-row>
 
     <v-list nav :selected="[activeRouteName]">
-      <v-list-item v-for="item in items" :key="item.text" :value="item.to.name" color="primary" :to="item.to"
-        :title="!mini ? item.text : ''" class="rounded-15">
-        <template v-slot:prepend>
-          <v-badge dot location="top right" color="primary" offset-x="0" offset-y="4"
-            :model-value="item.id === 'messages' && hasUnreadMessages && mini">
-            <v-img :src="item.img" :width="mini ? 33 : 45" :height="mini ? 33 : 45" class="my-1 "
-              transition="fade-transition">
-              <template v-slot:placeholder>
-                <v-row class="fill-height ma-0" align="center" justify="center">
-                  <v-icon>{{ item.icon }}</v-icon>
-                </v-row>
-              </template>
-            </v-img>
-          </v-badge>
+      <template v-for="item in items" :key="item.id">
+        <v-list-item :value="item.to.name" color="primary" :to="item.to" :title="!mini ? item.text : ''"
+          class="rounded-15">
+          <template v-slot:prepend>
+            <v-badge dot location="top right" color="primary" offset-x="0" offset-y="4"
+              :model-value="item.id === 'messages' && hasUnreadMessages && mini">
+              <v-img :src="item.img" :width="mini ? 33 : 45" :height="mini ? 33 : 45" class="my-1 "
+                transition="fade-transition">
+                <template v-slot:placeholder>
+                  <v-row class="fill-height ma-0" align="center" justify="center">
+                    <v-icon>{{ item.icon }}</v-icon>
+                  </v-row>
+                </template>
+              </v-img>
+            </v-badge>
+          </template>
+          <template v-slot:append v-if="item.id === 'messages' && hasUnreadMessages && !mini">
+            <v-icon :icon="mdiCircle" size="12" class="mr-2" color="primary"></v-icon>
+          </template>
+          <v-tooltip activator="parent" location="start" :disabled="!mini">{{ item.text }}</v-tooltip>
+        </v-list-item>
+
+        <template v-if="!mini && item.children && item.children.length > 0">
+          <v-list-item v-for="child in item.children" :key="child.id" :to="child.to" color="primary"
+            :title="child.text" class="rounded-15 nav-child-item" :active="isChildActive(child)">
+            <template v-slot:prepend>
+              <v-avatar size="32" color="primary" variant="tonal" rounded="10" class="my-1">
+                <v-img v-if="child.logoUrl" :src="child.logoUrl" />
+                <v-icon v-else size="18">{{ child.icon }}</v-icon>
+              </v-avatar>
+            </template>
+          </v-list-item>
         </template>
-        <template v-slot:append v-if="item.id === 'messages' && hasUnreadMessages && !mini">
-          <v-icon :icon="mdiCircle" size="12" class="mr-2" color="primary"></v-icon>
-        </template>
-        <v-tooltip activator="parent" location="start" :disabled="!mini">{{ item.text }}</v-tooltip>
-      </v-list-item>
+      </template>
     </v-list>
 
     <v-list density="compact" nav :selected="[activeRouteName]" style="position: absolute; bottom: 70px; width: 100%">
@@ -219,5 +242,11 @@ watch(mini, (val) => {
 
 .nav-item.active .nav-label {
   font-weight: 600;
+}
+
+.nav-child-item {
+  margin-left: 24px;
+  min-height: 40px;
+  font-size: 13px;
 }
 </style>

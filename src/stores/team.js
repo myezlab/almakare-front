@@ -4,11 +4,30 @@ import { ref, watch } from 'vue'
 
 const STORAGE_KEY = 'myezlab.team'
 
+function seedById() {
+  const map = {}
+  for (const m of TEAM_SEED) map[m.id] = m
+  return map
+}
+
+function hydrateFromSeed(items) {
+  const byId = seedById()
+  return items.map((m) => {
+    const seed = byId[m.id]
+    if (!seed) return m
+    return {
+      ...m,
+      specialty: m.specialty ?? seed.specialty,
+      description: m.description ?? seed.description,
+    }
+  })
+}
+
 function loadFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw === null) return TEAM_SEED.map((m) => ({ ...m, permissions: [...m.permissions] }))
-    return JSON.parse(raw)
+    return hydrateFromSeed(JSON.parse(raw))
   } catch {
     return TEAM_SEED.map((m) => ({ ...m, permissions: [...m.permissions] }))
   }

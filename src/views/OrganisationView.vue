@@ -1,23 +1,22 @@
 <script setup>
-import Picture from '@/components/Picture.vue'
 import DialogLogs from '@/components/DialogLogs.vue'
+import Picture from '@/components/Picture.vue'
+import TeamView from '@/views/TeamView.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { ISOToDDMMYYYY } from '@/composables/useDates'
+import { LOG_ACTIONS } from '@/data/logs'
 import {
   ALMAKARE_FREE_SERVICES,
   ALMAKARE_INVOICES_SEED,
   ALMAKARE_SERVICES,
-  CABINET_AVAILABLE_SERVICE_IDS,
-  CENTRE_DASHBOARD_ICON,
-  CENTRE_FIELDS,
   INVOICE_STATUS,
   INVOICE_STATUS_LABELS,
-} from '@/data/centre-sommeil'
-import { LOG_ACTIONS } from '@/data/logs'
-import { useCabinetStore } from '@/stores/cabinet'
-import { useCentreStore } from '@/stores/centre'
+  ORGANISATION_DASHBOARD_ICON,
+  ORGANISATION_FIELDS,
+} from '@/data/organisation'
 import { useLogsStore } from '@/stores/logs'
 import { useMessagesStore } from '@/stores/messages'
+import { useOrganisationStore } from '@/stores/organisation'
 import { useSelfStore } from '@/stores/self'
 import {
   mdiAlertCircleOutline,
@@ -25,80 +24,74 @@ import {
   mdiCheckCircleOutline,
   mdiClockOutline,
   mdiClose,
-  mdiCloseCircleOutline,
+  mdiDomain,
   mdiDownloadOutline,
   mdiFileDocumentOutline,
   mdiGiftOutline,
   mdiInformationOutline,
+  mdiMapMarkerOutline,
   mdiOfficeBuildingOutline,
   mdiPencilOutline,
+  mdiPlus,
   mdiReceiptTextOutline,
-  mdiShieldCheckOutline,
-  mdiStethoscope,
+  mdiShieldCheckOutline
 } from '@mdi/js'
 import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-const props = defineProps({
-  variant: {
-    type: String,
-    default: 'centre',
-    validator: (v) => ['centre', 'cabinet'].includes(v),
-  },
-})
+const variantConfig = {
+  defaultTitle: 'Organisation',
+  subtitle: 'Espace de gestion de l\'organisation',
+  editTitle: 'Modifier l\'organisation',
+  editAriaLabel: 'Modifier les détails de l\'organisation',
+  successMessage: 'Organisation mise à jour',
+  logCollection: 'organisationLogs',
+  logsTitle: 'Historique de l\'organisation',
+  avatarIcon: mdiOfficeBuildingOutline,
+  services: ALMAKARE_SERVICES,
+  pictureFor: 'organisation-logo',
+  pictureDocPath: 'organisations/main',
+  pictureStoragePath: 'organisations/main',
+  logoLabel: 'Logo de l\'organisation',
+  nameLabel: 'Nom de l\'organisation',
+  servicesHint: 'Activez ou désactivez les modules utilisés par votre organisation.',
+  allActivatedHint: 'Tous les services Almakare sont activés pour votre organisation.',
+  partnersHint: 'Offert par Almakare SAS à toutes les organisations partenaires.',
+}
 
-const isCabinet = props.variant === 'cabinet'
-
-const variantConfig = isCabinet
-  ? {
-      defaultTitle: 'Cabinet médical',
-      subtitle: 'Espace de gestion du cabinet',
-      editTitle: 'Modifier le cabinet',
-      editAriaLabel: 'Modifier les détails du cabinet',
-      successMessage: 'Cabinet mis à jour',
-      logCollection: 'cabinetLogs',
-      logsTitle: 'Historique du cabinet',
-      avatarIcon: mdiStethoscope,
-      services: ALMAKARE_SERVICES.filter((s) => CABINET_AVAILABLE_SERVICE_IDS.includes(s.id)),
-      pictureFor: 'cabinet-logo',
-      pictureDocPath: 'cabinets/main',
-      pictureStoragePath: 'cabinets/main',
-      logoLabel: 'Logo du cabinet',
-      nameLabel: 'Nom du cabinet',
-      servicesHint: 'Activez ou désactivez les modules utilisés par votre cabinet.',
-      allActivatedHint: 'Tous les services Almakare sont activés pour votre cabinet.',
-      partnersHint: 'Offert par Almakare SAS à tous les cabinets partenaires.',
-    }
-  : {
-      defaultTitle: 'Centre du sommeil',
-      subtitle: 'Espace de gestion du centre',
-      editTitle: 'Modifier le centre',
-      editAriaLabel: 'Modifier les détails du centre',
-      successMessage: 'Centre mis à jour',
-      logCollection: 'centreLogs',
-      logsTitle: 'Historique du centre',
-      avatarIcon: mdiOfficeBuildingOutline,
-      services: ALMAKARE_SERVICES,
-      pictureFor: 'centre-logo',
-      pictureDocPath: 'centres/main',
-      pictureStoragePath: 'centres/main',
-      logoLabel: 'Logo du centre',
-      nameLabel: 'Nom du centre',
-      servicesHint: 'Activez ou désactivez les modules utilisés par votre centre.',
-      allActivatedHint: 'Tous les services Almakare sont activés pour votre centre.',
-      partnersHint: 'Offert par Almakare SAS à tous les centres partenaires.',
-    }
-
-const centreStore = isCabinet ? useCabinetStore() : useCentreStore()
+const organisationStore = useOrganisationStore()
 const messagesStore = useMessagesStore()
 const selfStore = useSelfStore()
 const logsStore = useLogsStore()
 const { formatCurrency } = useCurrency()
+const route = useRoute()
+const router = useRouter()
 
-const centre = computed(() => centreStore.item || {})
+const organisation = computed(() => organisationStore.item || {})
+const establishments = computed(() => organisation.value.establishments || [])
 
 const editing = ref(false)
 const saving = ref(false)
 const formRef = ref(null)
+
+const TABS = ['etablissements', 'equipe', 'services']
+const DEFAULT_TAB = 'etablissements'
+
+const activeTab = ref(TABS.includes(route.query.tab) ? route.query.tab : DEFAULT_TAB)
+
+watch(
+  () => route.query.tab,
+  (val) => {
+    const next = TABS.includes(val) ? val : DEFAULT_TAB
+    if (next !== activeTab.value) activeTab.value = next
+  },
+)
+
+watch(activeTab, (val) => {
+  const target = TABS.includes(val) ? val : DEFAULT_TAB
+  if ((route.query.tab || DEFAULT_TAB) === target) return
+  router.replace({ query: { ...route.query, tab: target } })
+})
 
 const draft = ref({
   logoUrl: '',
@@ -109,14 +102,14 @@ const draft = ref({
 
 function hydrateDraft() {
   draft.value = {
-    logoUrl: centre.value.logoUrl || '',
-    name: centre.value.name || '',
-    description: centre.value.description || '',
-    createdAt: centre.value.createdAt || '',
+    logoUrl: organisation.value.logoUrl || '',
+    name: organisation.value.name || '',
+    description: organisation.value.description || '',
+    createdAt: organisation.value.createdAt || '',
   }
 }
 
-watch(centre, (val) => {
+watch(organisation, (val) => {
   if (val?.id) hydrateDraft()
 }, { immediate: true })
 
@@ -133,16 +126,16 @@ function cancelEdit() {
 const required = (v) => !!String(v ?? '').trim() || 'Ce champ est requis'
 
 const draftDirty = computed(() => {
-  const c = centre.value
+  const o = organisation.value
   return (
-    (draft.value.logoUrl || '') !== (c.logoUrl || '') ||
-    (draft.value.name || '').trim() !== (c.name || '') ||
-    (draft.value.description || '').trim() !== (c.description || '') ||
-    (draft.value.createdAt || '') !== (c.createdAt || '')
+    (draft.value.logoUrl || '') !== (o.logoUrl || '') ||
+    (draft.value.name || '').trim() !== (o.name || '') ||
+    (draft.value.description || '').trim() !== (o.description || '') ||
+    (draft.value.createdAt || '') !== (o.createdAt || '')
   )
 })
 
-function logCentre(payload) {
+function logOrganisation(payload) {
   logsStore.add(variantConfig.logCollection, {
     adminId: selfStore.item?.id,
     adminFullName: selfStore.item?.fullName,
@@ -155,7 +148,7 @@ async function saveDetails() {
   if (!valid) return
   saving.value = true
   try {
-    const previous = centre.value
+    const previous = organisation.value
     const patch = {
       logoUrl: draft.value.logoUrl || '',
       name: draft.value.name.trim(),
@@ -164,20 +157,20 @@ async function saveDetails() {
     }
     const changes = []
     if (previous.name !== patch.name) {
-      changes.push({ field: CENTRE_FIELDS.NAME, from: previous.name, to: patch.name })
+      changes.push({ field: ORGANISATION_FIELDS.NAME, from: previous.name, to: patch.name })
     }
     if (previous.description !== patch.description) {
-      changes.push({ field: CENTRE_FIELDS.DESCRIPTION, from: previous.description, to: patch.description })
+      changes.push({ field: ORGANISATION_FIELDS.DESCRIPTION, from: previous.description, to: patch.description })
     }
     if (previous.createdAt !== patch.createdAt) {
-      changes.push({ field: CENTRE_FIELDS.CREATED_AT, from: previous.createdAt, to: patch.createdAt })
+      changes.push({ field: ORGANISATION_FIELDS.CREATED_AT, from: previous.createdAt, to: patch.createdAt })
     }
     if ((previous.logoUrl || '') !== (patch.logoUrl || '')) {
-      changes.push({ field: CENTRE_FIELDS.LOGO, from: previous.logoUrl ? 'défini' : 'aucun', to: patch.logoUrl ? 'défini' : 'aucun' })
+      changes.push({ field: ORGANISATION_FIELDS.LOGO, from: previous.logoUrl ? 'défini' : 'aucun', to: patch.logoUrl ? 'défini' : 'aucun' })
     }
-    centreStore.update(patch)
+    organisationStore.update(patch)
     if (changes.length) {
-      logCentre({ type: 'info', action: LOG_ACTIONS.CENTRE_UPDATED, changes })
+      logOrganisation({ type: 'info', action: LOG_ACTIONS.ORGANISATION_UPDATED, changes })
     }
     messagesStore.add({ type: 'success', text: variantConfig.successMessage })
     editing.value = false
@@ -188,7 +181,7 @@ async function saveDetails() {
   }
 }
 
-const selectedSet = computed(() => new Set(centre.value.selectedServiceIds || []))
+const selectedSet = computed(() => new Set(organisation.value.selectedServiceIds || []))
 
 const selectedServices = computed(() =>
   variantConfig.services.filter((s) => selectedSet.value.has(s.id)),
@@ -203,29 +196,29 @@ const monthlyTotal = computed(() =>
 const annualTotal = computed(() => monthlyTotal.value * 12)
 
 function toggleService(service) {
-  const current = new Set(centre.value.selectedServiceIds || [])
+  const current = new Set(organisation.value.selectedServiceIds || [])
   const isActive = current.has(service.id)
   if (isActive) {
     current.delete(service.id)
-    logCentre({
+    logOrganisation({
       type: 'warning',
-      action: LOG_ACTIONS.CENTRE_SERVICE_REMOVED,
+      action: LOG_ACTIONS.ORGANISATION_SERVICE_REMOVED,
       params: { name: service.name },
     })
     messagesStore.add({ type: 'success', text: `Service "${service.name}" désactivé` })
   } else {
     current.add(service.id)
-    logCentre({
+    logOrganisation({
       type: 'success',
-      action: LOG_ACTIONS.CENTRE_SERVICE_ADDED,
+      action: LOG_ACTIONS.ORGANISATION_SERVICE_ADDED,
       params: { name: service.name },
     })
     messagesStore.add({ type: 'success', text: `Service "${service.name}" activé` })
   }
-  centreStore.update({ selectedServiceIds: [...current] })
+  organisationStore.update({ selectedServiceIds: [...current] })
 }
 
-const formattedCreatedAt = computed(() => ISOToDDMMYYYY(centre.value.createdAt))
+const formattedCreatedAt = computed(() => ISOToDDMMYYYY(organisation.value.createdAt))
 
 const serviceDialog = ref(false)
 const selectedService = ref(null)
@@ -285,6 +278,48 @@ const totalOutstanding = computed(() =>
 function downloadInvoice(invoice) {
   messagesStore.add({ type: 'success', text: `Téléchargement de la facture ${invoice.number}` })
 }
+
+const establishmentDialog = ref(false)
+const establishmentSaving = ref(false)
+const establishmentFormRef = ref(null)
+const establishmentDraft = ref({
+  logoUrl: '',
+  name: '',
+  location: '',
+})
+
+function openEstablishmentDialog() {
+  establishmentDraft.value = { logoUrl: '', name: '', location: '' }
+  establishmentDialog.value = true
+}
+
+async function saveEstablishment() {
+  const { valid } = await establishmentFormRef.value.validate()
+  if (!valid) return
+  establishmentSaving.value = true
+  try {
+    const created = organisationStore.addEstablishment({
+      name: establishmentDraft.value.name.trim(),
+      location: establishmentDraft.value.location.trim(),
+      logoUrl: establishmentDraft.value.logoUrl || '',
+    })
+    logOrganisation({
+      type: 'success',
+      action: LOG_ACTIONS.ESTABLISHMENT_CREATED,
+      params: { name: created.name },
+    })
+    messagesStore.add({ type: 'success', text: `Établissement "${created.name}" créé` })
+    establishmentDialog.value = false
+  } catch {
+    messagesStore.add({ type: 'error', text: 'Erreur lors de la création de l\'établissement' })
+  } finally {
+    establishmentSaving.value = false
+  }
+}
+
+function openEstablishment(establishment) {
+  router.push({ name: 'Establishment', params: { id: establishment.id } })
+}
 </script>
 
 <template>
@@ -295,9 +330,10 @@ function downloadInvoice(invoice) {
         <!-- =================== HEADER =================== -->
         <v-row class="mb-6" align="center" :class="{ 'mx-6': $vuetify.display.mobile }">
           <v-col align-self="center">
-            <div class="text-headline-medium font-weight-bold">{{ centre.name || variantConfig.defaultTitle }}</div>
+            <div class="text-headline-medium font-weight-bold">{{ organisation.name || variantConfig.defaultTitle }}
+            </div>
             <div class="text-body-medium text-medium-emphasis mt-1">
-              <v-icon :icon="CENTRE_DASHBOARD_ICON" size="18" class="mr-1" />
+              <v-icon :icon="ORGANISATION_DASHBOARD_ICON" size="18" class="mr-1" />
               {{ variantConfig.subtitle }}
             </div>
           </v-col>
@@ -307,8 +343,7 @@ function downloadInvoice(invoice) {
         </v-row>
 
         <!-- =================== HERO / DETAILS CARD =================== -->
-        <v-card class="card-shadow hero-card pa-6 mb-4"
-          :class="{ 'rounded-15': !$vuetify.display.mobile, 'mx-6': $vuetify.display.mobile }">
+        <v-card class="card-shadow pt-6 px-6 mb-4" :class="{ 'rounded-15': !$vuetify.display.mobile }">
 
           <!-- VIEW MODE -->
           <div v-if="!editing">
@@ -319,12 +354,12 @@ function downloadInvoice(invoice) {
 
             <div class="d-flex flex-column align-center text-center">
               <v-avatar color="primary" variant="tonal" size="96" class="mb-3" rounded="15">
-                <v-img v-if="centre.logoUrl" :src="centre.logoUrl" />
+                <v-img v-if="organisation.logoUrl" :src="organisation.logoUrl" />
                 <v-icon v-else :icon="variantConfig.avatarIcon" size="48" />
               </v-avatar>
-              <div class="text-headline-small font-weight-bold">{{ centre.name }}</div>
-              <div class="text-body-medium text-medium-emphasis mt-3 centre-description">
-                {{ centre.description }}
+              <div class="text-headline-small font-weight-bold">{{ organisation.name }}</div>
+              <div class="text-body-medium text-medium-emphasis mt-3 organisation-description">
+                {{ organisation.description }}
               </div>
 
               <div class="d-flex flex-wrap justify-center ga-2 mt-4">
@@ -338,6 +373,12 @@ function downloadInvoice(invoice) {
                 </v-chip>
               </div>
             </div>
+
+            <v-tabs v-model="activeTab" color="primary" align-tabs="center" class="mt-6 organisation-tabs">
+              <v-tab value="etablissements" class="text-none">Établissements</v-tab>
+              <v-tab value="equipe" class="text-none">Équipe</v-tab>
+              <v-tab value="services" class="text-none">Services</v-tab>
+            </v-tabs>
           </div>
 
           <!-- EDIT MODE -->
@@ -383,10 +424,68 @@ function downloadInvoice(invoice) {
           </v-form>
         </v-card>
 
-        <v-row>
+        <!-- =================== ETABLISSEMENTS TAB =================== -->
+        <v-row v-if="activeTab === 'etablissements'">
+          <v-col cols="12">
+            <v-card class="card-shadow pa-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+              <div class="d-flex align-center mb-4">
+                <div>
+                  <div class="text-headline-small font-weight-bold">Établissements</div>
+                  <div class="text-body-small text-medium-emphasis mt-1">
+                    Les établissements rattachés à votre organisation.
+                  </div>
+                </div>
+                <v-spacer />
+                <v-btn v-if="establishments.length > 0" color="primary" rounded="lg" flat class="text-none"
+                  :prepend-icon="mdiPlus" @click="openEstablishmentDialog">
+                  Ajouter
+                </v-btn>
+              </div>
+
+              <div v-if="establishments.length === 0" class="d-flex flex-column align-center text-center pa-8 establishment-empty">
+                <div class="establishment-empty-icon mb-3">
+                  <v-icon :icon="mdiDomain" size="40" />
+                </div>
+                <div class="text-title-medium font-weight-bold mb-1">Aucun établissement</div>
+                <div class="text-body-small text-medium-emphasis mb-4">
+                  Créez votre premier établissement pour démarrer.
+                </div>
+                <v-btn color="primary" rounded="lg" flat class="text-none" :prepend-icon="mdiPlus"
+                  @click="openEstablishmentDialog">
+                  Créer un établissement
+                </v-btn>
+              </div>
+
+              <div v-else class="establishment-grid">
+                <div v-for="e in establishments" :key="e.id" class="establishment-card"
+                  @click="openEstablishment(e)">
+                  <v-avatar color="primary" variant="tonal" size="56" rounded="12" class="flex-shrink-0">
+                    <v-img v-if="e.logoUrl" :src="e.logoUrl" />
+                    <v-icon v-else :icon="mdiDomain" size="28" />
+                  </v-avatar>
+                  <div class="establishment-card-body">
+                    <div class="establishment-card-title">{{ e.name }}</div>
+                    <div class="establishment-card-location">
+                      <v-icon :icon="mdiMapMarkerOutline" size="14" class="mr-1" />
+                      {{ e.location || '—' }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </v-card>
+          </v-col>
+        </v-row>
+
+        <!-- =================== ÉQUIPE TAB =================== -->
+        <div v-if="activeTab === 'equipe'" class="organisation-team-tab">
+          <TeamView />
+        </div>
+
+        <v-row v-if="activeTab === 'services'">
           <!-- =================== MONTHLY PAYMENT SUMMARY =================== -->
           <v-col cols="12" md="4">
-            <v-card class="card-shadow pa-6 payment-card sticky-card" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+            <v-card class="card-shadow pa-6 payment-card sticky-card"
+              :class="{ 'rounded-15': !$vuetify.display.mobile }">
               <div class="text-title-small text-uppercase font-weight-bold text-medium-emphasis mb-2">
                 Abonnement mensuel
               </div>
@@ -427,8 +526,8 @@ function downloadInvoice(invoice) {
                 Facturation par Almakare SAS
               </div>
 
-              <v-btn variant="tonal" color="primary" rounded="lg" size="small" block
-                class="text-none mt-3" :prepend-icon="mdiReceiptTextOutline" @click="invoicesDialog = true">
+              <v-btn variant="tonal" color="primary" rounded="lg" size="small" block class="text-none mt-3"
+                :prepend-icon="mdiReceiptTextOutline" @click="invoicesDialog = true">
                 Voir les dernières factures
               </v-btn>
             </v-card>
@@ -573,7 +672,8 @@ function downloadInvoice(invoice) {
             </v-col>
             <v-col cols="6" class="invoices-summary-cell">
               <div class="invoices-summary-label">En attente</div>
-              <div class="invoices-summary-value" :class="totalOutstanding > 0 ? 'text-warning' : 'text-medium-emphasis'">
+              <div class="invoices-summary-value"
+                :class="totalOutstanding > 0 ? 'text-warning' : 'text-medium-emphasis'">
                 {{ formatCurrency(totalOutstanding) }}
               </div>
             </v-col>
@@ -612,8 +712,8 @@ function downloadInvoice(invoice) {
                   {{ INVOICE_STATUS_LABELS[inv.status] }}
                 </v-chip>
               </div>
-              <v-btn :icon="mdiDownloadOutline" variant="text" size="small" color="primary"
-                class="invoice-download" @click="downloadInvoice(inv)" aria-label="Télécharger la facture" />
+              <v-btn :icon="mdiDownloadOutline" variant="text" size="small" color="primary" class="invoice-download"
+                @click="downloadInvoice(inv)" aria-label="Télécharger la facture" />
             </div>
           </div>
         </v-card-text>
@@ -633,17 +733,72 @@ function downloadInvoice(invoice) {
       </v-card>
     </v-dialog>
 
+    <!-- =================== CREATE ESTABLISHMENT DIALOG =================== -->
+    <v-dialog v-model="establishmentDialog" max-width="520" :fullscreen="$vuetify.display.mobile" scrollable>
+      <v-card :class="['establishment-dialog', { 'pa-2 rounded-15': !$vuetify.display.mobile }]">
+        <v-card-title class="px-6 pt-5 pb-2 d-flex align-center">
+          <div class="flex-grow-1">
+            <div class="text-headline-small font-weight-bold">Nouvel établissement</div>
+            <div class="text-body-small text-medium-emphasis mt-1">
+              Renseignez les informations de l'établissement.
+            </div>
+          </div>
+          <v-btn :icon="mdiClose" variant="text" size="small" :disabled="establishmentSaving"
+            @click="establishmentDialog = false" />
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="px-6 py-4">
+          <v-form ref="establishmentFormRef">
+            <v-row>
+              <v-col cols="12" class="d-flex flex-column align-center">
+                <Picture docPath="organisations/main/establishments/new"
+                  storagePath="organisations/main/establishments/new" v-model:source="establishmentDraft.logoUrl"
+                  pictureName="logo" :size="100" for="establishment-logo" :cover="false" />
+                <div class="text-body-small text-medium-emphasis mt-2">Logo de l'établissement</div>
+              </v-col>
+
+              <v-col cols="12">
+                <v-text-field v-model.trim="establishmentDraft.name" label="Nom de l'établissement"
+                  variant="outlined" rounded="lg" density="comfortable" :rules="[required]" />
+              </v-col>
+
+              <v-col cols="12">
+                <v-text-field v-model.trim="establishmentDraft.location" label="Localisation"
+                  :prepend-inner-icon="mdiMapMarkerOutline" variant="outlined" rounded="lg" density="comfortable"
+                  :rules="[required]" />
+              </v-col>
+            </v-row>
+          </v-form>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="px-6 py-4">
+          <v-spacer />
+          <v-btn variant="text" rounded="lg" class="text-none" :disabled="establishmentSaving"
+            @click="establishmentDialog = false">
+            Annuler
+          </v-btn>
+          <v-btn color="primary" rounded="lg" flat class="text-none ml-2" :loading="establishmentSaving"
+            @click="saveEstablishment">
+            Créer
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- =================== SERVICE DETAILS DIALOG =================== -->
     <v-dialog v-model="serviceDialog" max-width="540" :fullscreen="$vuetify.display.mobile" scrollable>
       <v-card v-if="selectedService" :class="['service-dialog', { 'pa-2 rounded-15': !$vuetify.display.mobile }]">
         <v-card-title class="px-6 pt-5 pb-2 d-flex align-center">
           <div class="flex-grow-1 d-flex align-center ga-3">
-            <div class="service-icon"
-              :class="{
-                'service-icon-free': selectedServiceIsFree,
-                'service-icon-active': !selectedServiceIsFree && selectedServiceActive,
-                'service-icon-inactive': !selectedServiceIsFree && !selectedServiceActive,
-              }">
+            <div class="service-icon" :class="{
+              'service-icon-free': selectedServiceIsFree,
+              'service-icon-active': !selectedServiceIsFree && selectedServiceActive,
+              'service-icon-inactive': !selectedServiceIsFree && !selectedServiceActive,
+            }">
               <v-icon :icon="selectedService.icon" size="22" />
             </div>
             <div class="min-w-0">
@@ -658,12 +813,11 @@ function downloadInvoice(invoice) {
 
         <v-card-text class="px-6 py-4">
           <!-- Price / status banner -->
-          <div class="service-dialog-banner"
-            :class="{
-              'service-dialog-banner-free': selectedServiceIsFree,
-              'service-dialog-banner-active': !selectedServiceIsFree && selectedServiceActive,
-              'service-dialog-banner-inactive': !selectedServiceIsFree && !selectedServiceActive,
-            }">
+          <div class="service-dialog-banner" :class="{
+            'service-dialog-banner-free': selectedServiceIsFree,
+            'service-dialog-banner-active': !selectedServiceIsFree && selectedServiceActive,
+            'service-dialog-banner-inactive': !selectedServiceIsFree && !selectedServiceActive,
+          }">
             <template v-if="selectedServiceIsFree">
               <div class="service-dialog-banner-value">Inclus</div>
               <div class="service-dialog-banner-meta">
@@ -695,8 +849,8 @@ function downloadInvoice(invoice) {
               Ce qui est inclus
             </div>
             <div class="service-feature" v-for="(feat, i) in selectedService.features" :key="i">
-              <v-icon :icon="mdiCheckCircleOutline" size="18"
-                :color="selectedServiceIsFree ? 'success' : 'primary'" class="mr-2 flex-shrink-0" />
+              <v-icon :icon="mdiCheckCircleOutline" size="18" :color="selectedServiceIsFree ? 'success' : 'primary'"
+                class="mr-2 flex-shrink-0" />
               <span>{{ feat }}</span>
             </div>
           </template>
@@ -714,8 +868,7 @@ function downloadInvoice(invoice) {
               @click="handleDialogToggle">
               Désactiver
             </v-btn>
-            <v-btn v-else color="primary" rounded="lg" flat class="text-none ml-2"
-              @click="handleDialogToggle">
+            <v-btn v-else color="primary" rounded="lg" flat class="text-none ml-2" @click="handleDialogToggle">
               Activer
             </v-btn>
           </template>
@@ -726,9 +879,13 @@ function downloadInvoice(invoice) {
 </template>
 
 <style scoped>
-.centre-description {
+.organisation-description {
   max-width: 640px;
   line-height: 1.6;
+}
+
+.organisation-tabs {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .sticky-card {
@@ -1000,7 +1157,7 @@ function downloadInvoice(invoice) {
   padding: 14px 16px;
 }
 
-.invoices-summary-cell + .invoices-summary-cell {
+.invoices-summary-cell+.invoices-summary-cell {
   border-left: 1px solid rgba(var(--v-theme-primary), 0.12);
 }
 
@@ -1078,5 +1235,88 @@ function downloadInvoice(invoice) {
 
 .invoice-download {
   flex-shrink: 0;
+}
+
+.establishment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.establishment-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: white;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.establishment-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--v-theme-primary), 0.35);
+  background: rgba(var(--v-theme-primary), 0.03);
+}
+
+.establishment-card:active {
+  transform: translateY(0);
+}
+
+.establishment-card-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.establishment-card-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.88);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.establishment-card-location {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+}
+
+.establishment-empty {
+  background: rgba(0, 0, 0, 0.025);
+  border-radius: 14px;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+}
+
+.organisation-team-tab :deep(> div > .v-row) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.organisation-team-tab :deep(> div > .v-row > .v-col) {
+  flex: 0 0 100%;
+  max-width: 100%;
+  padding: 0;
+}
+
+.establishment-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-primary));
 }
 </style>
