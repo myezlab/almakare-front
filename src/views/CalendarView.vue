@@ -1,6 +1,9 @@
 <script setup>
+import DateFieldFr from '@/components/DateFieldFr.vue'
+import TimeFieldFr from '@/components/TimeFieldFr.vue'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useMessagesStore } from '@/stores/messages'
+import { useOrganisationStore } from '@/stores/organisation'
 import { usePatientsStore } from '@/stores/patients'
 import { useSelfStore } from '@/stores/self'
 import {
@@ -11,7 +14,10 @@ import {
   mdiChevronRight,
   mdiClockOutline,
   mdiClose,
+  mdiDomain,
+  mdiMapMarkerOutline,
   mdiNotebookOutline,
+  mdiPencilOutline,
   mdiPlus,
   mdiTrashCanOutline,
 } from '@mdi/js'
@@ -21,6 +27,21 @@ const selfStore = useSelfStore()
 const appointmentsStore = useAppointmentsStore()
 const patientsStore = usePatientsStore()
 const messagesStore = useMessagesStore()
+const organisationStore = useOrganisationStore()
+
+const establishments = computed(() => organisationStore.item.establishments || [])
+const establishmentOptions = computed(() =>
+  establishments.value.map((e) => ({
+    value: e.id,
+    title: e.name,
+    subtitle: e.location,
+  })),
+)
+
+function establishmentFor(id) {
+  if (!id) return null
+  return establishments.value.find((e) => e.id === id) || null
+}
 
 const doctorId = computed(() => selfStore.item?.id || 'self')
 
@@ -97,15 +118,29 @@ function dayLabel(date, idx) {
 }
 
 const slotDialog = ref(false)
+const slotDraftId = ref(null)
 const slotDraftDate = ref(toISODate(new Date()))
 const slotDraftStart = ref('09:00')
 const slotDraftEnd = ref('09:30')
+const slotDraftEstablishmentId = ref(null)
 const slotFormRef = ref(null)
+const isEditingSlot = computed(() => !!slotDraftId.value)
 
 function openCreateSlot(date) {
+  slotDraftId.value = null
   slotDraftDate.value = date ? toISODate(date) : toISODate(new Date())
   slotDraftStart.value = '09:00'
   slotDraftEnd.value = '09:30'
+  slotDraftEstablishmentId.value = establishments.value[0]?.id || null
+  slotDialog.value = true
+}
+
+function openEditSlot(slot) {
+  slotDraftId.value = slot.id
+  slotDraftDate.value = slot.date
+  slotDraftStart.value = slot.startTime
+  slotDraftEnd.value = slot.endTime
+  slotDraftEstablishmentId.value = slot.establishmentId || establishments.value[0]?.id || null
   slotDialog.value = true
 }
 
@@ -116,14 +151,36 @@ const endAfterStart = () =>
 async function saveSlot() {
   const { valid } = await slotFormRef.value.validate()
   if (!valid) return
-  appointmentsStore.addSlot({
-    doctorId: doctorId.value,
-    date: slotDraftDate.value,
-    startTime: slotDraftStart.value,
-    endTime: slotDraftEnd.value,
-  })
-  messagesStore.add({ type: 'success', text: 'Créneau ajouté' })
+  if (!slotDraftEstablishmentId.value) {
+    messagesStore.add({ type: 'error', text: 'Sélectionnez un établissement' })
+    return
+  }
+  if (isEditingSlot.value) {
+    appointmentsStore.updateSlot(slotDraftId.value, {
+      establishmentId: slotDraftEstablishmentId.value,
+      date: slotDraftDate.value,
+      startTime: slotDraftStart.value,
+      endTime: slotDraftEnd.value,
+    })
+    messagesStore.add({ type: 'success', text: 'Créneau modifié' })
+  } else {
+    appointmentsStore.addSlot({
+      doctorId: doctorId.value,
+      establishmentId: slotDraftEstablishmentId.value,
+      date: slotDraftDate.value,
+      startTime: slotDraftStart.value,
+      endTime: slotDraftEnd.value,
+    })
+    messagesStore.add({ type: 'success', text: 'Créneau ajouté' })
+  }
   slotDialog.value = false
+}
+
+function editSelectedSlot() {
+  if (!selectedSlot.value) return
+  const slot = selectedSlot.value
+  detailsDialog.value = false
+  openEditSlot(slot)
 }
 
 const meetingDialog = ref(false)
@@ -131,6 +188,7 @@ const meetingDate = ref(toISODate(new Date()))
 const meetingStart = ref('10:00')
 const meetingEnd = ref('10:30')
 const meetingPatientId = ref(null)
+const meetingEstablishmentId = ref(null)
 const meetingNotes = ref('')
 const meetingFormRef = ref(null)
 
@@ -147,6 +205,7 @@ function openCreateMeeting(date) {
   meetingStart.value = '10:00'
   meetingEnd.value = '10:30'
   meetingPatientId.value = null
+  meetingEstablishmentId.value = establishments.value[0]?.id || null
   meetingNotes.value = ''
   meetingDialog.value = true
 }
@@ -158,10 +217,15 @@ async function saveMeeting() {
     messagesStore.add({ type: 'error', text: 'Sélectionnez un patient' })
     return
   }
+  if (!meetingEstablishmentId.value) {
+    messagesStore.add({ type: 'error', text: 'Sélectionnez un établissement' })
+    return
+  }
   const patient = patientsStore.items.find((p) => p.id === meetingPatientId.value)
   if (!patient) return
   appointmentsStore.createAppointment({
     doctorId: doctorId.value,
+    establishmentId: meetingEstablishmentId.value,
     patientId: patient.id,
     patientFullName: `${patient.firstName} ${patient.lastName}`,
     date: meetingDate.value,
@@ -271,6 +335,10 @@ function appointmentForSlot(slot) {
                     {{ appointmentForSlot(slot)?.patientFullName }}
                   </div>
                   <div v-else class="slot-pill-status">Disponible</div>
+                  <div v-if="establishmentFor(slot.establishmentId)" class="slot-pill-establishment">
+                    <v-icon :icon="mdiDomain" size="12" class="mr-1" />
+                    {{ establishmentFor(slot.establishmentId).name }}
+                  </div>
                 </button>
 
                 <button v-if="slotsForDay(day).length > 0" class="day-add-btn" @click="openCreateSlot(day)">
@@ -300,9 +368,13 @@ function appointmentForSlot(slot) {
       <v-card :class="['pa-2', { 'rounded-15': !$vuetify.display.mobile }]">
         <v-card-title class="px-6 pt-5 pb-2 d-flex align-center">
           <div class="flex-grow-1">
-            <div class="text-headline-small font-weight-bold">Nouveau créneau</div>
+            <div class="text-headline-small font-weight-bold">
+              {{ isEditingSlot ? 'Modifier le créneau' : 'Nouveau créneau' }}
+            </div>
             <div class="text-body-small text-medium-emphasis mt-1">
-              Ouvrez une plage disponible pour vos patients.
+              {{ isEditingSlot
+                ? 'Ajustez la date, l\'horaire ou l\'établissement.'
+                : 'Ouvrez une plage disponible pour vos patients.' }}
             </div>
           </div>
           <v-btn :icon="mdiClose" variant="text" size="small" @click="slotDialog = false" />
@@ -310,16 +382,20 @@ function appointmentForSlot(slot) {
         <v-divider />
         <v-card-text class="px-6 py-4">
           <v-form ref="slotFormRef">
-            <v-text-field v-model="slotDraftDate" label="Date" type="date" variant="outlined" rounded="lg"
-              density="comfortable" :rules="[required]" class="mb-2" />
+            <v-select v-model="slotDraftEstablishmentId" :items="establishmentOptions" item-title="title"
+              item-value="value" label="Établissement" variant="outlined" rounded="lg" density="comfortable"
+              :rules="[required]" :prepend-inner-icon="mdiDomain" class="mb-2">
+              <template #item="{ props, item }">
+                <v-list-item v-bind="props" :subtitle="item.raw?.subtitle" />
+              </template>
+            </v-select>
+            <DateFieldFr v-model="slotDraftDate" label="Date" :rules="[required]" class="mb-2" />
             <v-row no-gutters class="ga-2">
               <v-col>
-                <v-text-field v-model="slotDraftStart" label="Début" type="time" variant="outlined" rounded="lg"
-                  density="comfortable" :rules="[required]" />
+                <TimeFieldFr v-model="slotDraftStart" label="Début" :rules="[required]" />
               </v-col>
               <v-col>
-                <v-text-field v-model="slotDraftEnd" label="Fin" type="time" variant="outlined" rounded="lg"
-                  density="comfortable" :rules="[required, endAfterStart]" />
+                <TimeFieldFr v-model="slotDraftEnd" label="Fin" :rules="[required, endAfterStart]" />
               </v-col>
             </v-row>
           </v-form>
@@ -328,7 +404,9 @@ function appointmentForSlot(slot) {
         <v-card-actions class="px-6 py-4">
           <v-spacer />
           <v-btn variant="text" rounded="lg" class="text-none" @click="slotDialog = false">Annuler</v-btn>
-          <v-btn color="primary" rounded="lg" flat class="text-none ml-2" @click="saveSlot">Créer le créneau</v-btn>
+          <v-btn color="primary" rounded="lg" flat class="text-none ml-2" @click="saveSlot">
+            {{ isEditingSlot ? 'Enregistrer' : 'Créer le créneau' }}
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -351,16 +429,20 @@ function appointmentForSlot(slot) {
             <v-select v-model="meetingPatientId" :items="patientOptions" item-title="title" item-value="value"
               label="Patient" variant="outlined" rounded="lg" density="comfortable" :rules="[required]"
               :prepend-inner-icon="mdiAccountOutline" class="mb-2" />
-            <v-text-field v-model="meetingDate" label="Date" type="date" variant="outlined" rounded="lg"
-              density="comfortable" :rules="[required]" class="mb-2" />
+            <v-select v-model="meetingEstablishmentId" :items="establishmentOptions" item-title="title"
+              item-value="value" label="Établissement" variant="outlined" rounded="lg" density="comfortable"
+              :rules="[required]" :prepend-inner-icon="mdiDomain" class="mb-2">
+              <template #item="{ props, item }">
+                <v-list-item v-bind="props" :subtitle="item.raw?.subtitle" />
+              </template>
+            </v-select>
+            <DateFieldFr v-model="meetingDate" label="Date" :rules="[required]" class="mb-2" />
             <v-row no-gutters class="ga-2 mb-2">
               <v-col>
-                <v-text-field v-model="meetingStart" label="Début" type="time" variant="outlined" rounded="lg"
-                  density="comfortable" :rules="[required]" />
+                <TimeFieldFr v-model="meetingStart" label="Début" :rules="[required]" />
               </v-col>
               <v-col>
-                <v-text-field v-model="meetingEnd" label="Fin" type="time" variant="outlined" rounded="lg"
-                  density="comfortable" :rules="[required]" />
+                <TimeFieldFr v-model="meetingEnd" label="Fin" :rules="[required]" />
               </v-col>
             </v-row>
             <v-textarea v-model="meetingNotes" label="Notes (optionnel)" variant="outlined" rounded="lg" rows="2"
@@ -407,6 +489,19 @@ function appointmentForSlot(slot) {
               Ce créneau est ouvert à la réservation par vos patients.
             </div>
           </template>
+          <div v-if="establishmentFor(selectedSlot.establishmentId)" class="establishment-card mt-3">
+            <v-icon :icon="mdiDomain" size="18" class="mr-2" color="primary" />
+            <div>
+              <div class="font-weight-bold text-body-medium">
+                {{ establishmentFor(selectedSlot.establishmentId).name }}
+              </div>
+              <div v-if="establishmentFor(selectedSlot.establishmentId).location"
+                class="text-body-small text-medium-emphasis d-flex align-center mt-1">
+                <v-icon :icon="mdiMapMarkerOutline" size="14" class="mr-1" />
+                {{ establishmentFor(selectedSlot.establishmentId).location }}
+              </div>
+            </div>
+          </div>
         </v-card-text>
         <v-divider />
         <v-card-actions class="px-6 py-4">
@@ -415,10 +510,16 @@ function appointmentForSlot(slot) {
             :prepend-icon="mdiTrashCanOutline" class="text-none" @click="cancelSelectedAppointment">
             Annuler le RDV
           </v-btn>
-          <v-btn v-else variant="text" color="error" rounded="lg" :prepend-icon="mdiTrashCanOutline"
-            class="text-none" @click="removeSelectedSlot">
-            Supprimer
-          </v-btn>
+          <template v-else>
+            <v-btn variant="text" color="error" rounded="lg" :prepend-icon="mdiTrashCanOutline"
+              class="text-none" @click="removeSelectedSlot">
+              Supprimer
+            </v-btn>
+            <v-btn variant="tonal" color="primary" rounded="lg" :prepend-icon="mdiPencilOutline"
+              class="text-none ml-2" @click="editSelectedSlot">
+              Modifier
+            </v-btn>
+          </template>
           <v-btn color="primary" rounded="lg" flat class="text-none ml-2" @click="detailsDialog = false">
             Fermer
           </v-btn>
@@ -534,6 +635,23 @@ function appointmentForSlot(slot) {
   color: rgba(0, 0, 0, 0.78);
   display: flex;
   align-items: center;
+}
+
+.slot-pill-establishment {
+  font-size: 10.5px;
+  color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.establishment-card {
+  display: flex;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-primary), 0.06);
+  border: 1px solid rgba(var(--v-theme-primary), 0.18);
 }
 
 .slot-pill-booked {

@@ -8,8 +8,8 @@ const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
 
 const formRef = ref(null)
-const firstName = ref("")
-const lastName = ref("")
+const firstName = ref("Alain")
+const lastName = ref("Dupont")
 const saving = ref(false)
 
 const required = (v) => !!v?.trim() || "Ce champ est requis"

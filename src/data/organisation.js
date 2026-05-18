@@ -3,6 +3,7 @@ import {
   mdiBookOpenOutline,
   mdiCashMultiple,
   mdiChartBoxOutline,
+  mdiClipboardPulseOutline,
   mdiCloudCheckOutline,
   mdiFileDocumentOutline,
   mdiHeadCogOutline,
@@ -13,6 +14,40 @@ import {
   mdiToolboxOutline,
   mdiVideoOutline,
 } from '@mdi/js'
+
+export const MACHINE_TYPES = [
+  { value: 'lit', label: 'Lit' },
+  { value: 'polysomnographe', label: 'Polysomnographe' },
+  { value: 'polysomnographe-video', label: 'Polysomnographe avec vidéo' },
+  { value: 'polysomnographe-neuro', label: 'Polysomnographe à viser neuro' },
+  { value: 'polysomnographe-neuro-video', label: 'Polysomnographe à viser neuro avec vidéo' },
+  { value: 'eeg', label: 'Système EEG' },
+  { value: 'polygraphe', label: 'Polygraphe' },
+  { value: 'gaz-du-sang', label: 'Gaz du sang' },
+  { value: 'efr', label: 'EFR' },
+]
+
+export const BILLING_TYPES = [
+  { value: 'hourly', label: 'À l\'heure' },
+  { value: 'fixed', label: 'Forfaitaire' },
+  { value: 'machine', label: 'Selon la machine' },
+  { value: 'none', label: 'Non facturable' },
+]
+
+export const ACTE_COLORS = [
+  '#1976D2', // blue
+  '#2E7D32', // green
+  '#F57C00', // orange
+  '#C62828', // red
+  '#6A1B9A', // purple
+  '#00838F', // teal
+  '#EF6C00', // deep orange
+  '#5D4037', // brown
+  '#37474F', // blue-grey
+  '#AD1457', // pink
+]
+
+export const ACTE_ICON = mdiClipboardPulseOutline
 
 export const ALMAKARE_SERVICES = [
   {
@@ -267,6 +302,68 @@ export const ORGANISATION_SEED = {
     'analytics',
     'secure-messaging',
   ],
+  actes: [
+    {
+      id: 'acte-consult-1',
+      label: 'Première consultation du sommeil',
+      internalCode: 'WAIT_CONSULT_1',
+      externalCode: 'CSL',
+      visibleOnOnlineAgenda: true,
+      sendPlanningEmail: true,
+      price: 30,
+      agendaColor: '#1976D2',
+      billingType: 'hourly',
+      billableByDoctor: true,
+      machineTypes: [],
+      billAssociatedGhs: false,
+      linkedActeId: '',
+      concurrentAppointments: 1,
+      averageDurationMinutes: 45,
+      visible: true,
+      order: 1,
+      specificDirectory: '',
+    },
+    {
+      id: 'acte-consult-2',
+      label: 'Consultation de suivi du sommeil',
+      internalCode: 'WAIT_CONSULT_2',
+      externalCode: 'APV',
+      visibleOnOnlineAgenda: true,
+      sendPlanningEmail: true,
+      price: 30,
+      agendaColor: '#2E7D32',
+      billingType: 'hourly',
+      billableByDoctor: true,
+      machineTypes: [],
+      billAssociatedGhs: false,
+      linkedActeId: '',
+      concurrentAppointments: 1,
+      averageDurationMinutes: 30,
+      visible: true,
+      order: 2,
+      specificDirectory: '',
+    },
+    {
+      id: 'acte-polysomno',
+      label: 'Enregistrement polysomnographique',
+      internalCode: 'PSG_NUIT',
+      externalCode: 'PSG',
+      visibleOnOnlineAgenda: false,
+      sendPlanningEmail: true,
+      price: 420,
+      agendaColor: '#6A1B9A',
+      billingType: 'fixed',
+      billableByDoctor: false,
+      machineTypes: ['polysomnographe', 'polysomnographe-video'],
+      billAssociatedGhs: true,
+      linkedActeId: '',
+      concurrentAppointments: 2,
+      averageDurationMinutes: 720,
+      visible: true,
+      order: 3,
+      specificDirectory: 'PSG',
+    },
+  ],
   establishments: [
     {
       id: 'etablissement-paris',
@@ -326,6 +423,15 @@ export const ORGANISATION_FIELDS = {
   ESTABLISHMENT_LOGO: 'ESTABLISHMENT_LOGO',
   DEVICE_NAME: 'DEVICE_NAME',
   DEVICE_ACQUIRED_AT: 'DEVICE_ACQUIRED_AT',
+  ACTE_LABEL: 'ACTE_LABEL',
+  ACTE_INTERNAL_CODE: 'ACTE_INTERNAL_CODE',
+  ACTE_EXTERNAL_CODE: 'ACTE_EXTERNAL_CODE',
+  ACTE_PRICE: 'ACTE_PRICE',
+  ACTE_BILLING_TYPE: 'ACTE_BILLING_TYPE',
+  ACTE_MACHINE_TYPES: 'ACTE_MACHINE_TYPES',
+  ACTE_DURATION: 'ACTE_DURATION',
+  ACTE_ORDER: 'ACTE_ORDER',
+  ACTE_VISIBLE: 'ACTE_VISIBLE',
 }
 
 export const ORGANISATION_FIELD_LABELS = {
@@ -339,6 +445,15 @@ export const ORGANISATION_FIELD_LABELS = {
   [ORGANISATION_FIELDS.ESTABLISHMENT_LOGO]: 'Logo de l\'établissement',
   [ORGANISATION_FIELDS.DEVICE_NAME]: 'Nom du matériel',
   [ORGANISATION_FIELDS.DEVICE_ACQUIRED_AT]: 'Date d\'acquisition',
+  [ORGANISATION_FIELDS.ACTE_LABEL]: 'Libellé',
+  [ORGANISATION_FIELDS.ACTE_INTERNAL_CODE]: 'Code interne',
+  [ORGANISATION_FIELDS.ACTE_EXTERNAL_CODE]: 'Code externe',
+  [ORGANISATION_FIELDS.ACTE_PRICE]: 'Tarif',
+  [ORGANISATION_FIELDS.ACTE_BILLING_TYPE]: 'Type de facturation',
+  [ORGANISATION_FIELDS.ACTE_MACHINE_TYPES]: 'Types de machine',
+  [ORGANISATION_FIELDS.ACTE_DURATION]: 'Durée moyenne',
+  [ORGANISATION_FIELDS.ACTE_ORDER]: 'Ordre d\'apparition',
+  [ORGANISATION_FIELDS.ACTE_VISIBLE]: 'Visible',
 }
 
 export const ORGANISATION_DASHBOARD_ICON = mdiMonitorDashboard

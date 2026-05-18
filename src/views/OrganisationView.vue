@@ -1,16 +1,20 @@
 <script setup>
+import DateFieldFr from '@/components/DateFieldFr.vue'
 import DialogLogs from '@/components/DialogLogs.vue'
 import Picture from '@/components/Picture.vue'
-import TeamView from '@/views/TeamView.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { ISOToDDMMYYYY } from '@/composables/useDates'
 import { LOG_ACTIONS } from '@/data/logs'
 import {
+  ACTE_COLORS,
+  ACTE_ICON,
   ALMAKARE_FREE_SERVICES,
   ALMAKARE_INVOICES_SEED,
   ALMAKARE_SERVICES,
+  BILLING_TYPES,
   INVOICE_STATUS,
   INVOICE_STATUS_LABELS,
+  MACHINE_TYPES,
   ORGANISATION_DASHBOARD_ICON,
   ORGANISATION_FIELDS,
 } from '@/data/organisation'
@@ -18,15 +22,21 @@ import { useLogsStore } from '@/stores/logs'
 import { useMessagesStore } from '@/stores/messages'
 import { useOrganisationStore } from '@/stores/organisation'
 import { useSelfStore } from '@/stores/self'
+import TeamView from '@/views/TeamView.vue'
 import {
   mdiAlertCircleOutline,
+  mdiAlertOutline,
   mdiCalendarOutline,
   mdiCheckCircleOutline,
   mdiClockOutline,
   mdiClose,
+  mdiCurrencyEur,
   mdiDomain,
   mdiDownloadOutline,
+  mdiEyeOffOutline,
+  mdiEyeOutline,
   mdiFileDocumentOutline,
+  mdiFolderOutline,
   mdiGiftOutline,
   mdiInformationOutline,
   mdiMapMarkerOutline,
@@ -34,7 +44,8 @@ import {
   mdiPencilOutline,
   mdiPlus,
   mdiReceiptTextOutline,
-  mdiShieldCheckOutline
+  mdiShieldCheckOutline,
+  mdiTrashCanOutline
 } from '@mdi/js'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -74,7 +85,7 @@ const editing = ref(false)
 const saving = ref(false)
 const formRef = ref(null)
 
-const TABS = ['etablissements', 'equipe', 'services']
+const TABS = ['etablissements', 'equipe', 'actes', 'services']
 const DEFAULT_TAB = 'etablissements'
 
 const activeTab = ref(TABS.includes(route.query.tab) ? route.query.tab : DEFAULT_TAB)
@@ -320,6 +331,173 @@ async function saveEstablishment() {
 function openEstablishment(establishment) {
   router.push({ name: 'Establishment', params: { id: establishment.id } })
 }
+
+// =========== ACTES ============
+
+const actes = computed(() => {
+  const list = [...(organisation.value.actes || [])]
+  list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  return list
+})
+
+const MACHINE_TYPE_LABEL = computed(() =>
+  Object.fromEntries(MACHINE_TYPES.map((m) => [m.value, m.label])),
+)
+const BILLING_TYPE_LABEL = computed(() =>
+  Object.fromEntries(BILLING_TYPES.map((b) => [b.value, b.label])),
+)
+
+function defaultActeDraft() {
+  return {
+    id: null,
+    label: '',
+    internalCode: '',
+    externalCode: '',
+    visibleOnOnlineAgenda: false,
+    sendPlanningEmail: false,
+    price: 0,
+    agendaColor: ACTE_COLORS[0],
+    billingType: 'hourly',
+    billableByDoctor: true,
+    machineTypes: [],
+    billAssociatedGhs: false,
+    linkedActeId: '',
+    concurrentAppointments: 1,
+    averageDurationMinutes: 0,
+    visible: true,
+    order: (organisation.value.actes?.length || 0) + 1,
+    specificDirectory: '',
+  }
+}
+
+const acteDialog = ref(false)
+const acteSaving = ref(false)
+const acteFormRef = ref(null)
+const acteDraft = ref(defaultActeDraft())
+const editingActeId = ref(null)
+
+const linkedActeOptions = computed(() =>
+  actes.value.filter((a) => a.id !== editingActeId.value),
+)
+
+function openCreateActeDialog() {
+  editingActeId.value = null
+  acteDraft.value = defaultActeDraft()
+  acteDialog.value = true
+}
+
+function openEditActeDialog(acte) {
+  editingActeId.value = acte.id
+  acteDraft.value = {
+    id: acte.id,
+    label: acte.label || '',
+    internalCode: acte.internalCode || '',
+    externalCode: acte.externalCode || '',
+    visibleOnOnlineAgenda: !!acte.visibleOnOnlineAgenda,
+    sendPlanningEmail: !!acte.sendPlanningEmail,
+    price: Number(acte.price) || 0,
+    agendaColor: acte.agendaColor || ACTE_COLORS[0],
+    billingType: acte.billingType || 'hourly',
+    billableByDoctor: !!acte.billableByDoctor,
+    machineTypes: Array.isArray(acte.machineTypes) ? [...acte.machineTypes] : [],
+    billAssociatedGhs: !!acte.billAssociatedGhs,
+    linkedActeId: acte.linkedActeId || '',
+    concurrentAppointments: Number(acte.concurrentAppointments) || 1,
+    averageDurationMinutes: Number(acte.averageDurationMinutes) || 0,
+    visible: acte.visible !== undefined ? !!acte.visible : true,
+    order: Number(acte.order) || 1,
+    specificDirectory: acte.specificDirectory || '',
+  }
+  acteDialog.value = true
+}
+
+const nonNegativeNumber = (v) => {
+  const n = Number(v)
+  return (!Number.isNaN(n) && n >= 0) || 'Valeur invalide'
+}
+const positiveInteger = (v) => {
+  const n = Number(v)
+  return (Number.isInteger(n) && n >= 1) || 'Valeur invalide'
+}
+
+async function saveActe() {
+  const { valid } = await acteFormRef.value.validate()
+  if (!valid) return
+  acteSaving.value = true
+  try {
+    const payload = {
+      label: acteDraft.value.label.trim(),
+      internalCode: acteDraft.value.internalCode.trim(),
+      externalCode: acteDraft.value.externalCode.trim(),
+      visibleOnOnlineAgenda: acteDraft.value.visibleOnOnlineAgenda,
+      sendPlanningEmail: acteDraft.value.sendPlanningEmail,
+      price: Number(acteDraft.value.price) || 0,
+      agendaColor: acteDraft.value.agendaColor,
+      billingType: acteDraft.value.billingType,
+      billableByDoctor: acteDraft.value.billableByDoctor,
+      machineTypes: [...acteDraft.value.machineTypes],
+      billAssociatedGhs: acteDraft.value.billAssociatedGhs,
+      linkedActeId: acteDraft.value.linkedActeId || '',
+      concurrentAppointments: Number(acteDraft.value.concurrentAppointments) || 1,
+      averageDurationMinutes: Number(acteDraft.value.averageDurationMinutes) || 0,
+      visible: acteDraft.value.visible,
+      order: Number(acteDraft.value.order) || 1,
+      specificDirectory: acteDraft.value.specificDirectory.trim(),
+    }
+    if (editingActeId.value) {
+      organisationStore.updateActe(editingActeId.value, payload)
+      logOrganisation({
+        type: 'info',
+        action: LOG_ACTIONS.ACTE_UPDATED,
+        params: { name: payload.label },
+      })
+      messagesStore.add({ type: 'success', text: `Acte "${payload.label}" mis à jour` })
+    } else {
+      const created = organisationStore.addActe(payload)
+      logOrganisation({
+        type: 'success',
+        action: LOG_ACTIONS.ACTE_CREATED,
+        params: { name: created.label },
+      })
+      messagesStore.add({ type: 'success', text: `Acte "${created.label}" créé` })
+    }
+    acteDialog.value = false
+  } catch {
+    messagesStore.add({ type: 'error', text: 'Erreur lors de l\'enregistrement de l\'acte' })
+  } finally {
+    acteSaving.value = false
+  }
+}
+
+const acteDeleteDialog = ref(false)
+const acteToDelete = ref(null)
+const acteDeleting = ref(false)
+
+function askDeleteActe(acte) {
+  acteToDelete.value = acte
+  acteDeleteDialog.value = true
+}
+
+async function confirmDeleteActe() {
+  if (!acteToDelete.value) return
+  acteDeleting.value = true
+  try {
+    const target = acteToDelete.value
+    organisationStore.removeActe(target.id)
+    logOrganisation({
+      type: 'warning',
+      action: LOG_ACTIONS.ACTE_REMOVED,
+      params: { name: target.label },
+    })
+    messagesStore.add({ type: 'success', text: `Acte "${target.label}" supprimé` })
+    acteDeleteDialog.value = false
+    acteToDelete.value = null
+  } catch {
+    messagesStore.add({ type: 'error', text: 'Erreur lors de la suppression' })
+  } finally {
+    acteDeleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -377,6 +555,7 @@ function openEstablishment(establishment) {
             <v-tabs v-model="activeTab" color="primary" align-tabs="center" class="mt-6 organisation-tabs">
               <v-tab value="etablissements" class="text-none">Établissements</v-tab>
               <v-tab value="equipe" class="text-none">Équipe</v-tab>
+              <v-tab value="actes" class="text-none">Actes</v-tab>
               <v-tab value="services" class="text-none">Services</v-tab>
             </v-tabs>
           </div>
@@ -408,8 +587,7 @@ function openEstablishment(establishment) {
               </v-col>
 
               <v-col cols="12" md="6">
-                <v-text-field v-model="draft.createdAt" label="Date de création" type="date" variant="outlined"
-                  rounded="lg" density="comfortable" :rules="[required]" />
+                <DateFieldFr v-model="draft.createdAt" label="Date de création" :rules="[required]" />
               </v-col>
             </v-row>
 
@@ -442,7 +620,8 @@ function openEstablishment(establishment) {
                 </v-btn>
               </div>
 
-              <div v-if="establishments.length === 0" class="d-flex flex-column align-center text-center pa-8 establishment-empty">
+              <div v-if="establishments.length === 0"
+                class="d-flex flex-column align-center text-center pa-8 establishment-empty">
                 <div class="establishment-empty-icon mb-3">
                   <v-icon :icon="mdiDomain" size="40" />
                 </div>
@@ -457,8 +636,7 @@ function openEstablishment(establishment) {
               </div>
 
               <div v-else class="establishment-grid">
-                <div v-for="e in establishments" :key="e.id" class="establishment-card"
-                  @click="openEstablishment(e)">
+                <div v-for="e in establishments" :key="e.id" class="establishment-card" @click="openEstablishment(e)">
                   <v-avatar color="primary" variant="tonal" size="56" rounded="12" class="flex-shrink-0">
                     <v-img v-if="e.logoUrl" :src="e.logoUrl" />
                     <v-icon v-else :icon="mdiDomain" size="28" />
@@ -480,6 +658,98 @@ function openEstablishment(establishment) {
         <div v-if="activeTab === 'equipe'" class="organisation-team-tab">
           <TeamView />
         </div>
+
+        <!-- =================== ACTES TAB =================== -->
+        <v-row v-if="activeTab === 'actes'">
+          <v-col cols="12">
+            <v-card class="card-shadow pa-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+              <div class="d-flex align-center mb-4">
+                <div>
+                  <div class="text-headline-small font-weight-bold">Actes</div>
+                  <div class="text-body-small text-medium-emphasis mt-1">
+                    Procédures préenregistrées sélectionnables lors de la programmation d'un rendez-vous.
+                  </div>
+                </div>
+                <v-spacer />
+                <v-btn v-if="actes.length > 0" color="primary" rounded="lg" flat class="text-none"
+                  :prepend-icon="mdiPlus" @click="openCreateActeDialog">
+                  Créer un acte
+                </v-btn>
+              </div>
+
+              <div v-if="actes.length === 0" class="d-flex flex-column align-center text-center pa-8 acte-empty">
+                <div class="acte-empty-icon mb-3">
+                  <v-icon :icon="ACTE_ICON" size="40" />
+                </div>
+                <div class="text-title-medium font-weight-bold mb-1">Aucun acte</div>
+                <div class="text-body-small text-medium-emphasis mb-4">
+                  Créez votre premier acte pour le rendre disponible lors d'un rendez-vous.
+                </div>
+                <v-btn color="primary" rounded="lg" flat class="text-none" :prepend-icon="mdiPlus"
+                  @click="openCreateActeDialog">
+                  Créer un acte
+                </v-btn>
+              </div>
+
+              <div v-else class="acte-grid">
+                <div v-for="a in actes" :key="a.id" class="acte-card" @click="openEditActeDialog(a)">
+                  <div class="acte-card-head">
+                    <span class="acte-color-dot" :style="{ backgroundColor: a.agendaColor }" />
+                    <div class="acte-card-title-wrap">
+                      <div class="acte-card-title">
+                        {{ a.label }}
+                        <v-icon v-if="!a.visible" :icon="mdiEyeOffOutline" size="14"
+                          class="ml-1 text-medium-emphasis" />
+                      </div>
+                      <div class="acte-card-codes">
+                        <span v-if="a.internalCode" class="acte-code">{{ a.internalCode }}</span>
+                        <span v-if="a.externalCode" class="acte-code acte-code-ext">{{ a.externalCode }}</span>
+                      </div>
+                    </div>
+                    <v-btn :icon="mdiTrashCanOutline" variant="text" size="small" color="error" class="flex-shrink-0"
+                      @click.stop="askDeleteActe(a)" aria-label="Supprimer l'acte" />
+                  </div>
+
+                  <div class="acte-card-meta">
+                    <div class="acte-meta-item">
+                      <v-icon :icon="mdiCurrencyEur" size="14" class="mr-1" />
+                      {{ formatCurrency(a.price) }}
+                      <span class="text-medium-emphasis ml-1">
+                        · {{ BILLING_TYPE_LABEL[a.billingType] || a.billingType }}
+                      </span>
+                    </div>
+                    <div class="acte-meta-item">
+                      <v-icon :icon="mdiClockOutline" size="14" class="mr-1" />
+                      {{ a.averageDurationMinutes || 0 }} min
+                      <span class="text-medium-emphasis ml-1">· × {{ a.concurrentAppointments || 1 }}</span>
+                    </div>
+                    <div v-if="a.machineTypes?.length" class="acte-machine-chips">
+                      <v-chip v-for="t in a.machineTypes" :key="t" size="x-small" variant="tonal" color="primary"
+                        class="font-weight-bold">
+                        {{ MACHINE_TYPE_LABEL[t] || t }}
+                      </v-chip>
+                    </div>
+                  </div>
+
+                  <div class="acte-card-footer">
+                    <v-chip v-if="a.visibleOnOnlineAgenda" size="x-small" variant="tonal" color="primary"
+                      :prepend-icon="mdiEyeOutline" class="font-weight-bold">
+                      Agenda en ligne
+                    </v-chip>
+                    <v-chip v-if="a.billableByDoctor" size="x-small" variant="tonal" color="success"
+                      class="font-weight-bold">
+                      Facturable médecin
+                    </v-chip>
+                    <v-chip v-if="a.billAssociatedGhs" size="x-small" variant="tonal" color="info"
+                      class="font-weight-bold">
+                      GHS associé
+                    </v-chip>
+                  </div>
+                </div>
+              </div>
+            </v-card>
+          </v-col>
+        </v-row>
 
         <v-row v-if="activeTab === 'services'">
           <!-- =================== MONTHLY PAYMENT SUMMARY =================== -->
@@ -760,8 +1030,8 @@ function openEstablishment(establishment) {
               </v-col>
 
               <v-col cols="12">
-                <v-text-field v-model.trim="establishmentDraft.name" label="Nom de l'établissement"
-                  variant="outlined" rounded="lg" density="comfortable" :rules="[required]" />
+                <v-text-field v-model.trim="establishmentDraft.name" label="Nom de l'établissement" variant="outlined"
+                  rounded="lg" density="comfortable" :rules="[required]" />
               </v-col>
 
               <v-col cols="12">
@@ -785,6 +1055,162 @@ function openEstablishment(establishment) {
             @click="saveEstablishment">
             Créer
           </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- =================== ACTE CREATE / EDIT DIALOG =================== -->
+    <v-dialog v-model="acteDialog" max-width="720" :fullscreen="$vuetify.display.mobile" scrollable>
+      <v-card :class="['acte-dialog', { 'pa-2 rounded-15': !$vuetify.display.mobile }]">
+        <v-card-title class="px-6 pt-5 pb-2 d-flex align-center">
+          <div class="flex-grow-1">
+            <div class="text-headline-small font-weight-bold">
+              {{ editingActeId ? 'Modifier l\'acte' : 'Créer un acte' }}
+            </div>
+            <div class="text-body-small text-medium-emphasis mt-1">
+              Définissez les paramètres de cet acte pour la programmation et la facturation.
+            </div>
+          </div>
+          <v-btn :icon="mdiClose" variant="text" size="small" :disabled="acteSaving" @click="acteDialog = false" />
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="px-6 py-4 acte-dialog-scroll">
+          <v-form ref="acteFormRef">
+            <v-row density="comfortable">
+              <v-col cols="12">
+                <v-text-field v-model.trim="acteDraft.label" label="Libellé" variant="outlined" rounded="lg"
+                  density="comfortable" :rules="[required]" />
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-text-field v-model.trim="acteDraft.internalCode" label="Code interne" variant="outlined" rounded="lg"
+                  density="comfortable" />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model.trim="acteDraft.externalCode" label="Code externe" variant="outlined" rounded="lg"
+                  density="comfortable" />
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-switch v-model="acteDraft.visibleOnOnlineAgenda" color="primary" hide-details density="compact"
+                  label="Visible sur agenda en ligne" />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-switch v-model="acteDraft.sendPlanningEmail" color="primary" hide-details density="compact"
+                  label="Envoyer un mail de planification" />
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-text-field v-model.number="acteDraft.price" label="Tarif" type="number" min="0" step="1"
+                  :prepend-inner-icon="mdiCurrencyEur" variant="outlined" rounded="lg" density="comfortable"
+                  :rules="[nonNegativeNumber]" />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-select v-model="acteDraft.billingType" :items="BILLING_TYPES" item-title="label" item-value="value"
+                  label="Type de facturation" variant="outlined" rounded="lg" density="comfortable" />
+              </v-col>
+
+              <v-col cols="12">
+                <div class="text-body-small text-medium-emphasis mb-2">Couleur rendez-vous agenda</div>
+                <div class="acte-color-picker">
+                  <button v-for="c in ACTE_COLORS" :key="c" type="button" class="acte-color-swatch"
+                    :class="{ 'acte-color-swatch-selected': acteDraft.agendaColor === c }"
+                    :style="{ backgroundColor: c }" :aria-label="`Couleur ${c}`" @click="acteDraft.agendaColor = c" />
+                </div>
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-switch v-model="acteDraft.billableByDoctor" color="primary" hide-details density="compact"
+                  label="Facturable par le médecin" />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-switch v-model="acteDraft.billAssociatedGhs" color="primary" hide-details density="compact"
+                  label="Facturer le GHS associé (si machine associée)" />
+              </v-col>
+
+              <v-col cols="12">
+                <v-select v-model="acteDraft.machineTypes" :items="MACHINE_TYPES" item-title="label" item-value="value"
+                  label="Type machine" placeholder="Sélectionnez un ou plusieurs types" multiple chips closable-chips
+                  variant="outlined" rounded="lg" density="comfortable" />
+              </v-col>
+
+              <v-col cols="12">
+                <v-select v-model="acteDraft.linkedActeId" :items="linkedActeOptions" item-title="label" item-value="id"
+                  label="Acte lié" placeholder="Sélectionnez un acte lié (facturation)" clearable variant="outlined"
+                  rounded="lg" density="comfortable" />
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-text-field v-model.number="acteDraft.concurrentAppointments" label="Nombre de soins / RDV simultanés"
+                  type="number" min="1" step="1" variant="outlined" rounded="lg" density="comfortable"
+                  :rules="[positiveInteger]" />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model.number="acteDraft.averageDurationMinutes" label="Durée moyenne (minutes)"
+                  type="number" min="0" step="5" :prepend-inner-icon="mdiClockOutline" variant="outlined" rounded="lg"
+                  density="comfortable" :rules="[nonNegativeNumber]" />
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-switch v-model="acteDraft.visible" color="primary" hide-details density="compact" label="Visible" />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model.number="acteDraft.order" label="Ordre d'apparition" type="number" min="1" step="1"
+                  variant="outlined" rounded="lg" density="comfortable" :rules="[positiveInteger]" />
+              </v-col>
+
+              <v-col cols="12">
+                <v-text-field v-model.trim="acteDraft.specificDirectory"
+                  label="Répertoire spécifique (si upload fichier métier)" :prepend-inner-icon="mdiFolderOutline"
+                  variant="outlined" rounded="lg" density="comfortable" />
+              </v-col>
+            </v-row>
+          </v-form>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="px-6 py-4">
+          <v-spacer />
+          <v-btn variant="text" rounded="lg" class="text-none" :disabled="acteSaving" @click="acteDialog = false">
+            Annuler
+          </v-btn>
+          <v-btn color="primary" rounded="lg" flat class="text-none ml-2" :loading="acteSaving" @click="saveActe">
+            {{ editingActeId ? 'Enregistrer' : 'Créer' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- =================== ACTE DELETE DIALOG =================== -->
+    <v-dialog v-model="acteDeleteDialog" max-width="420">
+      <v-card v-if="acteToDelete" class="pa-2 rounded-15">
+        <v-card-text class="px-6 pt-6 pb-2 text-center">
+          <div class="acte-delete-icon-wrap mb-4">
+            <v-icon :icon="mdiAlertOutline" size="40" color="error" />
+          </div>
+          <div class="text-headline-small font-weight-bold mb-2">Supprimer cet acte ?</div>
+          <div class="text-body-medium text-medium-emphasis">
+            L'acte <strong>{{ acteToDelete.label }}</strong> sera supprimé définitivement.
+          </div>
+        </v-card-text>
+        <v-card-actions class="px-6 py-4">
+          <v-row class="ga-2" no-gutters>
+            <v-col>
+              <v-btn variant="text" rounded="lg" size="large" block class="text-none" :disabled="acteDeleting"
+                @click="acteDeleteDialog = false">
+                Annuler
+              </v-btn>
+            </v-col>
+            <v-col>
+              <v-btn color="error" rounded="lg" flat size="large" block class="text-none"
+                :prepend-icon="mdiTrashCanOutline" :loading="acteDeleting" @click="confirmDeleteActe">
+                Supprimer
+              </v-btn>
+            </v-col>
+          </v-row>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1318,5 +1744,169 @@ function openEstablishment(establishment) {
   border-radius: 18px;
   background: rgba(var(--v-theme-primary), 0.1);
   color: rgb(var(--v-theme-primary));
+}
+
+.acte-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.acte-card {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: white;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.acte-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--v-theme-primary), 0.35);
+}
+
+.acte-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.acte-color-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
+}
+
+.acte-card-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.acte-card-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.88);
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+}
+
+.acte-card-codes {
+  margin-top: 4px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.acte-code {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.7);
+  text-transform: uppercase;
+}
+
+.acte-code-ext {
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-primary));
+}
+
+.acte-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.acte-meta-item {
+  display: flex;
+  align-items: center;
+}
+
+.acte-machine-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.acte-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.acte-empty {
+  background: rgba(0, 0, 0, 0.025);
+  border-radius: 14px;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+}
+
+.acte-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-primary));
+}
+
+.acte-dialog-scroll {
+  max-height: 70vh;
+}
+
+.acte-color-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.acte-color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.acte-color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.acte-color-swatch-selected {
+  border-color: white;
+  box-shadow: 0 0 0 2px rgb(var(--v-theme-primary));
+}
+
+.acte-delete-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-error), 0.12);
 }
 </style>

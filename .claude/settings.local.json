@@ -4,7 +4,11 @@
       "Bash(grep -E \"\\\\.\\(json|ts|js|vue\\)$\")",
       "Bash(npm run *)",
       "Bash(npx --no-install vite build)",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(npx vue-tsc *)",
+      "Bash(node -e \"const m = require\\('@mdi/js'\\); ['mdiClipboardPulseOutline','mdiCurrencyEur','mdiAlertOutline','mdiEyeOutline','mdiEyeOffOutline','mdiFolderOutline','mdiTrashCanOutline'].forEach\\(k => console.log\\(k, k in m ? 'OK' : 'MISSING'\\)\\)\")",
+      "Bash(git stash *)",
+      "Bash(node -e \"const m = require\\('@mdi/js'\\); console.log\\(Object.keys\\(m\\).filter\\(k => k.toLowerCase\\(\\).includes\\('hospital'\\)\\).join\\('\\\\n'\\)\\)\")"
     ]
   }
 }

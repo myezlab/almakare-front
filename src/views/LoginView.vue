@@ -77,8 +77,8 @@ const DASHBOARD_BY_ROLE = {
 
 function landingRouteFor(role, establishment, { isSignUp = false } = {}) {
   if (role === "coordinator") {
-    if (isSignUp) return "Team"
     if (establishment === "organisation") return "Organisation"
+    if (isSignUp) return "Team"
     return "ProfileProfessional"
   }
   return DASHBOARD_BY_ROLE[role] || "DashboardPatient"

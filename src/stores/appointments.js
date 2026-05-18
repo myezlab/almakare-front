@@ -14,16 +14,18 @@ function addDaysISO(baseISO, days) {
   return d.toISOString().slice(0, 10)
 }
 
+const DEFAULT_ESTABLISHMENT_ID = 'etablissement-paris'
+
 const DEFAULT_DOCTOR_SLOTS = [
-  { doctorId: 'tm-seed-001', date: addDaysISO(todayISO(), 1), startTime: '09:00', endTime: '09:30' },
-  { doctorId: 'tm-seed-001', date: addDaysISO(todayISO(), 1), startTime: '09:30', endTime: '10:00' },
-  { doctorId: 'tm-seed-001', date: addDaysISO(todayISO(), 1), startTime: '10:00', endTime: '10:30' },
-  { doctorId: 'tm-seed-001', date: addDaysISO(todayISO(), 2), startTime: '14:00', endTime: '14:30' },
-  { doctorId: 'tm-seed-001', date: addDaysISO(todayISO(), 2), startTime: '14:30', endTime: '15:00' },
-  { doctorId: 'tm-seed-002', date: addDaysISO(todayISO(), 1), startTime: '11:00', endTime: '11:30' },
-  { doctorId: 'tm-seed-002', date: addDaysISO(todayISO(), 3), startTime: '15:00', endTime: '15:30' },
-  { doctorId: 'tm-seed-002', date: addDaysISO(todayISO(), 3), startTime: '15:30', endTime: '16:00' },
-  { doctorId: 'tm-seed-009', date: addDaysISO(todayISO(), 4), startTime: '10:00', endTime: '10:30' },
+  { doctorId: 'tm-seed-001', establishmentId: DEFAULT_ESTABLISHMENT_ID, date: addDaysISO(todayISO(), 1), startTime: '09:00', endTime: '09:30' },
+  { doctorId: 'tm-seed-001', establishmentId: DEFAULT_ESTABLISHMENT_ID, date: addDaysISO(todayISO(), 1), startTime: '09:30', endTime: '10:00' },
+  { doctorId: 'tm-seed-001', establishmentId: DEFAULT_ESTABLISHMENT_ID, date: addDaysISO(todayISO(), 1), startTime: '10:00', endTime: '10:30' },
+  { doctorId: 'tm-seed-001', establishmentId: DEFAULT_ESTABLISHMENT_ID, date: addDaysISO(todayISO(), 2), startTime: '14:00', endTime: '14:30' },
+  { doctorId: 'tm-seed-001', establishmentId: DEFAULT_ESTABLISHMENT_ID, date: addDaysISO(todayISO(), 2), startTime: '14:30', endTime: '15:00' },
+  { doctorId: 'tm-seed-002', establishmentId: DEFAULT_ESTABLISHMENT_ID, date: addDaysISO(todayISO(), 1), startTime: '11:00', endTime: '11:30' },
+  { doctorId: 'tm-seed-002', establishmentId: DEFAULT_ESTABLISHMENT_ID, date: addDaysISO(todayISO(), 3), startTime: '15:00', endTime: '15:30' },
+  { doctorId: 'tm-seed-002', establishmentId: DEFAULT_ESTABLISHMENT_ID, date: addDaysISO(todayISO(), 3), startTime: '15:30', endTime: '16:00' },
+  { doctorId: 'tm-seed-009', establishmentId: DEFAULT_ESTABLISHMENT_ID, date: addDaysISO(todayISO(), 4), startTime: '10:00', endTime: '10:30' },
 ]
 
 function buildSeedSlots() {
@@ -37,7 +39,11 @@ function loadSlots() {
   try {
     const raw = localStorage.getItem(SLOTS_STORAGE_KEY)
     if (raw === null) return buildSeedSlots()
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+    return parsed.map((s) => ({
+      ...s,
+      establishmentId: s.establishmentId || DEFAULT_ESTABLISHMENT_ID,
+    }))
   } catch {
     return buildSeedSlots()
   }
@@ -81,10 +87,11 @@ export const useAppointmentsStore = defineStore('appointments', () => {
     { deep: true },
   )
 
-  function addSlot({ doctorId, date, startTime, endTime }) {
+  function addSlot({ doctorId, establishmentId, date, startTime, endTime }) {
     const slot = {
       id: `slot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       doctorId,
+      establishmentId: establishmentId || null,
       date,
       startTime,
       endTime,
@@ -96,6 +103,20 @@ export const useAppointmentsStore = defineStore('appointments', () => {
   function removeSlot(slotId) {
     slots.value = slots.value.filter((s) => s.id !== slotId)
     items.value = items.value.filter((a) => a.slotId !== slotId)
+  }
+
+  function updateSlot(slotId, { establishmentId, date, startTime, endTime }) {
+    const idx = slots.value.findIndex((s) => s.id === slotId)
+    if (idx === -1) return null
+    const updated = {
+      ...slots.value[idx],
+      establishmentId: establishmentId ?? slots.value[idx].establishmentId,
+      date: date ?? slots.value[idx].date,
+      startTime: startTime ?? slots.value[idx].startTime,
+      endTime: endTime ?? slots.value[idx].endTime,
+    }
+    slots.value = [...slots.value.slice(0, idx), updated, ...slots.value.slice(idx + 1)]
+    return updated
   }
 
   function isSlotBooked(slotId) {
@@ -122,8 +143,8 @@ export const useAppointmentsStore = defineStore('appointments', () => {
     return appointment
   }
 
-  function createAppointment({ doctorId, patientId, patientFullName, date, startTime, endTime, notes = '' }) {
-    const slot = addSlot({ doctorId, date, startTime, endTime })
+  function createAppointment({ doctorId, establishmentId, patientId, patientFullName, date, startTime, endTime, notes = '' }) {
+    const slot = addSlot({ doctorId, establishmentId, date, startTime, endTime })
     return bookSlot({ slotId: slot.id, doctorId, patientId, patientFullName, notes })
   }
 
@@ -150,6 +171,7 @@ export const useAppointmentsStore = defineStore('appointments', () => {
     items,
     addSlot,
     removeSlot,
+    updateSlot,
     isSlotBooked,
     getAppointmentForSlot,
     bookSlot,

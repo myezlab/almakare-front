@@ -1,6 +1,7 @@
 <script setup>
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useMessagesStore } from '@/stores/messages'
+import { useOrganisationStore } from '@/stores/organisation'
 import { useSelfStore } from '@/stores/self'
 import { useTeamStore } from '@/stores/team'
 import {
@@ -15,6 +16,8 @@ import {
   mdiCloseCircleOutline,
   mdiDoctor,
   mdiDotsVertical,
+  mdiHospitalBuilding,
+  mdiMapMarkerOutline,
   mdiNotebookOutline,
 } from '@mdi/js'
 import { computed, ref } from 'vue'
@@ -23,6 +26,13 @@ const teamStore = useTeamStore()
 const appointmentsStore = useAppointmentsStore()
 const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
+const organisationStore = useOrganisationStore()
+
+const establishments = computed(() => organisationStore.item.establishments || [])
+function establishmentFor(id) {
+  if (!id) return null
+  return establishments.value.find((e) => e.id === id) || null
+}
 
 const doctors = computed(() =>
   teamStore.items.filter((m) => {
@@ -235,6 +245,13 @@ const myAppointments = computed(() => {
                 Dr {{ a.doctor?.firstName }} {{ a.doctor?.lastName }}
                 <span v-if="a.notes" class="ml-1">· {{ a.notes }}</span>
               </div>
+              <div v-if="establishmentFor(a.slot.establishmentId)" class="appt-row-establishment">
+                <v-icon :icon="mdiHospitalBuilding" size="12" class="mr-1" />
+                {{ establishmentFor(a.slot.establishmentId).name }}
+                <span v-if="establishmentFor(a.slot.establishmentId).location" class="text-medium-emphasis">
+                  · {{ establishmentFor(a.slot.establishmentId).location }}
+                </span>
+              </div>
             </div>
             <v-menu v-if="$vuetify.display.mobile" location="bottom end">
               <template #activator="{ props }">
@@ -333,8 +350,14 @@ const myAppointments = computed(() => {
                 </div>
                 <button v-for="slot in availableSlotsForDay(day)" :key="slot.id" class="patient-slot"
                   @click="openConfirm(slot)">
-                  <v-icon :icon="mdiClockOutline" size="13" class="mr-1" />
-                  {{ slot.startTime }} – {{ slot.endTime }}
+                  <div class="patient-slot-time">
+                    <v-icon :icon="mdiClockOutline" size="13" class="mr-1" />
+                    {{ slot.startTime }} – {{ slot.endTime }}
+                  </div>
+                  <div v-if="establishmentFor(slot.establishmentId)" class="patient-slot-establishment">
+                    <v-icon :icon="mdiHospitalBuilding" size="11" class="mr-1" />
+                    {{ establishmentFor(slot.establishmentId).name }}
+                  </div>
                 </button>
               </div>
             </div>
@@ -369,6 +392,19 @@ const myAppointments = computed(() => {
           <div class="info-line mb-3">
             <v-icon :icon="mdiDoctor" size="18" class="mr-2" color="primary" />
             <strong>Dr {{ selectedDoctor.firstName }} {{ selectedDoctor.lastName }}</strong>
+          </div>
+          <div v-if="establishmentFor(confirmSlot.establishmentId)" class="establishment-card mb-3">
+            <v-icon :icon="mdiHospitalBuilding" size="18" class="mr-2 mt-1" color="primary" />
+            <div>
+              <div class="font-weight-bold text-body-medium">
+                {{ establishmentFor(confirmSlot.establishmentId).name }}
+              </div>
+              <div v-if="establishmentFor(confirmSlot.establishmentId).location"
+                class="text-body-small text-medium-emphasis d-flex align-center mt-1">
+                <v-icon :icon="mdiMapMarkerOutline" size="14" class="mr-1" />
+                {{ establishmentFor(confirmSlot.establishmentId).location }}
+              </div>
+            </div>
           </div>
           <v-textarea v-model="confirmNotes" label="Motif (optionnel)" variant="outlined" rounded="lg"
             rows="2" auto-grow :prepend-inner-icon="mdiNotebookOutline" />
@@ -560,9 +596,10 @@ const myAppointments = computed(() => {
 
 .patient-slot {
   display: inline-flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: 14px;
   border: 1px solid rgba(var(--v-theme-primary), 0.3);
   background: white;
   color: rgb(var(--v-theme-primary));
@@ -572,6 +609,37 @@ const myAppointments = computed(() => {
   transition:
     background 0.2s ease,
     transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.patient-slot-time {
+  display: inline-flex;
+  align-items: center;
+}
+
+.patient-slot-establishment {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.6);
+  margin-top: 2px;
+}
+
+.establishment-card {
+  display: flex;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-primary), 0.06);
+  border: 1px solid rgba(var(--v-theme-primary), 0.18);
+}
+
+.appt-row-establishment {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.7);
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .patient-slot:hover {

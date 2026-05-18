@@ -16,7 +16,10 @@ function migrateDevices(state) {
       devices: seeded ? JSON.parse(JSON.stringify(seeded)) : [],
     }
   })
-  return { ...state, establishments }
+  const actes = Array.isArray(state.actes)
+    ? state.actes
+    : JSON.parse(JSON.stringify(ORGANISATION_SEED.actes || []))
+  return { ...state, establishments, actes }
 }
 
 function loadFromStorage() {
@@ -120,6 +123,57 @@ export const useOrganisationStore = defineStore('organisation', () => {
     }
   }
 
+  function getActes() {
+    return item.value.actes || []
+  }
+
+  function findActe(id) {
+    return getActes().find((a) => a.id === id) || null
+  }
+
+  function addActe(payload) {
+    const id = `acte-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    const acte = {
+      id,
+      label: payload.label || '',
+      internalCode: payload.internalCode || '',
+      externalCode: payload.externalCode || '',
+      visibleOnOnlineAgenda: !!payload.visibleOnOnlineAgenda,
+      sendPlanningEmail: !!payload.sendPlanningEmail,
+      price: Number(payload.price) || 0,
+      agendaColor: payload.agendaColor || '#1976D2',
+      billingType: payload.billingType || 'hourly',
+      billableByDoctor: !!payload.billableByDoctor,
+      machineTypes: Array.isArray(payload.machineTypes) ? [...payload.machineTypes] : [],
+      billAssociatedGhs: !!payload.billAssociatedGhs,
+      linkedActeId: payload.linkedActeId || '',
+      concurrentAppointments: Number(payload.concurrentAppointments) || 1,
+      averageDurationMinutes: Number(payload.averageDurationMinutes) || 0,
+      visible: payload.visible !== undefined ? !!payload.visible : true,
+      order: Number(payload.order) || getActes().length + 1,
+      specificDirectory: payload.specificDirectory || '',
+    }
+    item.value = {
+      ...item.value,
+      actes: [...getActes(), acte],
+    }
+    return acte
+  }
+
+  function updateActe(id, patch) {
+    item.value = {
+      ...item.value,
+      actes: getActes().map((a) => (a.id === id ? { ...a, ...patch } : a)),
+    }
+  }
+
+  function removeActe(id) {
+    item.value = {
+      ...item.value,
+      actes: getActes().filter((a) => a.id !== id),
+    }
+  }
+
   return {
     item,
     update,
@@ -129,5 +183,9 @@ export const useOrganisationStore = defineStore('organisation', () => {
     removeEstablishment,
     addDevice,
     removeDevice,
+    findActe,
+    addActe,
+    updateActe,
+    removeActe,
   }
 })

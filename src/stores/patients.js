@@ -29,11 +29,15 @@ export const usePatientsStore = defineStore('patients', () => {
     { deep: true },
   )
 
-  function startHospitalization(id) {
+  function startHospitalization(id, acteId = null) {
     const idx = items.value.findIndex((p) => p.id === id)
     if (idx === -1) return
     if (items.value[idx].hospitalizationStep > 0) return
-    items.value[idx] = { ...items.value[idx], hospitalizationStep: 1 }
+    items.value[idx] = {
+      ...items.value[idx],
+      hospitalizationStep: 1,
+      scheduledActeId: acteId || items.value[idx].scheduledActeId || null,
+    }
   }
 
   function add(patient) {
@@ -65,5 +69,9 @@ export const usePatientsStore = defineStore('patients', () => {
     return newPatient
   }
 
-  return { items, startHospitalization, add }
+  function remove(id) {
+    items.value = items.value.filter((p) => p.id !== id)
+  }
+
+  return { items, startHospitalization, add, remove }
 })

@@ -10,6 +10,9 @@ export const LOG_ACTIONS = {
   ESTABLISHMENT_REMOVED: 'ESTABLISHMENT_REMOVED',
   DEVICE_CREATED: 'DEVICE_CREATED',
   DEVICE_REMOVED: 'DEVICE_REMOVED',
+  ACTE_CREATED: 'ACTE_CREATED',
+  ACTE_UPDATED: 'ACTE_UPDATED',
+  ACTE_REMOVED: 'ACTE_REMOVED',
 }
 
 export const LOG_FIELDS = {
@@ -39,6 +42,9 @@ const ACTION_LABELS = {
   [LOG_ACTIONS.ESTABLISHMENT_REMOVED]: ({ name } = {}) => `Établissement supprimé "${name || ''}"`,
   [LOG_ACTIONS.DEVICE_CREATED]: ({ name } = {}) => `Matériel ajouté "${name || ''}"`,
   [LOG_ACTIONS.DEVICE_REMOVED]: ({ name } = {}) => `Matériel retiré "${name || ''}"`,
+  [LOG_ACTIONS.ACTE_CREATED]: ({ name } = {}) => `Acte créé "${name || ''}"`,
+  [LOG_ACTIONS.ACTE_UPDATED]: ({ name } = {}) => `Acte mis à jour "${name || ''}"`,
+  [LOG_ACTIONS.ACTE_REMOVED]: ({ name } = {}) => `Acte supprimé "${name || ''}"`,
 }
 
 const FIELD_LABELS = {

@@ -2,6 +2,7 @@
 import sleepingCenterIllustration from '@/assets/illustrations/sleeping-center.svg'
 import { useProfileCompletion } from '@/composables/useProfileCompletion'
 import { useMessagesStore } from '@/stores/messages'
+import { useOrganisationStore } from '@/stores/organisation'
 import { usePatientsStore } from '@/stores/patients'
 import {
   mdiAlertCircleOutline,
@@ -12,6 +13,7 @@ import {
   mdiCheckCircleOutline,
   mdiChevronLeft,
   mdiClockOutline,
+  mdiDeleteOutline,
   mdiEmailOutline,
   mdiLockOutline,
   mdiPhoneOutline,
@@ -21,7 +23,7 @@ import { useClipboard } from '@vueuse/core'
 import dayjs from 'dayjs'
 import 'dayjs/locale/fr'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 dayjs.locale('fr')
@@ -30,8 +32,33 @@ dayjs.extend(relativeTime)
 const route = useRoute()
 const router = useRouter()
 const patientsStore = usePatientsStore()
+const organisationStore = useOrganisationStore()
 const messagesStore = useMessagesStore()
 const { copy } = useClipboard()
+
+const availableActes = computed(() =>
+  (organisationStore.item.actes || []).filter((a) => a.visible !== false),
+)
+
+const acteDialog = ref(false)
+const selectedActeId = ref(null)
+
+function openActeDialog() {
+  if (!patient.value || !canStartJourney.value) return
+  selectedActeId.value = availableActes.value[0]?.id || null
+  acteDialog.value = true
+}
+
+function confirmActeSelection() {
+  if (!patient.value || !selectedActeId.value) return
+  const acte = availableActes.value.find((a) => a.id === selectedActeId.value)
+  patientsStore.startHospitalization(patient.value.id, selectedActeId.value)
+  acteDialog.value = false
+  messagesStore.add({
+    type: 'success',
+    text: `Acte « ${acte?.label || ''} » programmé pour ${patient.value.firstName} ${patient.value.lastName}`,
+  })
+}
 
 function copyToClipboard(value, label) {
   if (!value) return
@@ -153,13 +180,22 @@ function fieldOrPlaceholder(value, suffix = '') {
   return `${value}${suffix}`
 }
 
-function startJourney() {
-  if (!patient.value || !canStartJourney.value) return
-  patientsStore.startHospitalization(patient.value.id)
+
+const deleteDialog = ref(false)
+const deleting = ref(false)
+
+function confirmDelete() {
+  if (!patient.value || deleting.value) return
+  deleting.value = true
+  const name = `${patient.value.firstName} ${patient.value.lastName}`
+  patientsStore.remove(patient.value.id)
   messagesStore.add({
     type: 'success',
-    text: `Parcours d'hospitalisation lancé pour ${patient.value.firstName} ${patient.value.lastName}`,
+    text: `Patient ${name} supprimé`,
   })
+  deleteDialog.value = false
+  deleting.value = false
+  router.push({ name: 'Patients' })
 }
 </script>
 
@@ -246,7 +282,7 @@ function startJourney() {
                   </template>
                 </div>
                 <v-btn color="primary" rounded="lg" size="large" :disabled="!canStartJourney" class="text-none"
-                  @click="startJourney" flat>
+                  @click="openActeDialog" flat>
                   {{ canStartJourney ? "Programmer un acte" : "Profil incomplet" }}
                 </v-btn>
               </v-col>
@@ -380,6 +416,7 @@ function startJourney() {
           </v-card>
 
           <!-- Timeline of all steps (only when started) -->
+          <!--
           <v-card v-if="journeyStarted" class="card-shadow pa-2"
             :class="{ 'rounded-15': !$vuetify.display.mobile }">
             <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
@@ -416,10 +453,98 @@ function startJourney() {
               </v-timeline>
             </v-card-text>
           </v-card>
+          -->
+
+
+          <!-- Delete patient -->
+          <div class="d-flex justify-center mt-8" :class="{ 'px-6': $vuetify.display.mobile }">
+            <v-btn variant="text" color="error" :prepend-icon="mdiDeleteOutline" class="text-none" rounded="lg"
+              @click="deleteDialog = true">
+              Supprimer ce patient
+            </v-btn>
+          </div>
         </template>
 
       </v-col>
     </v-row>
+
+    <v-dialog v-model="acteDialog" max-width="560">
+      <v-card class="pa-2" rounded="lg">
+        <v-card-text class="px-6 pt-6 pb-2">
+          <div class="text-headline-small font-weight-bold mb-2">Programmer un acte</div>
+          <div class="text-body-medium text-medium-emphasis mb-4" v-if="patient">
+            Sélectionnez l'acte à programmer pour
+            <strong>{{ patient.firstName }} {{ patient.lastName }}</strong>.
+          </div>
+
+          <template v-if="availableActes.length">
+            <v-radio-group v-model="selectedActeId" hide-details density="comfortable">
+              <v-card
+                v-for="acte in availableActes"
+                :key="acte.id"
+                variant="outlined"
+                rounded="lg"
+                class="mb-2 pa-3"
+                :class="{ 'border-primary': selectedActeId === acte.id }"
+                style="cursor: pointer;"
+                @click="selectedActeId = acte.id">
+                <div class="d-flex align-center ga-3">
+                  <v-radio :value="acte.id" hide-details density="compact" class="flex-grow-0" />
+                  <div class="flex-grow-1">
+                    <div class="d-flex align-center ga-2">
+                      <span
+                        class="d-inline-block rounded-circle"
+                        :style="{ width: '10px', height: '10px', background: acte.agendaColor }" />
+                      <div class="text-body-medium font-weight-medium">{{ acte.label }}</div>
+                    </div>
+                    <div class="text-body-small text-medium-emphasis mt-1">
+                      <span v-if="acte.externalCode">{{ acte.externalCode }}</span>
+                      <span v-if="acte.averageDurationMinutes"> · {{ acte.averageDurationMinutes }} min</span>
+                      <span v-if="acte.price"> · {{ acte.price }} €</span>
+                    </div>
+                  </div>
+                </div>
+              </v-card>
+            </v-radio-group>
+          </template>
+          <v-alert v-else type="info" variant="tonal" rounded="lg">
+            Aucun acte disponible. Vous pouvez en configurer depuis la page Organisation.
+          </v-alert>
+        </v-card-text>
+        <v-card-actions class="px-6 pb-4 pt-2">
+          <v-spacer />
+          <v-btn variant="text" rounded="lg" class="text-none" @click="acteDialog = false">
+            Annuler
+          </v-btn>
+          <v-btn color="primary" rounded="lg" flat class="text-none"
+            :disabled="!selectedActeId" @click="confirmActeSelection">
+            Programmer
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="deleteDialog" max-width="460">
+      <v-card class="pa-2" rounded="lg">
+        <v-card-text class="px-6 pt-6 pb-2">
+          <div class="text-headline-small font-weight-bold mb-2">Supprimer ce patient ?</div>
+          <div class="text-body-medium text-medium-emphasis" v-if="patient">
+            Le dossier de <strong>{{ patient.firstName }} {{ patient.lastName }}</strong> sera
+            définitivement supprimé. Cette action est irréversible.
+          </div>
+        </v-card-text>
+        <v-card-actions class="px-6 pb-4 pt-2">
+          <v-spacer />
+          <v-btn variant="text" rounded="lg" class="text-none" @click="deleteDialog = false" :disabled="deleting">
+            Annuler
+          </v-btn>
+          <v-btn color="error" rounded="lg" flat class="text-none" :prepend-icon="mdiDeleteOutline" :loading="deleting"
+            @click="confirmDelete">
+            Supprimer
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 

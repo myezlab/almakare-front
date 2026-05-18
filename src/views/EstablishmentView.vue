@@ -1,4 +1,5 @@
 <script setup>
+import DateFieldFr from '@/components/DateFieldFr.vue'
 import Picture from '@/components/Picture.vue'
 import { ISOToDDMMYYYY } from '@/composables/useDates'
 import { LOG_ACTIONS } from '@/data/logs'
@@ -8,6 +9,7 @@ import { useMessagesStore } from '@/stores/messages'
 import { useOrganisationStore } from '@/stores/organisation'
 import { useSelfStore } from '@/stores/self'
 import {
+  mdiAlertOutline,
   mdiCalendarBlank,
   mdiCalendarCheckOutline,
   mdiClose,
@@ -152,6 +154,34 @@ async function saveDetails() {
 
 function backToOrganisation() {
   router.push({ name: 'Organisation', query: { tab: 'etablissements' } })
+}
+
+const deleteDialog = ref(false)
+const deleting = ref(false)
+
+function openDeleteDialog() {
+  deleteDialog.value = true
+}
+
+async function confirmDelete() {
+  if (!establishment.value) return
+  deleting.value = true
+  try {
+    const target = establishment.value
+    organisationStore.removeEstablishment(target.id)
+    logEstablishment({
+      type: 'warning',
+      action: LOG_ACTIONS.ESTABLISHMENT_REMOVED,
+      params: { name: target.name },
+    })
+    messagesStore.add({ type: 'success', text: `Établissement "${target.name}" supprimé` })
+    deleteDialog.value = false
+    backToOrganisation()
+  } catch {
+    messagesStore.add({ type: 'error', text: 'Erreur lors de la suppression' })
+  } finally {
+    deleting.value = false
+  }
 }
 
 // =========== DEVICES / CALENDAR ============
@@ -341,12 +371,21 @@ function removeDevice(device) {
               </v-col>
             </v-row>
 
-            <div v-if="draftDirty" class="d-flex justify-end ga-2 mt-2 pb-4">
+            <div v-if="draftDirty" class="d-flex justify-end ga-2 mt-2">
               <v-btn variant="text" rounded="lg" class="text-none" :disabled="saving" @click="cancelEdit">
                 Annuler
               </v-btn>
               <v-btn color="primary" rounded="lg" flat class="text-none" :loading="saving" @click="saveDetails">
                 Enregistrer
+              </v-btn>
+            </div>
+
+            <v-divider class="mt-6 mb-4" />
+
+            <div class="d-flex justify-center pb-4">
+              <v-btn color="error" variant="tonal" rounded="lg" class="text-none"
+                :prepend-icon="mdiTrashCanOutline" :disabled="saving" @click="openDeleteDialog">
+                Supprimer l'établissement
               </v-btn>
             </div>
           </v-form>
@@ -484,9 +523,8 @@ function removeDevice(device) {
                   :rules="[required]" />
               </v-col>
               <v-col cols="12">
-                <v-text-field v-model="deviceDraft.acquiredAt" label="Date d'acquisition" type="date"
-                  :prepend-inner-icon="mdiCalendarBlank" variant="outlined" rounded="lg" density="comfortable"
-                  :rules="[required]" />
+                <DateFieldFr v-model="deviceDraft.acquiredAt" label="Date d'acquisition"
+                  :prepend-inner-icon="mdiCalendarBlank" :rules="[required]" />
               </v-col>
             </v-row>
           </v-form>
@@ -504,6 +542,38 @@ function removeDevice(device) {
             @click="saveDevice">
             Ajouter
           </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- =================== DELETE ESTABLISHMENT DIALOG =================== -->
+    <v-dialog v-model="deleteDialog" max-width="420" :fullscreen="false">
+      <v-card v-if="establishment" class="pa-2 rounded-15">
+        <v-card-text class="px-6 pt-6 pb-2 text-center">
+          <div class="delete-icon-wrap mb-4">
+            <v-icon :icon="mdiAlertOutline" size="40" color="error" />
+          </div>
+          <div class="text-headline-small font-weight-bold mb-2">Supprimer cet établissement ?</div>
+          <div class="text-body-medium text-medium-emphasis">
+            L'établissement <strong>{{ establishment.name }}</strong> ainsi que son matériel
+            seront supprimés définitivement.
+          </div>
+        </v-card-text>
+        <v-card-actions class="px-6 py-4">
+          <v-row class="ga-2" no-gutters>
+            <v-col>
+              <v-btn variant="text" rounded="lg" size="large" block class="text-none" :disabled="deleting"
+                @click="deleteDialog = false">
+                Annuler
+              </v-btn>
+            </v-col>
+            <v-col>
+              <v-btn color="error" rounded="lg" flat size="large" block class="text-none"
+                :prepend-icon="mdiTrashCanOutline" :loading="deleting" @click="confirmDelete">
+                Supprimer
+              </v-btn>
+            </v-col>
+          </v-row>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -717,5 +787,15 @@ function removeDevice(device) {
   border-radius: 18px;
   background: rgba(var(--v-theme-primary), 0.1);
   color: rgb(var(--v-theme-primary));
+}
+
+.delete-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-error), 0.12);
 }
 </style>
