@@ -134,7 +134,7 @@ const epworthScoreLabel = computed(() => {
 
           <!-- Complete your profile card -->
           <v-col v-if="completionPercent < 100" cols="12" md="6">
-            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100" @click="router.push({ name: 'Profile' })">
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100" @click="router.push({ name: 'Profile', query: { tab: 'donnees-patient' } })">
               <v-row align="center">
                 <v-col>
                   <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
@@ -144,7 +144,7 @@ const epworthScoreLabel = computed(() => {
                     Renseignez vos informations pour accéder à toutes les fonctionnalités
                   </div>
                   <v-btn :prepend-icon="mdiAccount" variant="tonal" color="primary" rounded="lg"
-                    @click.stop="router.push({ name: 'Profile' })" class="text-none">
+                    @click.stop="router.push({ name: 'Profile', query: { tab: 'donnees-patient' } })" class="text-none">
                     Profil
                   </v-btn>
                 </v-col>
@@ -183,7 +183,7 @@ const epworthScoreLabel = computed(() => {
           </v-col>
 
           <!-- Epworth test card -->
-          <v-col cols="12" md="6">
+          <v-col v-if="selfStore.item?.epworthScore == null" cols="12" md="6">
             <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
               @click="router.push({ name: 'EpworthTest' })">
               <v-row align="center">

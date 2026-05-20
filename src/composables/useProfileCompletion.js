@@ -16,11 +16,11 @@ const PROFILE_FIELDS = [
 ]
 
 const PROFILE_SECTIONS = [
-  { label: 'Données personnelles', fields: ['agreementPersonal'] },
-  { label: 'Données générales', fields: ['firstName', 'lastName', 'gender', 'dob', 'phoneNumber'] },
-  { label: 'Carte Vitale', fields: ['carteVitaleNir'] },
-  { label: 'Données médicales', fields: ['dietaryRestrictions', 'medicalHistory', 'currentTreatments'] },
-  { label: 'Données cliniques', fields: ['weight', 'height', 'iah'] },
+  { key: 'personal', label: 'Données personnelles', fields: ['agreementPersonal'] },
+  { key: 'general', label: 'Données générales', fields: ['firstName', 'lastName', 'gender', 'dob', 'phoneNumber'] },
+  { key: 'carteVitale', label: 'Carte Vitale', fields: ['carteVitaleNir'] },
+  { key: 'medical', label: 'Données médicales', fields: ['dietaryRestrictions', 'medicalHistory', 'currentTreatments'] },
+  { key: 'clinical', label: 'Données cliniques', fields: ['weight', 'height', 'iah'] },
 ]
 
 const MEDICAL_FLAGS = {
@@ -59,6 +59,7 @@ export function useProfileCompletion(user) {
   const profileSections = computed(() => {
     const saved = toValue(user) || {}
     return PROFILE_SECTIONS.map(section => ({
+      key: section.key,
       label: section.label,
       complete: section.fields.every(key => isFilled(saved, key)),
     }))

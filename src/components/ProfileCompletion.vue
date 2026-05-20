@@ -1,6 +1,6 @@
 <script setup>
 import { mdiCheckCircle, mdiCircleOutline } from "@mdi/js"
-import { computed, ref } from "vue"
+import { computed } from "vue"
 
 const props = defineProps({
   completionPercent: {
@@ -29,7 +29,7 @@ const props = defineProps({
   },
 })
 
-const showChecklist = ref(false)
+const emit = defineEmits(['section-click'])
 
 const completionColor = computed(() => {
   return props.completionPercent >= 100 ? 'success' : 'primary'
@@ -61,23 +61,14 @@ const completionColor = computed(() => {
       <v-progress-linear :model-value="completionPercent" :color="completionColor" height="10" rounded bg-opacity="0.15"
         class="mb-2" />
 
-      <div v-if="sections.length && completionPercent < 100" class="mt-3">
-        <v-btn variant="text" size="small" rounded="lg" class="text-none px-0" :color="completionColor"
-          @click.stop="showChecklist = !showChecklist">
-          {{ showChecklist ? 'Masquer la liste' : 'Voir la liste' }}
-        </v-btn>
-        <v-expand-transition>
-          <div v-if="showChecklist" class="mt-2">
-            <div v-for="(section, i) in sections" :key="i" class="d-flex align-center py-1">
-              <v-icon :icon="section.complete ? mdiCheckCircle : mdiCircleOutline"
-                :color="section.complete ? 'success' : 'medium-emphasis'" size="20" class="mr-2" />
-              <span class="text-body-medium"
-                :class="section.complete ? 'text-medium-emphasis text-decoration-line-through' : ''">
-                {{ section.label }}
-              </span>
-            </div>
-          </div>
-        </v-expand-transition>
+      <div v-if="sections.length && completionPercent < 100" class="d-flex flex-wrap ga-2 mt-4">
+        <v-chip v-for="section in sections" :key="section.key || section.label" size="small" rounded="lg"
+          :variant="section.complete ? 'flat' : 'outlined'" :color="section.complete ? 'success' : 'primary'"
+          :prepend-icon="section.complete ? mdiCheckCircle : mdiCircleOutline" class="section-chip"
+          @click="emit('section-click', section)">
+          <span class="font-weight-medium">{{ section.label }}</span>
+          <span v-if="!section.complete" class="text-caption ml-2 chip-state">À compléter</span>
+        </v-chip>
       </div>
     </v-card-text>
   </v-card>
@@ -103,5 +94,19 @@ const completionColor = computed(() => {
 
 .completion-banner-primary {
   background: linear-gradient(90deg, #123B6D, #0988ac);
+}
+
+.section-chip {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.section-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.chip-state {
+  opacity: 0.75;
 }
 </style>

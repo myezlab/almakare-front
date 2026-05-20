@@ -83,6 +83,10 @@ async function selectAnswer(questionIndex, value) {
       <v-col :cols="$vuetify.display.mobile ? 12 : 8">
 
         <v-card flat color="transparent" class="mb-4 pa-5">
+          <v-btn :prepend-icon="mdiArrowLeft" variant="text" color="medium-emphasis" rounded="lg" size="small"
+            class="text-none mb-4 ml-n2" @click="router.push({ path: '/profil', query: { tab: 'questionnaires' } })">
+            Retour
+          </v-btn>
           <div class="text-headline-medium font-weight-bold mb-2">Test d'Epworth</div>
           <div class="text-body-medium text-medium-emphasis">
             Évaluez votre tendance à vous endormir dans différentes situations de la vie quotidienne. Pour chaque
@@ -129,8 +133,8 @@ async function selectAnswer(questionIndex, value) {
 
           <div class="text-center mt-6">
             <v-btn color="primary" variant="flat" rounded="pill" size="large" class="text-none"
-              :prepend-icon="mdiArrowLeft" @click="router.push({ name: 'Accueil' })">
-              Retour à l'accueil
+              @click="router.push({ path: '/profil', query: { tab: 'questionnaires' } })">
+              Retour
             </v-btn>
           </div>
 
