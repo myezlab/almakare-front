@@ -3,7 +3,7 @@ import logoInitials from "@/assets/img/logo-initials.svg"
 import logo from "@/assets/img/logo.svg"
 import { useNavigationItems } from "@/composables/useNavigationItems"
 import { useSelfStore } from "@/stores/self"
-import { mdiAccountOutline, mdiChevronLeft, mdiChevronRight, mdiCircle } from "@mdi/js"
+import { mdiAccount, mdiAccountOutline, mdiChevronLeft, mdiChevronRight, mdiCircle } from "@mdi/js"
 import { computed, defineAsyncComponent, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 
@@ -31,9 +31,7 @@ function isChildActive(child) {
   return true
 }
 
-const isProfileActive = computed(() =>
-  activeRouteName.value === 'Profile' || activeRouteName.value === 'ProfileProfessional',
-)
+const isProfileActive = computed(() => activeRouteName.value === 'Profile')
 
 const needsName = computed(() => {
   const { id, firstName, lastName } = selfStore.item
@@ -66,7 +64,7 @@ watch(mini, (val) => {
             <v-img :src="item.img" width="24" height="24" transition="fade-transition"
               :class="{ 'rounded-circle': item.rounded }" :cover="item.cover">
               <template v-slot:placeholder>
-                <v-icon size="22">{{ item.icon }}</v-icon>
+                <v-icon size="22">{{ activeRouteName === item.to.name ? (item.iconActive || item.icon) : item.icon }}</v-icon>
               </template>
             </v-img>
           </v-badge>
@@ -76,7 +74,7 @@ watch(mini, (val) => {
       <button class="nav-item" :class="{ active: isProfileActive }" aria-label="Profil"
         @click="$router.push(profileRoute)">
         <span class="nav-pill">
-          <v-icon size="22" :icon="mdiAccountOutline"></v-icon>
+          <v-icon size="22" :icon="isProfileActive ? mdiAccount : mdiAccountOutline"></v-icon>
           <span class="nav-label">Profil</span>
         </span>
       </button>
@@ -87,7 +85,7 @@ watch(mini, (val) => {
   <v-navigation-drawer v-else permanent class="card-shadow" :rail="mini" :rail-width="mini ? 64 : 100"
     style="border-right:0px">
     <v-row justify="center" class="mt-6 mb-4 px-2 cursor-pointer"
-      @click="$router.push(items[0]?.to || { name: 'DashboardPatient' })">
+      @click="$router.push(items[0]?.to || { name: 'Accueil' })">
       <v-img alt="Logo" class="shrink rounded-xs" :src="mini ? logoInitials : logo" transition="scale-transition"
         max-width="100%" width="100%" :max-height="mini ? 45 : 100" />
     </v-row>
@@ -103,7 +101,7 @@ watch(mini, (val) => {
                 transition="fade-transition">
                 <template v-slot:placeholder>
                   <v-row class="fill-height ma-0" align="center" justify="center">
-                    <v-icon>{{ item.icon }}</v-icon>
+                    <v-icon>{{ activeRouteName === item.to.name ? (item.iconActive || item.icon) : item.icon }}</v-icon>
                   </v-row>
                 </template>
               </v-img>

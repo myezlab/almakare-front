@@ -38,64 +38,28 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/dashboard-patient',
-      name: 'DashboardPatient',
-      component: () => import('./views/DashboardPatientView.vue'),
-      meta: { requiresAuth: true, roles: ['patient'] },
-    },
-    {
-      path: '/patients',
-      name: 'Patients',
-      component: () => import('./views/PatientsView.vue'),
-      meta: { requiresAuth: true, roles: ['doctor'] },
-    },
-    {
-      path: '/doctor/patients/:id',
-      name: 'DoctorPatientJourney',
-      component: () => import('./views/PatientView.vue'),
-      meta: { requiresAuth: true, roles: ['doctor'] },
-    },
-    {
-      path: '/equipe',
-      name: 'Team',
-      component: () => import('./views/TeamView.vue'),
-      meta: { requiresAuth: true, roles: ['coordinator'] },
-    },
-    {
-      path: '/organisation',
-      name: 'Organisation',
-      component: () => import('./views/OrganisationView.vue'),
-      meta: { requiresAuth: true, roles: ['coordinator'], establishment: 'organisation' },
-    },
-    {
-      path: '/etablissement/:id',
-      name: 'Establishment',
-      component: () => import('./views/EstablishmentView.vue'),
-      meta: { requiresAuth: true, roles: ['coordinator'], establishment: 'organisation' },
-    },
-    {
-      path: '/calendrier',
-      name: 'Calendar',
-      component: () => import('./views/CalendarView.vue'),
-      meta: { requiresAuth: true, roles: ['doctor'] },
+      path: '/accueil',
+      name: 'Accueil',
+      component: () => import('./views/AccueilView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/prendre-rendez-vous',
       name: 'BookAppointment',
       component: () => import('./views/BookAppointmentView.vue'),
-      meta: { requiresAuth: true, roles: ['patient'] },
+      meta: { requiresAuth: true },
     },
     {
-      path: '/profile',
+      path: '/profil',
       name: 'Profile',
       component: () => import('./views/ProfileView.vue'),
-      meta: { requiresAuth: true, roles: ['patient'] },
+      meta: { requiresAuth: true },
     },
     {
-      path: '/profil-professionnel',
-      name: 'ProfileProfessional',
-      component: () => import('./views/ProfileProfessionalView.vue'),
-      meta: { requiresAuth: true, roles: ['doctor', 'coordinator', 'technician'] },
+      path: '/messages',
+      name: 'Messages',
+      component: () => import('./views/MessagesView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/test-epworth',
@@ -113,7 +77,7 @@ const router = createRouter({
       path: '/parcours-hospitalisation',
       name: 'HospitalizationJourney',
       component: () => import('./views/HospitalizationJourneyView.vue'),
-      meta: { requiresAuth: true, roles: ['patient'] },
+      meta: { requiresAuth: true },
     },
     {
       path: '/troubles-du-sommeil',
@@ -130,60 +94,8 @@ const router = createRouter({
   ],
 })
 
-const DASHBOARD_BY_ROLE = {
-  patient: 'DashboardPatient',
-  doctor: 'Patients',
-}
-
 function isAuthenticated(selfStore) {
   return !!selfStore.item?.id
-}
-
-function userRole(selfStore) {
-  return selfStore.item?.role || 'patient'
-}
-
-function userRoles(selfStore) {
-  const item = selfStore.item || {}
-  if (Array.isArray(item.roles) && item.roles.length > 0) return item.roles
-  if (item.role) return [item.role]
-  return ['patient']
-}
-
-function userEstablishment(selfStore) {
-  return selfStore.item?.establishment || null
-}
-
-const PROFILE_BY_ROLE = {
-  patient: 'Profile',
-  doctor: 'ProfileProfessional',
-  coordinator: 'ProfileProfessional',
-  technician: 'ProfileProfessional',
-}
-
-function profileRouteFor(role) {
-  return PROFILE_BY_ROLE[role] || 'Profile'
-}
-
-function landingRouteFor(role, establishment) {
-  if (role === 'coordinator') {
-    if (establishment === 'organisation') return 'Organisation'
-    return profileRouteFor(role)
-  }
-  return DASHBOARD_BY_ROLE[role] || profileRouteFor(role)
-}
-
-function hasAccess(to, selfStore) {
-  if (to.meta?.guest) return true
-  if (to.meta?.requiresAuth && !isAuthenticated(selfStore)) return false
-  if (Array.isArray(to.meta?.roles) && to.meta.roles.length > 0) {
-    const roles = userRoles(selfStore)
-    if (!to.meta.roles.some((r) => roles.includes(r))) return false
-  }
-  if (to.meta?.establishment) {
-    if (userEstablishment(selfStore) !== to.meta.establishment) return false
-  }
-  return true
 }
 
 router.beforeEach(async (to, from, next) => {
@@ -191,27 +103,12 @@ router.beforeEach(async (to, from, next) => {
   const authenticated = isAuthenticated(selfStore)
 
   if (to.name === 'Home' && authenticated) {
-    const target = landingRouteFor(userRole(selfStore), userEstablishment(selfStore))
-    if (target === to.name) {
-      next()
-      return
-    }
-    next({ name: target })
+    next({ name: 'Accueil' })
     return
   }
 
   if (to.meta?.requiresAuth && !authenticated) {
     next({ name: 'Login' })
-    return
-  }
-
-  if (!hasAccess(to, selfStore)) {
-    const target = landingRouteFor(userRole(selfStore), userEstablishment(selfStore))
-    if (target === to.name) {
-      next()
-      return
-    }
-    next({ name: target })
     return
   }
 

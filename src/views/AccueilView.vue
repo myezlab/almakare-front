@@ -1,4 +1,5 @@
 <script setup>
+import logoText from '@/assets/img/logo-text-white.svg'
 import { useProfileCompletion } from '@/composables/useProfileCompletion'
 import { useSelfStore } from '@/stores/self'
 import { mdiAccountOutline, mdiCalendarPlusOutline, mdiChartBar, mdiClipboardPulseOutline, mdiHospitalBuilding, mdiMoonWaningCrescent } from '@mdi/js'
@@ -41,16 +42,25 @@ const epworthScoreLabel = computed(() => {
 
 <template>
   <div>
-    <v-row v-if="selfStore.item.id" justify="center" class="mt-8 mx-6 mb-16 pb-10">
+    <div v-if="selfStore.item.id" class="home-banner">
+      <div class="home-banner-sparkles" aria-hidden="true">
+        <span class="sparkle sparkle-1"></span>
+        <span class="sparkle sparkle-2"></span>
+        <span class="sparkle sparkle-3"></span>
+        <span class="sparkle sparkle-4"></span>
+        <span class="sparkle sparkle-5"></span>
+        <span class="sparkle sparkle-6"></span>
+        <span class="sparkle sparkle-7"></span>
+        <span class="sparkle sparkle-8"></span>
+      </div>
+      <img :src="logoText" alt="almakare" class="home-banner-logo" />
+      <svg class="home-banner-blob" viewBox="0 0 1440 160" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true">
+        <path fill="#fafbfd" d="M0,80 C480,160 960,0 1440,80 L1440,160 L0,160 Z" />
+      </svg>
+    </div>
+    <v-row v-if="selfStore.item.id" justify="center" class="mx-6 mb-16 pb-10">
       <v-col :cols="$vuetify.display.mobile ? 12 : 10">
-
-        <v-row class="mb-6">
-          <v-col align-self="center" class="text-headline-medium font-weight-bold">
-            <v-row>
-              Tableau de bord
-            </v-row>
-          </v-col>
-        </v-row>
 
         <!-- Book appointment card -->
         <v-card class="mt-6 pa-6 card-shadow rounded-15 cursor-pointer book-appt-card"
@@ -98,7 +108,8 @@ const epworthScoreLabel = computed(() => {
             </v-col>
             <v-col cols="auto">
               <v-progress-circular :model-value="hospitalizationProgress" color="primary" size="80" width="6">
-                <span class="text-body-medium font-weight-bold">{{ hospitalizationStep }}/{{ HOSPITALIZATION_TOTAL_STEPS }}</span>
+                <span class="text-body-medium font-weight-bold">{{ hospitalizationStep }}/{{ HOSPITALIZATION_TOTAL_STEPS
+                  }}</span>
               </v-progress-circular>
             </v-col>
           </v-row>
@@ -255,3 +266,126 @@ const epworthScoreLabel = computed(() => {
     </v-row>
   </div>
 </template>
+
+<style scoped>
+.home-banner {
+  position: relative;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  background: linear-gradient(135deg, #123B6D, #1c5089);
+  padding: 48px 16px 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.home-banner-logo {
+  position: relative;
+  z-index: 1;
+  width: 33vw;
+  max-width: 360px;
+  min-width: 180px;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.home-banner-blob {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 120px;
+  z-index: 0;
+  display: block;
+}
+
+.home-banner-sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sparkle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
+  animation: sparkle-twinkle 4s ease-in-out infinite;
+}
+
+.sparkle-1 {
+  top: 18%;
+  left: 12%;
+  animation-delay: 0s;
+}
+
+.sparkle-2 {
+  top: 32%;
+  left: 78%;
+  animation-delay: 0.7s;
+  width: 3px;
+  height: 3px;
+}
+
+.sparkle-3 {
+  top: 55%;
+  left: 22%;
+  animation-delay: 1.4s;
+}
+
+.sparkle-4 {
+  top: 25%;
+  left: 45%;
+  animation-delay: 2.1s;
+}
+
+.sparkle-5 {
+  top: 65%;
+  left: 88%;
+  animation-delay: 0.4s;
+}
+
+.sparkle-6 {
+  top: 42%;
+  left: 65%;
+  animation-delay: 2.8s;
+  width: 3px;
+  height: 3px;
+}
+
+.sparkle-7 {
+  top: 72%;
+  left: 35%;
+  animation-delay: 1.1s;
+}
+
+.sparkle-8 {
+  top: 15%;
+  left: 90%;
+  animation-delay: 3.2s;
+}
+
+@keyframes sparkle-twinkle {
+
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+}
+</style>

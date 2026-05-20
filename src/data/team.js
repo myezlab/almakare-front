@@ -1,5 +1,3 @@
-import { getPresetFor } from './permissions'
-
 export const TEAM_SEED = [
   {
     id: 'tm-seed-001',
@@ -9,8 +7,6 @@ export const TEAM_SEED = [
     role: 'doctor',
     specialty: 'Pneumologue',
     description: 'Spécialiste des troubles respiratoires du sommeil, le Dr Rousseau accompagne les patients atteints d\'apnée obstructive depuis plus de 15 ans. Elle privilégie une approche personnalisée centrée sur le confort du patient.',
-    permissions: getPresetFor('doctor'),
-    invitedAt: '2026-03-14T09:12:00.000Z',
     invitationStatus: 'accepted',
   },
   {
@@ -21,12 +17,6 @@ export const TEAM_SEED = [
     role: 'doctor',
     specialty: 'Neurologue du sommeil',
     description: 'Neurologue spécialisé dans les troubles du sommeil, le Dr Bernard prend en charge insomnies chroniques, parasomnies et hypersomnies. Il s\'appuie sur des examens polysomnographiques pour établir un diagnostic précis.',
-    permissions: [
-      ...getPresetFor('doctor'),
-      'medical.history',
-      'sleep.stats',
-    ],
-    invitedAt: '2026-03-18T14:30:00.000Z',
     invitationStatus: 'accepted',
   },
   {
@@ -37,65 +27,7 @@ export const TEAM_SEED = [
     role: 'doctor',
     specialty: 'ORL',
     description: 'Chirurgienne ORL, le Dr Garnier intervient sur les pathologies des voies aériennes supérieures liées au ronflement et aux apnées du sommeil. Elle propose des solutions chirurgicales et non chirurgicales adaptées.',
-    permissions: getPresetFor('doctor'),
-    invitedAt: '2026-04-02T08:45:00.000Z',
-    invitationStatus: 'pending',
-  },
-  {
-    id: 'tm-seed-004',
-    firstName: 'Léa',
-    lastName: 'Moreau',
-    email: 'lea.moreau@chu-clinique.fr',
-    role: 'coordinator',
-    permissions: getPresetFor('coordinator'),
-    invitedAt: '2026-02-10T10:00:00.000Z',
     invitationStatus: 'accepted',
-  },
-  {
-    id: 'tm-seed-005',
-    firstName: 'Thomas',
-    lastName: 'Petit',
-    email: 'thomas.petit@chu-clinique.fr',
-    role: 'coordinator',
-    permissions: getPresetFor('coordinator').filter(
-      (id) => id !== 'team.remove' && id !== 'team.permissions',
-    ),
-    invitedAt: '2026-03-22T16:20:00.000Z',
-    invitationStatus: 'accepted',
-  },
-  {
-    id: 'tm-seed-006',
-    firstName: 'Inès',
-    lastName: 'Lefèvre',
-    email: 'ines.lefevre@chu-clinique.fr',
-    role: 'technician',
-    permissions: getPresetFor('technician'),
-    invitedAt: '2026-04-08T11:05:00.000Z',
-    invitationStatus: 'accepted',
-  },
-  {
-    id: 'tm-seed-007',
-    firstName: 'Karim',
-    lastName: 'Benali',
-    email: 'karim.benali@chu-clinique.fr',
-    role: 'technician',
-    permissions: [
-      ...getPresetFor('technician'),
-      'sleep.epworth',
-      'admin.documents',
-    ],
-    invitedAt: '2026-04-25T13:45:00.000Z',
-    invitationStatus: 'accepted',
-  },
-  {
-    id: 'tm-seed-008',
-    firstName: 'Sophie',
-    lastName: 'Durand',
-    email: 'sophie.durand@chu-clinique.fr',
-    role: 'technician',
-    permissions: getPresetFor('technician'),
-    invitedAt: '2026-05-06T09:30:00.000Z',
-    invitationStatus: 'pending',
   },
   {
     id: 'tm-seed-009',
@@ -105,18 +37,6 @@ export const TEAM_SEED = [
     role: 'doctor',
     specialty: 'Cardiologue',
     description: 'Cardiologue, le Dr Lambert s\'intéresse aux liens entre apnée du sommeil et maladies cardiovasculaires. Il assure le suivi des patients à risque pour prévenir les complications associées.',
-    permissions: getPresetFor('doctor').filter((id) => id !== 'patients.export'),
-    invitedAt: '2026-05-10T15:00:00.000Z',
-    invitationStatus: 'pending',
-  },
-  {
-    id: 'tm-seed-010',
-    firstName: 'Manon',
-    lastName: 'Robert',
-    email: 'manon.robert@chu-clinique.fr',
-    role: 'coordinator',
-    permissions: getPresetFor('coordinator'),
-    invitedAt: '2026-05-12T12:15:00.000Z',
     invitationStatus: 'accepted',
   },
 ]

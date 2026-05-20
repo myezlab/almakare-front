@@ -1,9 +1,5 @@
 <script setup>
-import doctorIllustration from "@/assets/illustrations/doctor.svg"
-import professionalIllustration from "@/assets/illustrations/doctors.svg"
 import patientIllustration from "@/assets/illustrations/patient.svg"
-import coordinatorIllustration from "@/assets/illustrations/team.svg"
-import technicianIllustration from "@/assets/illustrations/technician.svg"
 import { useRules } from "@/composables/useRules"
 import personalDataAuthorizationContent from "@/data/personalDataAuthorization.json"
 import { useMessagesStore } from "@/stores/messages"
@@ -13,7 +9,6 @@ import {
   mdiEye,
   mdiEyeOff,
   mdiGoogle,
-  mdiLockOutline,
 } from "@mdi/js"
 import { marked } from "marked"
 import { computed, ref } from "vue"
@@ -27,14 +22,6 @@ const { required, emailValidation, passwordValidation } = useRules()
 
 // sign-in | sign-up | reset-password | loading | success
 const status = ref(route.query.mode === "signup" ? "sign-up" : "sign-in")
-const roleIllustrations = {
-  patient: patientIllustration,
-  professional: professionalIllustration,
-  coordinator: coordinatorIllustration,
-  doctor: doctorIllustration,
-  technician: technicianIllustration,
-}
-const roleIllustration = computed(() => roleIllustrations[route.query.role] || null)
 const pendingEmail = ref(false)
 const pendingGoogle = ref(false)
 
@@ -54,35 +41,7 @@ const signUpForm = ref(null)
 const agreementChecked = ref(false)
 const showAgreementDialog = ref(false)
 
-const isPatient = computed(() => route.query.role === "patient")
-
-function resolveSignUpRole() {
-  const queryRole = route.query.role
-  if (queryRole === "professional") return "coordinator"
-  return queryRole || "patient"
-}
-
-function resolveSignUpEstablishment() {
-  const queryRole = route.query.role
-  if (queryRole === "professional") return "organisation"
-  return null
-}
-
 const parsedAgreement = computed(() => marked(personalDataAuthorizationContent["fr-FR"] || ""))
-
-const DASHBOARD_BY_ROLE = {
-  patient: "DashboardPatient",
-  doctor: "Patients",
-}
-
-function landingRouteFor(role, establishment, { isSignUp = false } = {}) {
-  if (role === "coordinator") {
-    if (establishment === "organisation") return "Organisation"
-    if (isSignUp) return "Team"
-    return "ProfileProfessional"
-  }
-  return DASHBOARD_BY_ROLE[role] || "DashboardPatient"
-}
 
 // Password reset
 const resetEmail = ref("")
@@ -93,9 +52,9 @@ const signUpPasswordsMatch = computed(() => {
   return (v) => v === signUpPassword.value || 'Les mots de passe ne correspondent pas'
 })
 
-function redirectToApp(role, establishment, options = {}) {
+function redirectToApp() {
   status.value = "success"
-  setTimeout(() => router.push({ name: landingRouteFor(role, establishment, options) }), 1000)
+  setTimeout(() => router.push({ name: "Accueil" }), 1000)
 }
 
 async function handleSignIn() {
@@ -104,13 +63,8 @@ async function handleSignIn() {
   try {
     selfStore.item.id = "123456"
     selfStore.item.email = signInEmail.value
-    const role = route.query.role ? resolveSignUpRole() : (selfStore.item.role || "patient")
-    const establishment = route.query.role ? resolveSignUpEstablishment() : (selfStore.item.establishment ?? null)
-    selfStore.item.role = role
-    selfStore.item.roles = [role]
-    selfStore.item.establishment = establishment
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
-    redirectToApp(role, establishment)
+    redirectToApp()
   } catch (error) {
     console.error("Sign-in error:", error)
     messagesStore.add({ type: "error", text: 'Email ou mot de passe incorrect' })
@@ -119,27 +73,16 @@ async function handleSignIn() {
   }
 }
 
-async function createUserDoc(uid, email) {
-  const now = serverTimestamp()
-}
-
 async function handleSignUp() {
   if (!(await signUpForm.value.validate()).valid) return
   pendingEmail.value = true
   try {
     selfStore.item.id = "123456"
     selfStore.item.email = signUpEmail.value
-    const role = resolveSignUpRole()
-    const establishment = resolveSignUpEstablishment()
-    selfStore.item.role = role
-    selfStore.item.roles = [role]
-    selfStore.item.establishment = establishment
-    if (isPatient.value) {
-      selfStore.item.agreementPersonal = true
-      selfStore.item.agreementPersonalDate = new Date().toISOString()
-    }
+    selfStore.item.agreementPersonal = true
+    selfStore.item.agreementPersonalDate = new Date().toISOString()
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
-    redirectToApp(role, establishment, { isSignUp: true })
+    redirectToApp()
   } catch (error) {
     console.error("Sign-up error:", error)
     if (error.code === "auth/email-already-in-use") {
@@ -153,29 +96,19 @@ async function handleSignUp() {
 }
 
 async function handleGoogleSignIn() {
-  if (status.value === "sign-up" && isPatient.value && !agreementChecked.value) {
+  if (status.value === "sign-up" && !agreementChecked.value) {
     messagesStore.add({ type: "info", text: "Veuillez accepter les conditions de traitement de vos données personnelles" })
     return
   }
   pendingGoogle.value = true
   try {
     selfStore.item.id = "123456"
-    const isSignUp = status.value === "sign-up"
-    const role = isSignUp
-      ? resolveSignUpRole()
-      : (route.query.role ? resolveSignUpRole() : (selfStore.item.role || "patient"))
-    const establishment = (isSignUp || route.query.role)
-      ? resolveSignUpEstablishment()
-      : (selfStore.item.establishment ?? null)
-    selfStore.item.role = role
-    selfStore.item.roles = [role]
-    selfStore.item.establishment = establishment
-    if (status.value === "sign-up" && isPatient.value) {
+    if (status.value === "sign-up") {
       selfStore.item.agreementPersonal = true
       selfStore.item.agreementPersonalDate = new Date().toISOString()
     }
     messagesStore.add({ type: "success", text: 'Connexion réussie' })
-    redirectToApp(role, establishment, { isSignUp })
+    redirectToApp()
   } catch (error) {
     console.error("Google sign-in error:", error)
     if (error.code !== "auth/popup-closed-by-user") {
@@ -183,14 +116,6 @@ async function handleGoogleSignIn() {
     }
   } finally {
     pendingGoogle.value = false
-  }
-}
-
-function goToSignUp() {
-  if (!route.query.role) {
-    router.push({ name: 'Home' })
-  } else {
-    status.value = 'sign-up'
   }
 }
 
@@ -232,8 +157,7 @@ async function handlePasswordReset() {
 
       <!-- Sign in -->
       <template v-if="status === 'sign-in'">
-        <img v-if="roleIllustration" :src="roleIllustration" alt="" class="header-illustration mb-4" />
-        <v-icon v-else :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
+        <img :src="patientIllustration" alt="" class="header-illustration mb-4" />
         <div class="text-headline-small font-weight-bold mb-2">Bon retour parmi nous</div>
         <div class="text-body-medium text-medium-emphasis mb-6">Connectez-vous avec votre email et mot de passe</div>
 
@@ -273,7 +197,7 @@ async function handlePasswordReset() {
         <div class="mt-6 text-body-small text-medium-emphasis">
           Pas encore de compte ?
           <v-btn variant="text" color="primary" size="small" rounded="lg" class="text-none pa-0 ml-1"
-            @click="goToSignUp">
+            @click="status = 'sign-up'">
             S'inscrire
           </v-btn>
         </div>
@@ -281,8 +205,7 @@ async function handlePasswordReset() {
 
       <!-- Sign up -->
       <template v-if="status === 'sign-up'">
-        <img v-if="roleIllustration" :src="roleIllustration" alt="" class="header-illustration mb-4" />
-        <v-icon v-else :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
+        <img :src="patientIllustration" alt="" class="header-illustration mb-4" />
         <div class="text-headline-small font-weight-bold mb-2">Créer un compte</div>
         <div class="text-body-medium text-medium-emphasis mb-6">Rejoignez Almakare en créant votre compte</div>
 
@@ -297,12 +220,11 @@ async function handlePasswordReset() {
 
           <v-text-field v-model="signUpConfirmPassword" label="Confirmer le mot de passe"
             :type="showSignUpConfirmPassword ? 'text' : 'password'" variant="outlined" rounded="lg"
-            density="comfortable" :class="isPatient ? 'mb-2' : 'mb-4'" :rules="[required, signUpPasswordsMatch]"
+            density="comfortable" class="mb-2" :rules="[required, signUpPasswordsMatch]"
             :append-inner-icon="showSignUpConfirmPassword ? mdiEyeOff : mdiEye"
             @click:append-inner="showSignUpConfirmPassword = !showSignUpConfirmPassword" />
 
-          <v-checkbox v-if="isPatient" v-model="agreementChecked" color="primary" density="comfortable"
-            class="text-left mb-2"
+          <v-checkbox v-model="agreementChecked" color="primary" density="comfortable" class="text-left mb-2"
             :rules="[v => !!v || 'Vous devez accepter les conditions de traitement de vos données personnelles']">
             <template #label>
               <span class="text-body-small">
@@ -341,8 +263,7 @@ async function handlePasswordReset() {
 
       <!-- Reset password -->
       <template v-if="status === 'reset-password'">
-        <img v-if="roleIllustration" :src="roleIllustration" alt="" class="header-illustration mb-4" />
-        <v-icon v-else :icon="mdiLockOutline" size="64" color="primary" class="mb-4" />
+        <img :src="patientIllustration" alt="" class="header-illustration mb-4" />
         <div class="text-headline-small font-weight-bold mb-2">Réinitialiser le mot de passe</div>
         <div class="text-body-medium text-medium-emphasis mb-6">Entrez votre adresse email pour recevoir un lien de
           réinitialisation</div>

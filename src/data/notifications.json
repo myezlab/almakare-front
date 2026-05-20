@@ -29,7 +29,7 @@
     "text": null,
     "createdAt": "2026-04-10T11:00:00Z",
     "read": true,
-    "to": "/profile",
+    "to": "/profil",
     "projectId": "project-456"
   },
   {
@@ -51,7 +51,7 @@
     "text": "Votre carte vitale a été vérifiée avec succès.",
     "createdAt": "2026-04-08T16:20:00Z",
     "read": true,
-    "to": "/profile",
+    "to": "/profil",
     "projectId": null
   },
   {
@@ -84,7 +84,7 @@
     "text": "Votre consentement éclairé a été signé.",
     "createdAt": "2026-04-01T09:00:00Z",
     "read": true,
-    "to": "/profile",
+    "to": "/profil",
     "projectId": "project-123"
   }
 ]
