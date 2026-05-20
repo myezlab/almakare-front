@@ -142,6 +142,12 @@ const currentStepData = computed(() =>
   currentStep.value > 0 ? STEPS[currentStep.value - 1] : null,
 )
 
+const scheduledActe = computed(() => {
+  const id = patient.value?.scheduledActeId
+  if (!id) return null
+  return (organisationStore.item.actes || []).find((a) => a.id === id) || null
+})
+
 const illustrationUrl = computed(() => {
   if (!currentStepData.value) return null
   return new URL(`../assets/illustrations/${currentStepData.value.illustration}`, import.meta.url).href
@@ -294,21 +300,14 @@ function confirmDelete() {
 
           <!-- Journey progress (only when started) -->
           <template v-if="journeyStarted && currentStepData">
-            <v-card class="card-shadow pa-5 rounded-15 mb-4" :class="{ 'mx-6': $vuetify.display.mobile }">
-              <div class="d-flex align-center justify-space-between mb-2">
-                <div class="text-body-small text-medium-emphasis text-uppercase font-weight-bold letter-spacing">
-                  Étape actuelle · {{ currentStep }} sur {{ STEPS.length }}
-                </div>
-                <div class="text-body-small font-weight-bold text-primary">{{ progressPercent }}%</div>
-              </div>
-              <v-progress-linear :model-value="progressPercent" color="primary" height="8" rounded />
-            </v-card>
-
             <v-card class="card-shadow pa-6 mb-4" :class="{ 'rounded-15': !$vuetify.display.mobile }">
               <v-row align="center">
                 <v-col cols="12" sm="7">
-                  <v-chip :color="journeyComplete ? 'success' : 'primary'" variant="tonal" size="small" class="mb-3">
-                    Étape {{ currentStep }} · {{ journeyComplete ? 'terminé' : 'en cours' }}
+                  <v-chip v-if="scheduledActe" variant="tonal" size="small" color="grey" class="mb-3">
+                    <span
+                      class="d-inline-block rounded-circle mr-2"
+                      :style="{ width: '10px', height: '10px', background: scheduledActe.agendaColor }" />
+                    {{ scheduledActe.label }}
                   </v-chip>
                   <div class="text-headline-small font-weight-bold mb-3">{{ currentStepData.title }}</div>
                   <div class="text-body-medium text-medium-emphasis mb-3">{{ currentStepData.desc }}</div>
