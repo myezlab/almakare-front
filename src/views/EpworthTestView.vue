@@ -1,6 +1,7 @@
 <script setup>
 import { useMessagesStore } from '@/stores/messages'
 import { useSelfStore } from '@/stores/self'
+import { mdiArrowLeft } from '@mdi/js'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -124,6 +125,13 @@ async function selectAnswer(questionIndex, value) {
 
           <div v-else class="text-center text-body-medium text-medium-emphasis mt-4">
             {{answers.filter(v => v !== null).length}} / 8
+          </div>
+
+          <div class="text-center mt-6">
+            <v-btn color="primary" variant="flat" rounded="pill" size="large" class="text-none"
+              :prepend-icon="mdiArrowLeft" @click="router.push({ name: 'Accueil' })">
+              Retour à l'accueil
+            </v-btn>
           </div>
 
         </div>

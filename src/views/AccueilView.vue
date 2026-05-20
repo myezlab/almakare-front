@@ -1,13 +1,19 @@
 <script setup>
 import logoText from '@/assets/img/logo-text-white.svg'
 import { useProfileCompletion } from '@/composables/useProfileCompletion'
+import { useParamsStore } from '@/stores/params'
 import { useSelfStore } from '@/stores/self'
-import { mdiAccountOutline, mdiCalendarPlusOutline, mdiChartBar, mdiClipboardPulseOutline, mdiHospitalBuilding, mdiMoonWaningCrescent } from '@mdi/js'
-import { computed, ref } from 'vue'
+import { mdiAccount, mdiCalendarPlusOutline, mdiChartBar, mdiClipboardPulse, mdiHospitalBuilding, mdiMoonWaningCrescent } from '@mdi/js'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import { useRouter } from 'vue-router'
+
+const InstallAppCard = defineAsyncComponent(() =>
+  import('@/components/InstallAppCard.vue')
+)
 
 const router = useRouter()
 const selfStore = useSelfStore()
+const paramsStore = useParamsStore()
 
 const loading = ref(true)
 const usersCount = ref(0)
@@ -56,30 +62,34 @@ const epworthScoreLabel = computed(() => {
       <img :src="logoText" alt="almakare" class="home-banner-logo" />
       <svg class="home-banner-blob" viewBox="0 0 1440 160" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true">
-        <path fill="#fafbfd" d="M0,80 C480,160 960,0 1440,80 L1440,160 L0,160 Z" />
+        <path fill="#fafbfd" d="M0,80 C480,160 960,0 1540,80 L1440,160 L0,160 Z" />
       </svg>
     </div>
     <v-row v-if="selfStore.item.id" justify="center" class="mx-6 mb-16 pb-10">
       <v-col :cols="$vuetify.display.mobile ? 12 : 10">
 
-        <!-- Book appointment card -->
-        <v-card class="mt-6 pa-6 card-shadow rounded-15 cursor-pointer book-appt-card"
+        <!-- Book appointment hero CTA -->
+        <v-card :class="{ 'mt-6': !$vuetify.display.mobile }" class="pa-6 rounded-15 cursor-pointer book-appt-hero" flat
           @click="router.push({ name: 'BookAppointment' })">
-          <v-row align="center">
+          <div class="book-appt-hero-glow" aria-hidden="true"></div>
+          <v-row align="center" class="position-relative">
             <v-col>
-              <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
+              <div class="text-title-medium text-uppercase font-weight-bold mb-1 book-appt-hero-eyebrow">
                 Rendez-vous
               </div>
-              <div class="text-body-medium text-medium-emphasis mb-4">
-                Prenez rendez-vous avec l'un de vos médecins
+              <div class="text-h6 font-weight-bold text-white mb-2 book-appt-hero-title">
+                Consultez un médecin du sommeil
               </div>
-              <v-btn :prepend-icon="mdiCalendarPlusOutline" color="primary" rounded="lg" flat
-                @click.stop="router.push({ name: 'BookAppointment' })" class="text-none">
+              <div class="text-body-medium book-appt-hero-subtitle mb-4">
+                Prenez rendez-vous en quelques clics
+              </div>
+              <v-btn :prepend-icon="mdiCalendarPlusOutline" color="white" rounded="lg" size="large"
+                @click.stop="router.push({ name: 'BookAppointment' })" class="text-none book-appt-hero-btn">
                 Prendre rendez-vous
               </v-btn>
             </v-col>
-            <v-col cols="auto">
-              <v-img src="@/assets/illustrations/doctor.svg" width="100" height="90" contain
+            <v-col cols="auto" class="d-none d-sm-block">
+              <v-img src="@/assets/illustrations/medicine.svg" width="120" height="110" contain
                 transition="fade-transition" />
             </v-col>
           </v-row>
@@ -109,109 +119,125 @@ const epworthScoreLabel = computed(() => {
             <v-col cols="auto">
               <v-progress-circular :model-value="hospitalizationProgress" color="primary" size="80" width="6">
                 <span class="text-body-medium font-weight-bold">{{ hospitalizationStep }}/{{ HOSPITALIZATION_TOTAL_STEPS
-                  }}</span>
+                }}</span>
               </v-progress-circular>
             </v-col>
           </v-row>
         </v-card>
 
-        <!-- Complete your profile card -->
-        <v-card v-if="completionPercent < 100" class="mt-4 pa-6 card-shadow rounded-15 cursor-pointer"
-          @click="router.push({ name: 'Profile' })">
-          <v-row align="center">
-            <v-col>
-              <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-                Complétez votre profil
-              </div>
-              <div class="text-body-medium text-medium-emphasis mb-4">
-                Renseignez vos informations pour accéder à toutes les fonctionnalités
-              </div>
-              <v-btn :prepend-icon="mdiAccountOutline" variant="tonal" color="primary" rounded="lg"
-                @click.stop="router.push({ name: 'Profile' })" class="text-none">
-                Profil
-              </v-btn>
-            </v-col>
-            <v-col cols="auto">
-              <v-progress-circular :model-value="completionPercent" color="primary" size="80" width="6">
-                <span class="text-body-medium font-weight-bold">{{ completionPercent }}%</span>
-              </v-progress-circular>
-            </v-col>
-          </v-row>
-        </v-card>
+        <!-- Two-column grid of secondary cards (desktop) / stacked (mobile) -->
+        <v-row class="mt-6">
+          <!-- Install app card -->
+          <v-col v-if="paramsStore.beforeinstallprompt" cols="12" md="6">
+            <InstallAppCard class="h-100" />
+          </v-col>
 
-        <!-- Sleep diary card -->
-        <v-card class="mt-4 pa-6 card-shadow rounded-15 cursor-pointer" @click="router.push({ name: 'SleepDiary' })">
-          <v-row align="center">
-            <v-col>
-              <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-                Agenda du sommeil
-              </div>
-              <div class="text-body-medium text-medium-emphasis mb-4">
-                Suivez votre sommeil nuit après nuit avec un agenda visuel
-              </div>
-              <v-btn :prepend-icon="mdiMoonWaningCrescent" variant="tonal" color="primary" rounded="lg"
-                @click.stop="router.push({ name: 'SleepDiary' })" class="text-none">
-                Ouvrir l'agenda
-              </v-btn>
-            </v-col>
-            <v-col cols="auto">
-              <v-img src="@/assets/illustrations/report.svg" width="100" height="90" contain
-                transition="fade-transition" />
-            </v-col>
-          </v-row>
-        </v-card>
+          <!-- Complete your profile card -->
+          <v-col v-if="completionPercent < 100" cols="12" md="6">
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100" @click="router.push({ name: 'Profile' })">
+              <v-row align="center">
+                <v-col>
+                  <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
+                    Complétez votre profil
+                  </div>
+                  <div class="text-body-medium text-medium-emphasis mb-4">
+                    Renseignez vos informations pour accéder à toutes les fonctionnalités
+                  </div>
+                  <v-btn :prepend-icon="mdiAccount" variant="tonal" color="primary" rounded="lg"
+                    @click.stop="router.push({ name: 'Profile' })" class="text-none">
+                    Profil
+                  </v-btn>
+                </v-col>
+                <v-col cols="auto">
+                  <v-progress-circular :model-value="completionPercent" color="primary" size="80" width="6">
+                    <span class="text-body-medium font-weight-bold">{{ completionPercent }}%</span>
+                  </v-progress-circular>
+                </v-col>
+              </v-row>
+            </v-card>
+          </v-col>
 
-        <!-- Sleep stats France card -->
-        <v-card class="mt-4 pa-6 card-shadow rounded-15 cursor-pointer"
-          @click="router.push({ name: 'SleepStatsFrance' })">
-          <v-row align="center">
-            <v-col>
-              <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-                En savoir plus
-              </div>
-              <div class="text-body-medium text-medium-emphasis mb-4">
-                Chiffres clés sur les troubles du sommeil en France
-              </div>
-              <v-btn :prepend-icon="mdiChartBar" variant="tonal" color="primary" rounded="lg"
-                @click.stop="router.push({ name: 'SleepStatsFrance' })" class="text-none">
-                Découvrir
-              </v-btn>
-            </v-col>
-            <v-col cols="auto">
-              <v-img src="@/assets/illustrations/information.svg" width="100" height="90" contain
-                transition="fade-transition" />
-            </v-col>
-          </v-row>
-        </v-card>
+          <!-- Sleep diary card -->
+          <v-col cols="12" md="6">
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
+              @click="router.push({ name: 'SleepDiary' })">
+              <v-row align="center">
+                <v-col>
+                  <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
+                    Agenda du sommeil
+                  </div>
+                  <div class="text-body-medium text-medium-emphasis mb-4">
+                    Suivez votre sommeil nuit après nuit avec un agenda visuel
+                  </div>
+                  <v-btn :prepend-icon="mdiMoonWaningCrescent" variant="tonal" color="primary" rounded="lg"
+                    @click.stop="router.push({ name: 'SleepDiary' })" class="text-none">
+                    Ouvrir l'agenda
+                  </v-btn>
+                </v-col>
+                <v-col cols="auto">
+                  <v-img src="@/assets/illustrations/report.svg" width="100" height="90" contain
+                    transition="fade-transition" />
+                </v-col>
+              </v-row>
+            </v-card>
+          </v-col>
 
-        <!-- Epworth test card -->
-        <v-card class="mt-4 pa-6 card-shadow rounded-15 cursor-pointer" @click="router.push({ name: 'EpworthTest' })">
-          <v-row align="center">
-            <v-col>
-              <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-                Test d'Epworth
-              </div>
-              <div class="text-body-medium text-medium-emphasis mb-4">
-                Évaluez votre somnolence diurne en répondant à 8 questions
-              </div>
-              <div class="d-flex flex-column align-start gap-2">
-                <v-chip v-if="selfStore.item?.epworthScore != null" class="mb-4" :color="epworthScoreColor"
-                  variant="tonal" size="small">
-                  {{ epworthScoreLabel }}
-                </v-chip>
-                <v-btn :prepend-icon="mdiClipboardPulseOutline" variant="tonal" color="primary" rounded="lg"
-                  @click.stop="router.push({ name: 'EpworthTest' })" class="text-none">
-                  {{ selfStore.item?.epworthScore != null ? 'Refaire le test' : 'Passer le test' }}
-                </v-btn>
-              </div>
-            </v-col>
-            <v-col cols="auto">
-              <v-img src="@/assets/illustrations/tasks.svg" width="100" height="90" contain
-                transition="fade-transition" />
-            </v-col>
-          </v-row>
-        </v-card>
+          <!-- Epworth test card -->
+          <v-col cols="12" md="6">
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
+              @click="router.push({ name: 'EpworthTest' })">
+              <v-row align="center">
+                <v-col>
+                  <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
+                    Test d'Epworth
+                  </div>
+                  <div class="text-body-medium text-medium-emphasis mb-4">
+                    Évaluez votre somnolence diurne en répondant à 8 questions
+                  </div>
+                  <div class="d-flex flex-column align-start gap-2">
+                    <v-chip v-if="selfStore.item?.epworthScore != null" class="mb-4" :color="epworthScoreColor"
+                      variant="tonal" size="small">
+                      {{ epworthScoreLabel }}
+                    </v-chip>
+                    <v-btn v-if="selfStore.item?.epworthScore == null" :prepend-icon="mdiClipboardPulse" variant="tonal"
+                      color="primary" rounded="lg" @click.stop="router.push({ name: 'EpworthTest' })" class="text-none">
+                      Passer le test
+                    </v-btn>
+                  </div>
+                </v-col>
+                <v-col cols="auto">
+                  <v-img src="@/assets/illustrations/tasks.svg" width="100" height="90" contain
+                    transition="fade-transition" />
+                </v-col>
+              </v-row>
+            </v-card>
+          </v-col>
 
+          <!-- Sleep stats France card -->
+          <v-col cols="12" md="6">
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
+              @click="router.push({ name: 'SleepStatsFrance' })">
+              <v-row align="center">
+                <v-col>
+                  <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
+                    En savoir plus
+                  </div>
+                  <div class="text-body-medium text-medium-emphasis mb-4">
+                    Chiffres clés sur les troubles du sommeil en France
+                  </div>
+                  <v-btn :prepend-icon="mdiChartBar" variant="tonal" color="primary" rounded="lg"
+                    @click.stop="router.push({ name: 'SleepStatsFrance' })" class="text-none">
+                    Découvrir
+                  </v-btn>
+                </v-col>
+                <v-col cols="auto">
+                  <v-img src="@/assets/illustrations/information.svg" width="100" height="90" contain
+                    transition="fade-transition" />
+                </v-col>
+              </v-row>
+            </v-card>
+          </v-col>
+        </v-row>
 
       </v-col>
     </v-row>
@@ -289,9 +315,21 @@ const epworthScoreLabel = computed(() => {
   width: 33vw;
   max-width: 360px;
   min-width: 180px;
+  aspect-ratio: 827.2 / 158.6;
   height: auto;
   object-fit: contain;
   display: block;
+  animation: logo-fade-in 0.6s ease-out both;
+}
+
+@keyframes logo-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .home-banner-blob {
@@ -387,5 +425,49 @@ const epworthScoreLabel = computed(() => {
     opacity: 0.7;
     transform: scale(1);
   }
+}
+
+.book-appt-hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1c5089 0%, #1c5089 60%, #1c5089 100%);
+  box-shadow: 0 12px 32px rgba(28, 80, 137, 0.32), 0 2px 6px rgba(28, 80, 137, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  color: #ffffff;
+}
+
+.book-appt-hero:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(28, 80, 137, 0.38), 0 4px 10px rgba(28, 80, 137, 0.2);
+}
+
+.book-appt-hero-glow {
+  position: absolute;
+  top: -40%;
+  right: -10%;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+}
+
+.book-appt-hero-eyebrow {
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.08em;
+}
+
+.book-appt-hero-title {
+  color: #ffffff;
+  line-height: 1.25;
+}
+
+.book-appt-hero-subtitle {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.book-appt-hero-btn {
+  color: #1c5089;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 </style>

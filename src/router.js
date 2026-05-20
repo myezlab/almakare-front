@@ -98,11 +98,18 @@ function isAuthenticated(selfStore) {
   return !!selfStore.item?.id
 }
 
+const LAST_ROUTE_KEY = 'almakare:lastRoute'
+
 router.beforeEach(async (to, from, next) => {
   const selfStore = useSelfStore()
   const authenticated = isAuthenticated(selfStore)
 
   if (to.name === 'Home' && authenticated) {
+    const saved = localStorage.getItem(LAST_ROUTE_KEY)
+    if (saved && saved !== to.fullPath) {
+      next(saved)
+      return
+    }
     next({ name: 'Accueil' })
     return
   }
@@ -113,6 +120,12 @@ router.beforeEach(async (to, from, next) => {
   }
 
   next()
+})
+
+router.afterEach((to) => {
+  if (to.meta?.requiresAuth) {
+    localStorage.setItem(LAST_ROUTE_KEY, to.fullPath)
+  }
 })
 
 

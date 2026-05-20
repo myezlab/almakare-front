@@ -11,7 +11,10 @@
       "Bash(node -e \"const m = require\\('@mdi/js'\\); console.log\\(Object.keys\\(m\\).filter\\(k => k.toLowerCase\\(\\).includes\\('hospital'\\)\\).join\\('\\\\n'\\)\\)\")",
       "Bash(git checkout *)",
       "Bash(npx vite *)",
-      "Bash(git -C \"c:/Users/felix/APPS/almakare\" mv src/views/DashboardPatientView.vue src/views/AccueilView.vue)"
+      "Bash(git -C \"c:/Users/felix/APPS/almakare\" mv src/views/DashboardPatientView.vue src/views/AccueilView.vue)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const c=fs.readFileSync\\('src/views/ProfileView.vue','utf8'\\); const op=\\(c.match\\(/<template/g\\)||[]\\).length; const cl=\\(c.match\\(/<\\\\/template>/g\\)||[]\\).length; console.log\\('template open:',op,'close:',cl\\); const card=\\(c.match\\(/<v-card[\\\\s>]/g\\)||[]\\).length; const cardClose=\\(c.match\\(/<\\\\/v-card>/g\\)||[]\\).length; console.log\\('v-card open:',card,'close:',cardClose\\);\")",
+      "Bash(node -e \"const m = require\\('@mdi/js'\\); ['mdiAccountCircleOutline','mdiAccountOutline','mdiArrowLeft','mdiCalendar','mdiCalendarClockOutline','mdiCalendarOutline','mdiCalendarPlusOutline','mdiCheck','mdiClipboardListOutline','mdiEmailOutline','mdiFolderOutline','mdiMessageTextOutline','mdiPencil','mdiPillOutline','mdiPulse','mdiViewDashboardOutline'].forEach\\(k => console.log\\(k, typeof m[k]\\)\\)\")",
+      "Bash(node -e \"const m = require\\('@mdi/js'\\); console.log\\('mdiPill', typeof m.mdiPill, 'mdiPillMultipleOutline', typeof m.mdiPillMultipleOutline, 'mdiMedicalBag', typeof m.mdiMedicalBag\\)\")"
     ]
   }
 }

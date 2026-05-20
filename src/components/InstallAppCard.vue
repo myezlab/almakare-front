@@ -1,7 +1,7 @@
 <script setup>
 import { useMessagesStore } from "@/stores/messages"
 import { useParamsStore } from "@/stores/params"
-import { mdiDownloadOutline } from "@mdi/js"
+import { mdiDownload } from "@mdi/js"
 import { ref } from "vue"
 
 const dialogInstallApp = ref(false)
@@ -39,7 +39,7 @@ function installApp() {
         <div class="text-body-medium text-medium-emphasis mb-3">
           Ajoutez Almakare à votre écran d'accueil pour un accès rapide, même hors connexion.
         </div>
-        <v-btn :prepend-icon="mdiDownloadOutline" variant="tonal" color="primary" rounded="lg" class="text-none">
+        <v-btn :prepend-icon="mdiDownload" variant="tonal" color="primary" rounded="lg" class="text-none">
           Installer
         </v-btn>
       </v-col>

@@ -117,7 +117,7 @@ const steps = [
             S'inscrire
           </v-btn>
           <v-btn v-else color="primary" variant="flat" rounded="lg" class="text-none"
-            :size="$vuetify.display.mobile ? 'small' : 'default'" @click="router.push({ name: 'DashboardPatient' })">
+            :size="$vuetify.display.mobile ? 'small' : 'default'" @click="router.push({ name: 'Accueil' })">
             Mon tableau de bord
           </v-btn>
         </div>

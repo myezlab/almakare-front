@@ -138,8 +138,8 @@ async function handlePasswordReset() {
 </script>
 
 <template>
-  <div class="d-flex flex-column align-center justify-center min-h-screen px-4">
-    <v-card class="pa-8 text-center rounded-15 card-shadow" :max-width="450" width="100%">
+  <div class="login-wrapper d-flex flex-column align-center justify-center min-h-screen">
+    <v-card class="login-card pa-8 text-center rounded-15 card-shadow" :max-width="450" width="100%">
 
       <div class="d-flex justify-start mb-4" v-if="!['success', 'loading'].includes(status)">
         <v-btn variant="text" color="medium-emphasis" rounded="lg" size="small" class="text-none"
@@ -321,6 +321,26 @@ async function handlePasswordReset() {
 <style scoped>
 .min-h-screen {
   min-height: 100vh;
+}
+
+.login-wrapper {
+  padding-left: 16px;
+  padding-right: 16px;
+  background-color: rgb(var(--v-theme-background));
+}
+
+@media (max-width: 600px) {
+  .login-wrapper {
+    padding-left: 0;
+    padding-right: 0;
+    background-color: #fff;
+  }
+
+  .login-card {
+    min-height: 100vh;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
 }
 
 .header-illustration {
