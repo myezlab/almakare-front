@@ -35,6 +35,22 @@ function ISOToRelativeTime(date) {
 }
 
 /**
+ * Returns the time (HH:mm) if less than 24h ago,
+ * the weekday name if less than 7 days ago, otherwise DD/MM/YYYY.
+ * @param {string|Date} date
+ * @returns {string} e.g. "14:32", "lundi", "12/04/2026"
+ * */
+function ISOToTimeOrDay(date) {
+	if (!date) return ''
+	const d = dayjs(date)
+	const diffHours = dayjs().diff(d, 'hour')
+	if (diffHours < 24) return d.format('HH:mm')
+	const diffDays = dayjs().diff(d, 'day')
+	if (diffDays < 7) return d.format('dddd')
+	return d.format('DD/MM/YYYY')
+}
+
+/**
  * Returns a shortened date
  * @param {string} date
  * @returns {string} Shortened date. Sample Output: "16 Nov 2020"
@@ -146,6 +162,6 @@ function daysBetween(startDate, endDate) {
 
 export {
 	AverageDurationBeetweenTwoDates, daysBetween, DurationBeetweenTwoDates, isAfter, ISOTimeToX, ISOToDateAndTime, ISOToDDMMYYYY, ISOToRelativeTime,
-	ISOToShortenedDate, ISOToShortenedDateMMYY
+	ISOToShortenedDate, ISOToShortenedDateMMYY, ISOToTimeOrDay
 }
 

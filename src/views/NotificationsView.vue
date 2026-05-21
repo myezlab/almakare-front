@@ -2,7 +2,7 @@
 import { ISOToRelativeTime } from "@/composables/useDates.js"
 import { useReadState } from "@/composables/useReadState.js"
 import notificationsData from '@/data/notifications.json'
-import { mdiAccount, mdiBell, mdiBellOutline, mdiCheckCircle, mdiCircle, mdiPen, mdiRefresh } from "@mdi/js"
+import { mdiAccount, mdiBell, mdiBellOutline, mdiCheckCircle, mdiPen, mdiRefresh } from "@mdi/js"
 import { ref } from "vue"
 import { useRouter } from "vue-router"
 
@@ -94,8 +94,12 @@ function getTitle(notification) {
                   </div>
                 </v-col>
                 <v-col class="pl-1 pr-1">
-                  <div class="text-body-large font-weight-medium">{{ getTitle(notification) }}</div>
-                  <div class="text-body-small text-medium-emphasis mt-1">
+                  <div class="text-body-large"
+                    :class="isNotificationRead(notification) ? 'font-weight-medium' : 'font-weight-bold'">
+                    {{ getTitle(notification) }}
+                  </div>
+                  <div class="text-body-small mt-1"
+                    :class="isNotificationRead(notification) ? 'text-medium-emphasis' : 'font-weight-bold'">
                     {{ notification.text || notificationTypeTexts[notification.type] }}
                   </div>
                   <div v-if="notification.createdAt" class="text-label-small text-grey mt-2 first-letter-uppercase">
@@ -107,9 +111,6 @@ function getTitle(notification) {
                       </span>
                     </template>
                   </div>
-                </v-col>
-                <v-col cols="auto" v-if="!isNotificationRead(notification)">
-                  <v-icon color="primary" size="12" :icon="mdiCircle"></v-icon>
                 </v-col>
               </v-row>
             </v-card>

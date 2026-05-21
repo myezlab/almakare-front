@@ -2,7 +2,7 @@ import { ORGANISATION_SEED } from '@/data/organisation'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
-const STORAGE_KEY = 'myezlab.organisation'
+const STORAGE_KEY = 'almakare.organisation'
 
 function migrateDevices(state) {
   const seedEstablishmentsById = Object.fromEntries(

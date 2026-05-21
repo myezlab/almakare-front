@@ -134,12 +134,19 @@ async function logOut() {
             </div>
           </div>
 
-          <v-tabs v-model="activeTab" color="primary" align-tabs="center" :show-arrows="false"
-            class="mt-6 profile-tabs">
+          <v-tabs v-if="!$vuetify.display.mobile" v-model="activeTab" color="primary" align-tabs="center"
+            :show-arrows="false" class="mt-6 profile-tabs">
             <v-tab v-for="t in TABS" :key="t.value" :value="t.value" class="text-none">
               {{ t.label }}
             </v-tab>
           </v-tabs>
+          <v-chip-group v-else v-model="activeTab" mandatory class="mt-2 profile-chips" column>
+            <v-chip v-for="t in TABS" :key="t.value" :value="t.value" :prepend-icon="t.icon" variant="flat"
+              :class="{ 'bg-primary': activeTab === t.value, 'bg-white border-light': activeTab !== t.value }"
+              class="text-none ">
+              {{ t.label }}
+            </v-chip>
+          </v-chip-group>
         </v-card>
 
         <!-- =================== TAB CONTENT =================== -->
@@ -211,5 +218,17 @@ async function logOut() {
 
 .profile-tabs {
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.profile-chips :deep(.v-slide-group__container) {
+  overflow: visible;
+  contain: none;
+}
+
+.profile-chips :deep(.v-slide-group__content) {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  white-space: normal;
 }
 </style>

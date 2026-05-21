@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
-const STORAGE_KEY = 'myezlab.self'
+const STORAGE_KEY = 'almakare.self'
 const PICTURE_KEYS = ['avatarUrl']
 
 function loadFromStorage() {

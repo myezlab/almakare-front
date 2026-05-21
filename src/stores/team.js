@@ -2,7 +2,7 @@ import { TEAM_SEED } from '@/data/team'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
-const STORAGE_KEY = 'myezlab.team'
+const STORAGE_KEY = 'almakare.team'
 
 function seedById() {
   const map = {}

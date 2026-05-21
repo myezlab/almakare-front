@@ -872,10 +872,10 @@ function centreInitials(centre) {
 
     <!-- =================== ACTE INFO DIALOG =================== -->
     <v-dialog v-model="acteInfoOpen" max-width="520" :fullscreen="false">
-      <v-card v-if="acteInfoTarget" class="pa-2 rounded-15">
-        <v-card-title class="px-6 pt-5 pb-2 d-flex align-center">
-          <div class="flex-grow-1">
-            <div class="text-headline-small font-weight-bold">{{ acteInfoTarget.label }}</div>
+      <v-card v-if="acteInfoTarget" class="acte-info-card pa-2 rounded-15">
+        <v-card-title class="acte-info-header d-flex align-center">
+          <div class="flex-grow-1 min-w-0">
+            <div class="acte-info-title font-weight-bold">{{ acteInfoTarget.label }}</div>
             <div class="text-body-small text-medium-emphasis mt-1">
               Détails de la consultation
             </div>
@@ -883,7 +883,7 @@ function centreInitials(centre) {
           <v-btn :icon="mdiClose" variant="text" size="small" @click="acteInfoOpen = false" />
         </v-card-title>
         <v-divider />
-        <v-card-text class="px-6 py-4">
+        <v-card-text class="acte-info-body">
           <div class="acte-info-meta mb-4">
             <div class="acte-info-meta-item">
               <v-icon :icon="mdiTimerSandComplete" size="18" class="mr-2" color="primary" />
@@ -911,12 +911,12 @@ function centreInitials(centre) {
           <span>{{ lockedReason }}</span>
         </div>
         <v-divider />
-        <v-card-actions class="px-6 py-4">
-          <v-spacer />
-          <v-btn variant="text" rounded="lg" class="text-none" @click="acteInfoOpen = false">
+        <v-card-actions class="acte-info-actions">
+          <v-spacer class="acte-info-spacer" />
+          <v-btn variant="text" rounded="lg" class="text-none acte-info-btn-back" @click="acteInfoOpen = false">
             Retour
           </v-btn>
-          <v-btn v-if="!isActeInfoLocked" color="primary" rounded="lg" flat class="text-none ml-2"
+          <v-btn v-if="!isActeInfoLocked" color="primary" rounded="lg" flat class="text-none acte-info-btn-choose"
             @click="chooseActe(acteInfoTarget)">
             Choisir et voir les disponibilités
           </v-btn>
@@ -1358,6 +1358,68 @@ function centreInitials(centre) {
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.025);
   border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.acte-info-header {
+  padding: 20px 24px 8px 24px;
+  gap: 8px;
+  white-space: normal;
+  align-items: flex-start;
+}
+
+.acte-info-title {
+  font-size: 20px;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.acte-info-body {
+  padding: 16px 24px;
+}
+
+.acte-info-actions {
+  padding: 16px 24px;
+}
+
+@media (max-width: 600px) {
+  .acte-info-card {
+    padding: 4px !important;
+  }
+  .acte-info-header {
+    padding: 14px 16px 6px 16px;
+  }
+  .acte-info-title {
+    font-size: 17px;
+  }
+  .acte-info-body {
+    padding: 12px 16px;
+  }
+  .acte-info-meta {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .acte-info-locked-note {
+    margin-left: 16px !important;
+    margin-right: 16px !important;
+  }
+  .acte-info-actions {
+    padding: 12px 16px;
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .acte-info-spacer {
+    display: none;
+  }
+  .acte-info-btn-back,
+  .acte-info-btn-choose {
+    width: 100%;
+    margin: 0 !important;
+  }
+  .acte-info-btn-choose {
+    margin-bottom: 8px !important;
+  }
 }
 
 /* ============ CALENDAR ============ */

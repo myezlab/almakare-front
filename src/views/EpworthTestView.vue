@@ -134,7 +134,7 @@ async function selectAnswer(questionIndex, value) {
           <div class="text-center mt-6">
             <v-btn color="primary" variant="flat" rounded="pill" size="large" class="text-none"
               @click="router.push({ path: '/profil', query: { tab: 'questionnaires' } })">
-              Retour
+              Terminer
             </v-btn>
           </div>
 

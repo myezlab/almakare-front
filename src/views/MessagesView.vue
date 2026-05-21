@@ -1,8 +1,8 @@
 <script setup>
-import { ISOToRelativeTime } from "@/composables/useDates.js"
+import { ISOToTimeOrDay } from "@/composables/useDates.js"
 import { useReadState } from "@/composables/useReadState.js"
 import messagesData from "@/data/messages.json"
-import { mdiAccount, mdiChatProcessingOutline } from "@mdi/js"
+import { mdiAccount, mdiChatOutline } from "@mdi/js"
 import { ref } from "vue"
 import { useRouter } from "vue-router"
 
@@ -14,9 +14,9 @@ const threads = ref(messagesData.map(t => ({
   lastMessageAtDate: new Date(t.lastMessageAt),
 })))
 
-function threadUnreadCount(thread) {
-  if (isThreadRead(thread)) return 0
-  return thread.unreadCount || 0
+function isThreadUnread(thread) {
+  if (isThreadRead(thread)) return false
+  return (thread.unreadCount || 0) > 0
 }
 
 function openThread(thread) {
@@ -35,7 +35,7 @@ function openThread(thread) {
             Messages
           </div>
           <div class="text-body-medium text-medium-emphasis mt-1">
-            <v-icon :icon="mdiChatProcessingOutline" size="18" class="mr-1" />
+            <v-icon :icon="mdiChatOutline" size="18" class="mr-1" />
             Échangez avec votre équipe soignante
           </div>
         </v-col>
@@ -59,19 +59,19 @@ function openThread(thread) {
                 </v-col>
                 <v-col class="pl-3 pr-1">
                   <div class="d-flex align-center justify-space-between">
-                    <div class="text-body-large font-weight-medium">{{ thread.participantFullName }}</div>
-                    <div class="text-label-small text-grey first-letter-uppercase">
-                      {{ ISOToRelativeTime(thread.lastMessageAtDate) }}
+                    <div class="text-body-large"
+                      :class="isThreadUnread(thread) ? 'font-weight-bold' : 'font-weight-medium'">
+                      {{ thread.participantFullName }}
+                    </div>
+                    <div class="text-label-small text-grey">
+                      {{ ISOToTimeOrDay(thread.lastMessageAtDate) }}
                     </div>
                   </div>
                   <div class="text-label-small text-medium-emphasis">{{ thread.participantRole }}</div>
                   <div class="text-body-small mt-1"
-                    :class="threadUnreadCount(thread) > 0 ? 'font-weight-medium' : 'text-medium-emphasis'">
+                    :class="isThreadUnread(thread) ? 'font-weight-bold' : 'text-medium-emphasis'">
                     {{ thread.lastMessageText }}
                   </div>
-                </v-col>
-                <v-col cols="auto" v-if="threadUnreadCount(thread) > 0">
-                  <v-badge :content="threadUnreadCount(thread)" color="error" inline />
                 </v-col>
               </v-row>
             </v-card>
