@@ -12,8 +12,6 @@ import {
   mdiCalendarCheckOutline,
   mdiCalendarClockOutline,
   mdiCalendarPlusOutline,
-  mdiHistory,
-  mdiProgressClock,
   mdiCashMultiple,
   mdiChevronLeft,
   mdiChevronRight,
@@ -24,6 +22,7 @@ import {
   mdiDoctor,
   mdiDotsVertical,
   mdiGoogle,
+  mdiHistory,
   mdiHospitalBuilding,
   mdiInformationOutline,
   mdiLockOutline,
@@ -31,6 +30,7 @@ import {
   mdiMapMarkerOutline,
   mdiMicrosoftOutlook,
   mdiNotebookOutline,
+  mdiProgressClock,
   mdiTimerSandComplete,
 } from '@mdi/js'
 import { computed, ref } from 'vue'
@@ -141,7 +141,7 @@ const headerTitle = computed(() => {
     case 'centre': return selectedCentre.value?.name || 'Centre du sommeil'
     case 'acte': return 'Choisir une consultation'
     case 'calendar': return 'Choisir un créneau'
-    default: return 'Rendez-vous'
+    default: return 'Agenda'
   }
 })
 
@@ -585,6 +585,18 @@ const ongoingActes = computed(() => {
   })
 })
 
+const pastActes = computed(() => {
+  const p = patient.value
+  return patientActesStore.pastActesForPatient(p.id)
+    .map((a) => {
+      const doc = teamStore.items.find((m) => m.id === a.doctorId)
+      return { ...a, doctor: doc }
+    })
+    .sort((a, b) => String(b.completedAt || b.startedAt || '').localeCompare(String(a.completedAt || a.startedAt || '')))
+})
+
+const pastCount = computed(() => pastAppointments.value.length + pastActes.value.length)
+
 function openAppointment(a) {
   router.push({ name: 'Appointment', params: { id: a.id } })
 }
@@ -631,11 +643,11 @@ function centreInitials(centre) {
         </v-row>
 
         <!-- =================== MY APPOINTMENTS (search step only) =================== -->
-        <v-card v-if="step === 'search' && (upcomingAppointments.length > 0 || pastAppointments.length > 0 || ongoingActes.length > 0)"
+        <v-card
+          v-if="step === 'search' && (upcomingAppointments.length > 0 || pastCount > 0 || ongoingActes.length > 0)"
           class="card-shadow pa-6 mb-4" :class="{ 'rounded-15': !$vuetify.display.mobile }">
           <div class="appt-tabs mb-4">
-            <button class="appt-tab"
-              :class="{ 'appt-tab-active': appointmentsTab === 'upcoming' }"
+            <button class="appt-tab" :class="{ 'appt-tab-active': appointmentsTab === 'upcoming' }"
               @click="appointmentsTab = 'upcoming'">
               <v-icon :icon="mdiCalendarCheckOutline" size="16" class="mr-1" />
               À venir
@@ -643,8 +655,7 @@ function centreInitials(centre) {
                 {{ upcomingAppointments.length }}
               </span>
             </button>
-            <button class="appt-tab"
-              :class="{ 'appt-tab-active': appointmentsTab === 'ongoing' }"
+            <button class="appt-tab" :class="{ 'appt-tab-active': appointmentsTab === 'ongoing' }"
               @click="appointmentsTab = 'ongoing'">
               <v-icon :icon="mdiProgressClock" size="16" class="mr-1" />
               En cours
@@ -652,30 +663,24 @@ function centreInitials(centre) {
                 {{ ongoingActes.length }}
               </span>
             </button>
-            <button class="appt-tab"
-              :class="{ 'appt-tab-active': appointmentsTab === 'past' }"
+            <button class="appt-tab" :class="{ 'appt-tab-active': appointmentsTab === 'past' }"
               @click="appointmentsTab = 'past'">
               <v-icon :icon="mdiHistory" size="16" class="mr-1" />
               Passés
-              <span v-if="pastAppointments.length" class="appt-tab-count">
-                {{ pastAppointments.length }}
+              <span v-if="pastCount" class="appt-tab-count">
+                {{ pastCount }}
               </span>
             </button>
           </div>
 
           <!-- ============ EN COURS LIST ============ -->
           <template v-if="appointmentsTab === 'ongoing'">
-            <div v-if="ongoingActes.length === 0"
-              class="text-body-small text-medium-emphasis text-center pa-4">
+            <div v-if="ongoingActes.length === 0" class="text-body-small text-medium-emphasis text-center pa-4">
               Aucun parcours en cours.
             </div>
-            <div v-for="(a, i) in ongoingActes" :key="a.id"
-              class="appt-row appt-row-clickable"
-              :class="{ 'appt-row-divided': i < ongoingActes.length - 1 }"
-              role="button"
-              tabindex="0"
-              @click="openActe(a)"
-              @keydown.enter="openActe(a)">
+            <div v-for="(a, i) in ongoingActes" :key="a.id" class="appt-row appt-row-clickable"
+              :class="{ 'appt-row-divided': i < ongoingActes.length - 1 }" role="button" tabindex="0"
+              @click="openActe(a)" @keydown.enter="openActe(a)">
               <div class="appt-row-icon">
                 <v-icon :icon="mdiHospitalBuilding" size="22" color="primary" />
               </div>
@@ -687,21 +692,52 @@ function centreInitials(centre) {
                 </div>
                 <div v-if="a.locationAddress || a.locationName" class="appt-row-establishment">
                   <v-icon :icon="mdiMapMarkerOutline" size="12" class="appt-row-establishment-icon mr-1" />
-                  <span v-if="a.locationName" class="appt-row-establishment-name font-weight-medium">{{ a.locationName }}</span>
+                  <span v-if="a.locationName" class="appt-row-establishment-name font-weight-medium">{{ a.locationName
+                    }}</span>
                   <span v-if="a.locationAddress" class="appt-row-establishment-address"
                     :class="{ 'text-medium-emphasis': a.locationName }">
                     <span v-if="a.locationName" class="appt-row-establishment-sep">· </span>{{ a.locationAddress }}
                   </span>
                 </div>
                 <v-progress-linear v-if="a.steps?.length"
-                  :model-value="Math.round((a.currentStep / a.steps.length) * 100)"
-                  color="primary" height="6" rounded class="mt-2" />
+                  :model-value="Math.round((a.currentStep / a.steps.length) * 100)" color="primary" height="6" rounded
+                  class="mt-2" />
               </div>
               <v-icon :icon="mdiChevronRight" size="20" color="medium-emphasis" />
             </div>
           </template>
 
-          <div v-if="appointmentsTab !== 'ongoing' && visibleAppointments.length === 0"
+          <!-- ============ PAST ACTES (parcours terminés) ============ -->
+          <template v-if="appointmentsTab === 'past'">
+            <div v-for="(a, i) in pastActes" :key="`acte-${a.id}`" class="appt-row appt-row-clickable appt-row-past"
+              :class="{ 'appt-row-divided': i < pastActes.length - 1 || pastAppointments.length > 0 }" role="button"
+              tabindex="0" @click="openActe(a)" @keydown.enter="openActe(a)">
+              <div class="appt-row-icon appt-row-icon-past">
+                <v-icon :icon="mdiHospitalBuilding" size="22" color="medium-emphasis" />
+              </div>
+              <div class="appt-row-main">
+                <div class="appt-row-title">{{ a.label }}</div>
+                <div class="appt-row-sub">
+                  Parcours terminé
+                  <span v-if="a.completedAt" class="ml-1">· {{ a.completedAt }}</span>
+                  <span v-if="a.doctor" class="ml-1">· Dr {{ a.doctor.firstName }} {{ a.doctor.lastName }}</span>
+                </div>
+                <div v-if="a.locationAddress || a.locationName" class="appt-row-establishment">
+                  <v-icon :icon="mdiMapMarkerOutline" size="12" class="appt-row-establishment-icon mr-1" />
+                  <span v-if="a.locationName" class="appt-row-establishment-name font-weight-medium">{{ a.locationName
+                    }}</span>
+                  <span v-if="a.locationAddress" class="appt-row-establishment-address"
+                    :class="{ 'text-medium-emphasis': a.locationName }">
+                    <span v-if="a.locationName" class="appt-row-establishment-sep">· </span>{{ a.locationAddress }}
+                  </span>
+                </div>
+              </div>
+              <v-icon :icon="mdiChevronRight" size="20" color="medium-emphasis" />
+            </div>
+          </template>
+
+          <div v-if="appointmentsTab !== 'ongoing' && visibleAppointments.length === 0
+            && !(appointmentsTab === 'past' && pastActes.length > 0)"
             class="text-body-small text-medium-emphasis text-center pa-4">
             <template v-if="appointmentsTab === 'upcoming'">
               Aucun rendez-vous à venir pour le moment.
@@ -711,19 +747,13 @@ function centreInitials(centre) {
             </template>
           </div>
 
-          <div v-for="(a, i) in visibleAppointments" :key="a.id"
-            class="appt-row appt-row-clickable"
-            :class="{
-              'appt-row-divided': i < visibleAppointments.length - 1,
-              'appt-row-past': appointmentsTab === 'past',
-            }"
-            role="button"
-            tabindex="0"
-            @click="openAppointment(a)"
-            @keydown.enter="openAppointment(a)">
+          <div v-for="(a, i) in visibleAppointments" :key="a.id" class="appt-row appt-row-clickable" :class="{
+            'appt-row-divided': i < visibleAppointments.length - 1,
+            'appt-row-past': appointmentsTab === 'past',
+          }" role="button" tabindex="0" @click="openAppointment(a)" @keydown.enter="openAppointment(a)">
             <div class="appt-row-icon" :class="{ 'appt-row-icon-past': appointmentsTab === 'past' }">
-              <v-icon :icon="appointmentsTab === 'past' ? mdiHistory : mdiCalendarCheckOutline"
-                size="22" :color="appointmentsTab === 'past' ? 'medium-emphasis' : 'primary'" />
+              <v-icon :icon="appointmentsTab === 'past' ? mdiHistory : mdiCalendarCheckOutline" size="22"
+                :color="appointmentsTab === 'past' ? 'medium-emphasis' : 'primary'" />
             </div>
             <div class="appt-row-main">
               <div class="appt-row-title">
@@ -736,7 +766,8 @@ function centreInitials(centre) {
               </div>
               <div v-if="a.locationAddress || a.locationName" class="appt-row-establishment">
                 <v-icon :icon="mdiMapMarkerOutline" size="12" class="appt-row-establishment-icon mr-1" />
-                <span v-if="a.locationName" class="appt-row-establishment-name font-weight-medium">{{ a.locationName }}</span>
+                <span v-if="a.locationName" class="appt-row-establishment-name font-weight-medium">{{ a.locationName
+                  }}</span>
                 <span v-if="a.locationAddress" class="appt-row-establishment-address"
                   :class="{ 'text-medium-emphasis': a.locationName }">
                   <span v-if="a.locationName" class="appt-row-establishment-sep">· </span>{{ a.locationAddress }}
@@ -813,30 +844,20 @@ function centreInitials(centre) {
           </div>
         </v-card>
 
-        <!-- =================== BOOK A NEW APPOINTMENT INTRO (search step) =================== -->
-        <div v-if="step === 'search'"
-          class="text-title-small font-weight-bold mb-3 mt-2"
-          :class="{ 'mx-6': $vuetify.display.mobile }">
-          <v-icon :icon="mdiCalendarPlusOutline" size="18" class="mr-2" color="primary" />
-          Prendre un nouveau rendez-vous
-        </div>
-
         <!-- =================== STEP 1 : SEARCH =================== -->
         <template v-if="step === 'search'">
-          <v-card class="card-shadow pa-6 mb-4"
-            :class="{ 'rounded-15': !$vuetify.display.mobile }">
+          <v-card class="card-shadow pa-6 mb-4" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+            <div class="text-title-small font-weight-bold mb-3">
+              <v-icon :icon="mdiCalendarPlusOutline" size="18" class="mr-2" color="primary" />
+              Prendre un nouveau rendez-vous
+            </div>
             <div class="search-row">
               <v-text-field v-model="searchQuery" :prepend-inner-icon="mdiMagnify"
-                placeholder="Rechercher un médecin, un centre du sommeil, une spécialité…"
-                variant="outlined" rounded="lg" hide-details density="comfortable" clearable
-                class="flex-grow-1 search-input" />
-              <v-btn :prepend-icon="mdiCrosshairsGps"
-                :color="userLocation ? 'primary' : undefined"
-                :variant="userLocation ? 'flat' : 'outlined'"
-                rounded="lg" size="large"
-                class="text-none search-around-btn"
-                :loading="locationLoading"
-                @click="requestAroundMe">
+                placeholder="Rechercher un médecin, un centre du sommeil, une spécialité…" variant="outlined"
+                rounded="lg" hide-details density="comfortable" clearable class="flex-grow-1 search-input" />
+              <v-btn :prepend-icon="mdiCrosshairsGps" :color="userLocation ? 'primary' : undefined"
+                :variant="userLocation ? 'flat' : 'outlined'" rounded="lg" size="large"
+                class="text-none search-around-btn" :loading="locationLoading" @click="requestAroundMe">
                 Autour de moi
               </v-btn>
             </div>
@@ -848,8 +869,7 @@ function centreInitials(centre) {
               class="text-body-small text-medium-emphasis mt-3 d-flex align-center flex-wrap">
               <v-icon :icon="mdiMapMarkerOutline" size="14" class="mr-1" color="primary" />
               <span>Résultats triés par distance depuis votre position</span>
-              <v-btn variant="text" size="x-small" color="primary"
-                class="ml-2 text-none" @click="clearAroundMe">
+              <v-btn variant="text" size="x-small" color="primary" class="ml-2 text-none" @click="clearAroundMe">
                 Effacer
               </v-btn>
             </div>
@@ -884,19 +904,16 @@ function centreInitials(centre) {
           </v-card>
 
           <!-- Médecins -->
-          <v-card class="card-shadow pa-6"
-            :class="{ 'rounded-15': !$vuetify.display.mobile }">
+          <v-card class="card-shadow pa-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
             <div class="text-title-medium font-weight-bold mb-3">
               <v-icon :icon="mdiDoctor" size="20" class="mr-2" color="primary" />
               Médecins
             </div>
-            <div v-if="filteredDoctors.length === 0"
-              class="text-body-small text-medium-emphasis text-center pa-6">
+            <div v-if="filteredDoctors.length === 0" class="text-body-small text-medium-emphasis text-center pa-6">
               Aucun médecin ne correspond à votre recherche.
             </div>
             <div v-else class="doctor-grid">
-              <button v-for="doc in filteredDoctors" :key="doc.id" class="doctor-card"
-                @click="pickDoctor(doc)">
+              <button v-for="doc in filteredDoctors" :key="doc.id" class="doctor-card" @click="pickDoctor(doc)">
                 <v-avatar color="primary" variant="tonal" size="64" class="mb-2">
                   <v-img v-if="doc.avatarUrl" :src="doc.avatarUrl" cover />
                   <span v-else class="text-title-small font-weight-bold">{{ initials(doc) }}</span>
@@ -905,7 +922,7 @@ function centreInitials(centre) {
                 <div v-if="doc.specialty" class="doctor-card-specialty">{{ doc.specialty }}</div>
                 <div v-if="doctorEstablishments(doc).length" class="doctor-card-meta">
                   <v-icon :icon="mdiHospitalBuilding" size="13" class="mr-1" />
-                  {{ doctorEstablishments(doc).map((e) => e.name.replace(/Centre du sommeil — /, '')).join(', ') }}
+                  {{doctorEstablishments(doc).map((e) => e.name.replace(/Centre du sommeil — /, '')).join(', ')}}
                 </div>
                 <div v-if="doctorDistance(doc) != null" class="doctor-card-distance">
                   <v-icon :icon="mdiMapMarkerOutline" size="12" class="mr-1" />
@@ -918,15 +935,15 @@ function centreInitials(centre) {
 
         <!-- =================== STEP 2 : CENTRE → DOCTORS =================== -->
         <template v-else-if="step === 'centre' && selectedCentre">
-          <v-card class="card-shadow pa-6"
-            :class="{ 'rounded-15': !$vuetify.display.mobile }">
+          <v-card class="card-shadow pa-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
             <div class="d-flex align-center mb-4">
               <v-avatar color="primary" variant="tonal" size="56" class="mr-3">
                 <span class="text-title-small font-weight-bold">{{ centreInitials(selectedCentre) }}</span>
               </v-avatar>
               <div class="flex-grow-1">
                 <div class="text-title-medium font-weight-bold">{{ selectedCentre.name }}</div>
-                <div v-if="selectedCentre.location" class="text-body-small text-medium-emphasis d-flex align-center mt-1">
+                <div v-if="selectedCentre.location"
+                  class="text-body-small text-medium-emphasis d-flex align-center mt-1">
                   <v-icon :icon="mdiMapMarkerOutline" size="14" class="mr-1" />
                   {{ selectedCentre.location }}
                 </div>
@@ -947,8 +964,7 @@ function centreInitials(centre) {
               Aucun médecin disponible pour ce centre.
             </div>
             <div v-else class="doctor-grid">
-              <button v-for="doc in doctorsOfSelectedCentre" :key="doc.id" class="doctor-card"
-                @click="pickDoctor(doc)">
+              <button v-for="doc in doctorsOfSelectedCentre" :key="doc.id" class="doctor-card" @click="pickDoctor(doc)">
                 <v-avatar color="primary" variant="tonal" size="64" class="mb-2">
                   <v-img v-if="doc.avatarUrl" :src="doc.avatarUrl" cover />
                   <span v-else class="text-title-small font-weight-bold">{{ initials(doc) }}</span>
@@ -962,8 +978,7 @@ function centreInitials(centre) {
 
         <!-- =================== STEP 3 : ACTE SELECTION =================== -->
         <template v-else-if="step === 'acte' && selectedDoctor">
-          <v-card class="card-shadow pa-4 pa-md-6"
-            :class="{ 'rounded-15': !$vuetify.display.mobile }">
+          <v-card class="card-shadow pa-4 pa-md-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
             <div class="d-flex align-center mb-4">
               <v-avatar color="primary" variant="tonal" size="56" class="mr-3">
                 <v-img v-if="selectedDoctor.avatarUrl" :src="selectedDoctor.avatarUrl" cover />
@@ -1031,8 +1046,7 @@ function centreInitials(centre) {
               </div>
               <div class="acte-list">
                 <button v-for="acte in lockedActes" :key="acte.id" class="acte-card acte-card-locked"
-                  :style="{ '--acte-color': acte.agendaColor || 'rgb(var(--v-theme-primary))' }"
-                  :title="lockedReason"
+                  :style="{ '--acte-color': acte.agendaColor || 'rgb(var(--v-theme-primary))' }" :title="lockedReason"
                   @click="showActeInfo(acte)">
                   <div class="acte-card-dot" />
                   <div class="acte-card-body">
@@ -1061,8 +1075,7 @@ function centreInitials(centre) {
 
         <!-- =================== STEP 4 : CALENDAR =================== -->
         <template v-else-if="step === 'calendar' && selectedDoctor && selectedActe">
-          <v-card class="card-shadow pa-4 pa-md-6"
-            :class="{ 'rounded-15': !$vuetify.display.mobile }">
+          <v-card class="card-shadow pa-4 pa-md-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
             <div class="acte-banner mb-3">
               <div class="acte-banner-dot"
                 :style="{ background: selectedActe.agendaColor || 'rgb(var(--v-theme-primary))' }" />
@@ -1085,20 +1098,18 @@ function centreInitials(centre) {
                 Adresse
               </div>
               <div class="location-chips">
-                <button class="location-chip"
-                  :class="{ 'location-chip-active': selectedLocationId === null }"
+                <button class="location-chip" :class="{ 'location-chip-active': selectedLocationId === null }"
                   @click="selectedLocationId = null">
                   Toutes
                 </button>
-                <button v-for="loc in doctorLocations" :key="loc.id"
-                  class="location-chip"
+                <button v-for="loc in doctorLocations" :key="loc.id" class="location-chip"
                   :class="{ 'location-chip-active': selectedLocationId === loc.id }"
                   @click="selectedLocationId = loc.id">
                   {{ loc.shortLabel || loc.name }}
                 </button>
               </div>
               <div v-if="selectedLocationId" class="location-filter-address">
-                {{ doctorLocations.find((l) => l.id === selectedLocationId)?.address }}
+                {{doctorLocations.find((l) => l.id === selectedLocationId)?.address}}
               </div>
             </div>
 
@@ -1127,15 +1138,13 @@ function centreInitials(centre) {
                     Pas de disponibilité
                   </div>
                   <button v-for="slot in availableSlotsForDay(day)"
-                    :key="`${toISODate(day)}-${slot.startTime}-${slot.locationId}`"
-                    class="patient-slot"
+                    :key="`${toISODate(day)}-${slot.startTime}-${slot.locationId}`" class="patient-slot"
                     @click="openConfirm(slot, day)">
                     <span class="patient-slot-time">
                       <v-icon :icon="mdiClockOutline" size="13" class="mr-1" />
                       {{ slot.startTime }}
                     </span>
-                    <span v-if="!selectedLocationId && doctorLocations.length > 1"
-                      class="patient-slot-loc">
+                    <span v-if="!selectedLocationId && doctorLocations.length > 1" class="patient-slot-loc">
                       {{ slot.locationShortLabel }}
                     </span>
                   </button>
@@ -1246,8 +1255,8 @@ function centreInitials(centre) {
               </div>
             </div>
           </div>
-          <v-textarea v-model="confirmNotes" label="Motif (optionnel)" variant="outlined" rounded="lg"
-            rows="2" auto-grow :prepend-inner-icon="mdiNotebookOutline" />
+          <v-textarea v-model="confirmNotes" label="Motif (optionnel)" variant="outlined" rounded="lg" rows="2"
+            auto-grow :prepend-inner-icon="mdiNotebookOutline" />
         </v-card-text>
         <v-divider />
         <v-card-actions class="px-6 py-4">
@@ -1665,36 +1674,45 @@ function centreInitials(centre) {
   .acte-info-card {
     padding: 4px !important;
   }
+
   .acte-info-header {
     padding: 14px 16px 6px 16px;
   }
+
   .acte-info-title {
     font-size: 17px;
   }
+
   .acte-info-body {
     padding: 12px 16px;
   }
+
   .acte-info-meta {
     flex-direction: column;
     gap: 12px;
   }
+
   .acte-info-locked-note {
     margin-left: 16px !important;
     margin-right: 16px !important;
   }
+
   .acte-info-actions {
     padding: 12px 16px;
     flex-direction: column-reverse;
     align-items: stretch;
   }
+
   .acte-info-spacer {
     display: none;
   }
+
   .acte-info-btn-back,
   .acte-info-btn-choose {
     width: 100%;
     margin: 0 !important;
   }
+
   .acte-info-btn-choose {
     margin-bottom: 8px !important;
   }
@@ -1895,6 +1913,7 @@ function centreInitials(centre) {
     flex-basis: 100%;
     padding-left: 16px;
   }
+
   .appt-row-establishment-sep {
     display: none;
   }
@@ -1973,6 +1992,44 @@ function centreInitials(centre) {
 .appt-tab-active .appt-tab-count {
   background: rgba(var(--v-theme-primary), 0.15);
   color: rgb(var(--v-theme-primary));
+}
+
+@media (max-width: 600px) {
+  .appt-tabs {
+    gap: 4px;
+    padding: 4px;
+    border-bottom: none;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+  }
+
+  .appt-tab {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+    padding: 9px 6px;
+    font-size: 12.5px;
+    border-bottom: none;
+    margin-bottom: 0;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .appt-tab:hover {
+    color: rgba(0, 0, 0, 0.7);
+  }
+
+  .appt-tab-active,
+  .appt-tab-active:hover {
+    background: #fff;
+    color: rgb(var(--v-theme-primary));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  .appt-tab :deep(.v-icon),
+  .appt-tab-count {
+    display: none;
+  }
 }
 
 .appt-row {

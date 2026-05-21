@@ -44,8 +44,8 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/rendez-vous',
-      name: 'Rendezvous',
+      path: '/agenda',
+      name: 'Agenda',
       component: () => import('./views/BookAppointmentView.vue'),
       meta: { requiresAuth: true },
     },
@@ -113,6 +113,12 @@ const router = createRouter({
       path: '/login',
       name: 'Login',
       component: () => import('./views/LoginView.vue'),
+      meta: { guest: true },
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'NotFound',
+      component: () => import('./views/NotFoundView.vue'),
       meta: { guest: true },
     },
   ],

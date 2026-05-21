@@ -205,7 +205,7 @@ function confirmCancel() {
   appointmentsStore.cancelAppointment(appointment.value.id)
   messagesStore.add({ type: 'success', text: 'Rendez-vous annulé' })
   cancelDialog.value = false
-  router.push({ name: 'Rendezvous' })
+  router.push({ name: 'Agenda' })
 }
 
 // ============ Payment (placeholder) ============
@@ -446,7 +446,7 @@ const paymentStatus = computed(() => {
           Ce rendez-vous n'existe pas ou a été supprimé.
         </div>
         <v-btn color="primary" rounded="lg" class="text-none"
-          @click="router.push({ name: 'Rendezvous' })">
+          @click="router.push({ name: 'Agenda' })">
           Retour aux rendez-vous
         </v-btn>
       </v-col>

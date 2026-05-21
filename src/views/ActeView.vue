@@ -3,8 +3,6 @@ import { usePatientActesStore } from '@/stores/patientActes'
 import { useTeamStore } from '@/stores/team'
 import {
   mdiAlertOutline,
-  mdiArrowLeft,
-  mdiArrowRight,
   mdiCalendar,
   mdiCalendarQuestion,
   mdiCashMultiple,
@@ -101,14 +99,6 @@ const illustrationUrl = computed(() => {
   if (!file) return ''
   return new URL(`../assets/illustrations/${file}`, import.meta.url).href
 })
-
-function goPrev() {
-  if (currentStep.value > 1) currentStep.value = currentStep.value - 1
-}
-
-function goNext() {
-  if (currentStep.value < totalSteps.value) currentStep.value = currentStep.value + 1
-}
 
 function goToStep(n) {
   selectedStepIndex.value = n
@@ -270,20 +260,12 @@ const paymentStatus = computed(() => {
         <template v-else-if="activeTab === 'etapes'">
           <!-- Step navigator -->
           <v-card class="card-shadow pa-5 mb-4" :class="{ 'rounded-15': !$vuetify.display.mobile }">
-            <div class="d-flex align-start justify-space-between ga-3 mb-4">
-              <div>
-                <div class="text-title-medium font-weight-bold mb-1">
-                  Suivi des étapes
-                </div>
-                <div class="text-body-small text-medium-emphasis">
-                  Avancement détaillé de votre parcours
-                </div>
+            <div class="mb-4">
+              <div class="text-title-medium font-weight-bold mb-1">
+                Suivi des étapes
               </div>
-              <div class="d-flex ga-1 flex-shrink-0">
-                <v-btn :icon="mdiArrowLeft" variant="tonal" color="primary" size="small" density="comfortable"
-                  :disabled="currentStep <= 1" @click="goPrev" />
-                <v-btn :icon="mdiArrowRight" variant="flat" color="primary" size="small" density="comfortable"
-                  :disabled="currentStep >= totalSteps" @click="goNext" />
+              <div class="text-body-small text-medium-emphasis">
+                Avancement détaillé de votre parcours
               </div>
             </div>
 
@@ -423,7 +405,7 @@ const paymentStatus = computed(() => {
           Cet acte n'existe pas ou a été supprimé.
         </div>
         <v-btn color="primary" rounded="lg" class="text-none"
-          @click="router.push({ name: 'Rendezvous' })">
+          @click="router.push({ name: 'Agenda' })">
           Retour aux rendez-vous
         </v-btn>
       </v-col>

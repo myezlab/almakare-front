@@ -11,7 +11,7 @@ export function useNavigationItems() {
     if (!selfStore.item.id) return []
     return [
       { id: 'accueil', text: 'Accueil', icon: mdiHomeOutline, iconActive: mdiHome, to: { name: "Accueil" } },
-      { id: 'appointments', text: 'Rendez-vous', icon: mdiCalendarOutline, iconActive: mdiCalendar, to: { name: "Rendezvous" } },
+      { id: 'appointments', text: 'Agenda', icon: mdiCalendarOutline, iconActive: mdiCalendar, to: { name: "Agenda" } },
       { id: 'messages', text: 'Messages', icon: mdiChatOutline, iconActive: mdiChat, to: { name: "Messages" } },
     ]
   })

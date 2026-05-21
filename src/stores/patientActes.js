@@ -83,6 +83,27 @@ const SEED = [
     illustration: 'technician.svg',
     paymentStatus: 'pending',
   },
+  {
+    id: 'pa-seed-hospitalization-002',
+    patientId: '123456',
+    type: 'hospitalization',
+    acteRef: 'acte-polysomno',
+    label: 'Hospitalisation pour évaluation du sommeil',
+    description:
+      "Premier parcours d'évaluation pour suspicion d'apnée du sommeil, finalisé en mars 2026 : enregistrement nocturne, analyse technique et interprétation médicale transmise au médecin adresseur.",
+    status: 'completed',
+    doctorId: 'tm-seed-002',
+    startedAt: '2026-02-15',
+    completedAt: '2026-03-15',
+    currentStep: HOSPITALIZATION_STEPS.length,
+    steps: HOSPITALIZATION_STEPS,
+    locationId: 'etablissement-paris',
+    locationName: 'Centre du sommeil — Paris',
+    locationAddress: "15 boulevard de l'Hôpital, 75013 Paris",
+    price: 420,
+    illustration: 'congratulations.svg',
+    paymentStatus: 'paid',
+  },
 ]
 
 function loadActes() {
@@ -120,6 +141,10 @@ export const usePatientActesStore = defineStore('patientActes', () => {
     return actesForPatient(patientId).filter((a) => a.status === 'in-progress')
   }
 
+  function pastActesForPatient(patientId) {
+    return actesForPatient(patientId).filter((a) => a.status === 'completed')
+  }
+
   function getActe(id) {
     return items.value.find((a) => a.id === id) || null
   }
@@ -137,6 +162,7 @@ export const usePatientActesStore = defineStore('patientActes', () => {
     items,
     actesForPatient,
     ongoingActesForPatient,
+    pastActesForPatient,
     getActe,
     setCurrentStep,
   }

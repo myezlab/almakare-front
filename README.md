@@ -122,7 +122,7 @@ Defined in [src/router.js](src/router.js):
 | `/profil`                  | ProfileView                | requiresAuth |
 | `/messages`                | MessagesView               | requiresAuth |
 | `/notifications`           | NotificationsView          | requiresAuth |
-| `/rendez-vous`             | BookAppointmentView        | requiresAuth |
+| `/agenda`                  | BookAppointmentView        | requiresAuth |
 | `/parcours-hospitalisation`| HospitalizationJourneyView | requiresAuth |
 | `/test-epworth`            | EpworthTestView            | requiresAuth |
 | `/agenda-sommeil`          | SleepDiaryView             | requiresAuth |
