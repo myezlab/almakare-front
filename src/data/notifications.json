@@ -7,7 +7,7 @@
     "text": "Votre consultation du 28 mai à 10h30 est confirmée au cabinet du Dr Rousseau.",
     "createdAt": "2026-05-20T09:30:00Z",
     "read": false,
-    "to": "/prendre-rendez-vous",
+    "to": "/rendez-vous",
     "projectId": null
   },
   {

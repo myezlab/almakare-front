@@ -6,9 +6,12 @@ import { useSelfStore } from '@/stores/self'
 import { useTeamStore } from '@/stores/team'
 import {
   mdiAlertOutline,
+  mdiApple,
   mdiArrowLeft,
   mdiCalendarCheckOutline,
   mdiCalendarClockOutline,
+  mdiCalendarPlusOutline,
+  mdiHistory,
   mdiCashMultiple,
   mdiChevronLeft,
   mdiChevronRight,
@@ -18,11 +21,13 @@ import {
   mdiCrosshairsGps,
   mdiDoctor,
   mdiDotsVertical,
+  mdiGoogle,
   mdiHospitalBuilding,
   mdiInformationOutline,
   mdiLockOutline,
   mdiMagnify,
   mdiMapMarkerOutline,
+  mdiMicrosoftOutlook,
   mdiNotebookOutline,
   mdiTimerSandComplete,
 } from '@mdi/js'
@@ -131,7 +136,7 @@ const headerTitle = computed(() => {
     case 'centre': return selectedCentre.value?.name || 'Centre du sommeil'
     case 'acte': return 'Choisir une consultation'
     case 'calendar': return 'Choisir un créneau'
-    default: return 'Prendre rendez-vous'
+    default: return 'Rendez-vous'
   }
 })
 
@@ -143,7 +148,7 @@ const headerSubtitle = computed(() => {
   if (step.value === 'calendar' && selectedDoctor.value && selectedActe.value) {
     return `Dr ${selectedDoctor.value.firstName} ${selectedDoctor.value.lastName} · ${selectedActe.value.label}`
   }
-  return 'Recherchez un médecin ou un centre du sommeil'
+  return 'Consultez vos rendez-vous ou prenez-en un nouveau'
 })
 
 // =================== SEARCH RESULTS ===================
@@ -421,6 +426,92 @@ function confirmBooking() {
   resetFlow()
 }
 
+// =================== ADD TO CALENDAR ===================
+function calendarEventFor(a) {
+  const doctorName = `Dr ${a.doctor?.firstName ?? ''} ${a.doctor?.lastName ?? ''}`.trim()
+  const title = `RDV ${doctorName}${a.acte ? ` — ${a.acte.label}` : ''}`
+  const descriptionParts = []
+  if (a.acte?.label) descriptionParts.push(a.acte.label)
+  if (doctorName) descriptionParts.push(doctorName)
+  if (a.notes) descriptionParts.push(`Motif : ${a.notes}`)
+  const description = descriptionParts.join('\n')
+  const location = [a.locationName, a.locationAddress].filter(Boolean).join(' — ')
+  return {
+    title,
+    description,
+    location,
+    date: a.date,
+    startTime: a.startTime,
+    endTime: a.endTime,
+    uid: `appointment-${a.id}@almakare`,
+  }
+}
+
+function toCalendarStamp(date, time) {
+  return `${date.replace(/-/g, '')}T${time.replace(':', '')}00`
+}
+
+function toIsoLocal(date, time) {
+  return `${date}T${time}:00`
+}
+
+function addToGoogleCalendar(a) {
+  const ev = calendarEventFor(a)
+  const url = new URL('https://calendar.google.com/calendar/render')
+  url.searchParams.set('action', 'TEMPLATE')
+  url.searchParams.set('text', ev.title)
+  url.searchParams.set('dates', `${toCalendarStamp(ev.date, ev.startTime)}/${toCalendarStamp(ev.date, ev.endTime)}`)
+  url.searchParams.set('ctz', 'Europe/Paris')
+  if (ev.description) url.searchParams.set('details', ev.description)
+  if (ev.location) url.searchParams.set('location', ev.location)
+  window.open(url.toString(), '_blank', 'noopener')
+}
+
+function addToOutlook(a) {
+  const ev = calendarEventFor(a)
+  const url = new URL('https://outlook.live.com/calendar/0/deeplink/compose')
+  url.searchParams.set('path', '/calendar/action/compose')
+  url.searchParams.set('rru', 'addevent')
+  url.searchParams.set('subject', ev.title)
+  url.searchParams.set('startdt', toIsoLocal(ev.date, ev.startTime))
+  url.searchParams.set('enddt', toIsoLocal(ev.date, ev.endTime))
+  if (ev.description) url.searchParams.set('body', ev.description)
+  if (ev.location) url.searchParams.set('location', ev.location)
+  window.open(url.toString(), '_blank', 'noopener')
+}
+
+function downloadIcs(a) {
+  const ev = calendarEventFor(a)
+  const escapeIcs = (s) => String(s).replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
+  const dtstamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Almakare//Rendez-vous//FR',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${ev.uid}`,
+    `DTSTAMP:${dtstamp}`,
+    `DTSTART;TZID=Europe/Paris:${toCalendarStamp(ev.date, ev.startTime)}`,
+    `DTEND;TZID=Europe/Paris:${toCalendarStamp(ev.date, ev.endTime)}`,
+    `SUMMARY:${escapeIcs(ev.title)}`,
+    ev.description ? `DESCRIPTION:${escapeIcs(ev.description)}` : null,
+    ev.location ? `LOCATION:${escapeIcs(ev.location)}` : null,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean)
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `rdv-${ev.date}-${ev.startTime.replace(':', '')}.ics`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
 // =================== CANCEL ===================
 const cancelDialog = ref(false)
 const appointmentToCancel = ref(null)
@@ -450,12 +541,34 @@ const myAppointments = computed(() => {
       const doctor = teamStore.items.find((m) => m.id === a.doctorId)
       return { ...a, doctor, acte: acteFor(a.acteId) }
     })
-    .sort((a, b) => {
-      const da = `${a.date} ${a.startTime}`
-      const db = `${b.date} ${b.startTime}`
-      return da.localeCompare(db)
-    })
 })
+
+function appointmentKey(a) {
+  return `${a.date} ${a.startTime}`
+}
+
+const nowKey = computed(() => {
+  const d = new Date()
+  return `${toISODate(d)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+})
+
+const upcomingAppointments = computed(() =>
+  myAppointments.value
+    .filter((a) => appointmentKey(a) >= nowKey.value)
+    .sort((a, b) => appointmentKey(a).localeCompare(appointmentKey(b))),
+)
+
+const pastAppointments = computed(() =>
+  myAppointments.value
+    .filter((a) => appointmentKey(a) < nowKey.value)
+    .sort((a, b) => appointmentKey(b).localeCompare(appointmentKey(a))),
+)
+
+const appointmentsTab = ref('upcoming')
+
+const visibleAppointments = computed(() =>
+  appointmentsTab.value === 'past' ? pastAppointments.value : upcomingAppointments.value,
+)
 
 function initials(person) {
   return `${person?.firstName?.[0] ?? ''}${person?.lastName?.[0] ?? ''}`.toUpperCase()
@@ -494,18 +607,49 @@ function centreInitials(centre) {
           </v-col>
         </v-row>
 
-        <!-- =================== UPCOMING APPOINTMENTS (search step only) =================== -->
-        <v-card v-if="step === 'search' && myAppointments.length > 0"
+        <!-- =================== MY APPOINTMENTS (search step only) =================== -->
+        <v-card v-if="step === 'search' && (upcomingAppointments.length > 0 || pastAppointments.length > 0)"
           class="card-shadow pa-6 mb-4" :class="{ 'rounded-15': !$vuetify.display.mobile }">
-          <div class="text-title-medium font-weight-bold mb-3">
-            <v-icon :icon="mdiCalendarCheckOutline" size="20" class="mr-2" color="primary" />
-            Mes rendez-vous à venir
+          <div class="appt-tabs mb-4">
+            <button class="appt-tab"
+              :class="{ 'appt-tab-active': appointmentsTab === 'upcoming' }"
+              @click="appointmentsTab = 'upcoming'">
+              <v-icon :icon="mdiCalendarCheckOutline" size="16" class="mr-1" />
+              À venir
+              <span v-if="upcomingAppointments.length" class="appt-tab-count">
+                {{ upcomingAppointments.length }}
+              </span>
+            </button>
+            <button class="appt-tab"
+              :class="{ 'appt-tab-active': appointmentsTab === 'past' }"
+              @click="appointmentsTab = 'past'">
+              <v-icon :icon="mdiHistory" size="16" class="mr-1" />
+              Passés
+              <span v-if="pastAppointments.length" class="appt-tab-count">
+                {{ pastAppointments.length }}
+              </span>
+            </button>
           </div>
-          <div v-for="(a, i) in myAppointments" :key="a.id"
+
+          <div v-if="visibleAppointments.length === 0"
+            class="text-body-small text-medium-emphasis text-center pa-4">
+            <template v-if="appointmentsTab === 'upcoming'">
+              Aucun rendez-vous à venir pour le moment.
+            </template>
+            <template v-else>
+              Aucun rendez-vous passé.
+            </template>
+          </div>
+
+          <div v-for="(a, i) in visibleAppointments" :key="a.id"
             class="appt-row"
-            :class="{ 'appt-row-divided': i < myAppointments.length - 1 }">
-            <div class="appt-row-icon">
-              <v-icon :icon="mdiCalendarCheckOutline" size="22" color="primary" />
+            :class="{
+              'appt-row-divided': i < visibleAppointments.length - 1,
+              'appt-row-past': appointmentsTab === 'past',
+            }">
+            <div class="appt-row-icon" :class="{ 'appt-row-icon-past': appointmentsTab === 'past' }">
+              <v-icon :icon="appointmentsTab === 'past' ? mdiHistory : mdiCalendarCheckOutline"
+                size="22" :color="appointmentsTab === 'past' ? 'medium-emphasis' : 'primary'" />
             </div>
             <div class="appt-row-main">
               <div class="appt-row-title">
@@ -525,23 +669,83 @@ function centreInitials(centre) {
                 </span>
               </div>
             </div>
-            <v-menu v-if="$vuetify.display.mobile" location="bottom end">
-              <template #activator="{ props }">
-                <v-btn :icon="mdiDotsVertical" variant="text" size="small" v-bind="props"
-                  aria-label="Actions du rendez-vous" />
+            <template v-if="appointmentsTab === 'upcoming'">
+              <v-menu v-if="$vuetify.display.mobile" location="bottom end">
+                <template #activator="{ props }">
+                  <v-btn :icon="mdiDotsVertical" variant="text" size="small" v-bind="props"
+                    aria-label="Actions du rendez-vous" />
+                </template>
+                <v-list density="compact" class="rounded-15">
+                  <v-list-subheader class="text-body-small">Ajouter à mon calendrier</v-list-subheader>
+                  <v-list-item @click="addToGoogleCalendar(a)">
+                    <template #prepend>
+                      <v-icon :icon="mdiGoogle" class="cal-icon-google" />
+                    </template>
+                    <v-list-item-title class="text-body-medium">Google Calendar</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click="addToOutlook(a)">
+                    <template #prepend>
+                      <v-icon :icon="mdiMicrosoftOutlook" class="cal-icon-outlook" />
+                    </template>
+                    <v-list-item-title class="text-body-medium">Outlook</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click="downloadIcs(a)">
+                    <template #prepend>
+                      <v-icon :icon="mdiApple" class="cal-icon-apple" />
+                    </template>
+                    <v-list-item-title class="text-body-medium">Apple Calendar (.ics)</v-list-item-title>
+                  </v-list-item>
+                  <v-divider class="my-1" />
+                  <v-list-item :prepend-icon="mdiCloseCircleOutline" base-color="error" @click="askCancel(a)">
+                    <v-list-item-title class="text-body-medium">Annuler le RDV</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+              <template v-else>
+                <v-menu location="bottom end">
+                  <template #activator="{ props }">
+                    <v-btn variant="text" color="primary" size="small" rounded="lg" class="text-none"
+                      :prepend-icon="mdiCalendarPlusOutline" v-bind="props">
+                      Ajouter à mon calendrier
+                    </v-btn>
+                  </template>
+                  <v-list density="compact" class="rounded-15">
+                    <v-list-item @click="addToGoogleCalendar(a)">
+                      <template #prepend>
+                        <v-icon :icon="mdiGoogle" class="cal-icon-google" />
+                      </template>
+                      <v-list-item-title class="text-body-medium">Google Calendar</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="addToOutlook(a)">
+                      <template #prepend>
+                        <v-icon :icon="mdiMicrosoftOutlook" class="cal-icon-outlook" />
+                      </template>
+                      <v-list-item-title class="text-body-medium">Outlook</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="downloadIcs(a)">
+                      <template #prepend>
+                        <v-icon :icon="mdiApple" class="cal-icon-apple" />
+                      </template>
+                      <v-list-item-title class="text-body-medium">Apple Calendar (.ics)</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+                <v-btn variant="text" color="error" size="small" rounded="lg" class="text-none"
+                  :prepend-icon="mdiCloseCircleOutline" @click="askCancel(a)">
+                  Annuler
+                </v-btn>
               </template>
-              <v-list density="compact" class="rounded-15">
-                <v-list-item :prepend-icon="mdiCloseCircleOutline" base-color="error" @click="askCancel(a)">
-                  <v-list-item-title class="text-body-medium">Annuler le RDV</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </v-menu>
-            <v-btn v-else variant="text" color="error" size="small" rounded="lg" class="text-none"
-              :prepend-icon="mdiCloseCircleOutline" @click="askCancel(a)">
-              Annuler
-            </v-btn>
+            </template>
           </div>
         </v-card>
+
+        <!-- =================== BOOK A NEW APPOINTMENT INTRO (search step) =================== -->
+        <div v-if="step === 'search'"
+          class="text-title-small font-weight-bold mb-3 mt-2"
+          :class="{ 'mx-6': $vuetify.display.mobile }">
+          <v-icon :icon="mdiCalendarPlusOutline" size="18" class="mr-2" color="primary" />
+          Prendre un nouveau rendez-vous
+        </div>
 
         <!-- =================== STEP 1 : SEARCH =================== -->
         <template v-if="step === 'search'">
@@ -1651,11 +1855,66 @@ function centreInitials(centre) {
   color: rgba(0, 0, 0, 0.85);
 }
 
+.appt-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.appt-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.appt-tab:hover {
+  color: rgb(var(--v-theme-primary));
+}
+
+.appt-tab-active {
+  color: rgb(var(--v-theme-primary));
+  border-bottom-color: rgb(var(--v-theme-primary));
+}
+
+.appt-tab-count {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.65);
+  padding: 1px 8px;
+  border-radius: 999px;
+  line-height: 1.4;
+}
+
+.appt-tab-active .appt-tab-count {
+  background: rgba(var(--v-theme-primary), 0.15);
+  color: rgb(var(--v-theme-primary));
+}
+
 .appt-row {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 4px;
+}
+
+.appt-row-past .appt-row-title,
+.appt-row-past .appt-row-sub {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.appt-row-icon-past {
+  background: rgba(0, 0, 0, 0.06) !important;
 }
 
 .appt-row-divided {
@@ -1688,6 +1947,18 @@ function centreInitials(centre) {
   font-size: 12.5px;
   color: rgba(0, 0, 0, 0.6);
   margin-top: 2px;
+}
+
+.cal-icon-google {
+  color: #4285F4;
+}
+
+.cal-icon-outlook {
+  color: #0078D4;
+}
+
+.cal-icon-apple {
+  color: #000000;
 }
 
 .cancel-icon-wrap {

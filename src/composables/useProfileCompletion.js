@@ -9,7 +9,7 @@ const PROFILE_FIELDS = [
   { key: 'phoneNumber', label: 'Téléphone' },
   { key: 'dietaryRestrictions', label: 'Régime alimentaire' },
   { key: 'medicalHistory', label: 'Antécédents médicaux' },
-  { key: 'currentTreatments', label: 'Traitements en cours' },
+  { key: 'treatments', label: 'Traitements en cours' },
   { key: 'weight', label: 'Poids (kg)' },
   { key: 'height', label: 'Taille (m)' },
   { key: 'iah', label: 'IAH' },
@@ -19,18 +19,22 @@ const PROFILE_SECTIONS = [
   { key: 'personal', label: 'Données personnelles', fields: ['agreementPersonal'] },
   { key: 'general', label: 'Données générales', fields: ['firstName', 'lastName', 'gender', 'dob', 'phoneNumber'] },
   { key: 'carteVitale', label: 'Carte Vitale', fields: ['carteVitaleNir'] },
-  { key: 'medical', label: 'Données médicales', fields: ['dietaryRestrictions', 'medicalHistory', 'currentTreatments'] },
+  { key: 'medical', label: 'Données médicales', fields: ['dietaryRestrictions', 'medicalHistory'] },
+  { key: 'treatments', label: 'Traitements', fields: ['treatments'] },
   { key: 'clinical', label: 'Données cliniques', fields: ['weight', 'height', 'iah'] },
 ]
 
 const MEDICAL_FLAGS = {
   dietaryRestrictions: 'hasDietaryRestrictions',
   medicalHistory: 'hasMedicalHistory',
-  currentTreatments: 'hasCurrentTreatments',
 }
 
 function isFilled(saved, key) {
   if (['weight', 'height', 'iah'].includes(key)) return saved[key] != null && saved[key] !== ''
+  if (key === 'treatments') {
+    if (saved.hasTreatments === false) return true
+    return Array.isArray(saved.treatments) && saved.treatments.length > 0
+  }
   const flag = MEDICAL_FLAGS[key]
   if (flag) {
     if (saved[flag] === false) return true

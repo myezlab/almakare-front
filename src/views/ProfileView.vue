@@ -4,7 +4,7 @@ import ProfileDocumentsTab from "@/components/profile/ProfileDocumentsTab.vue"
 import ProfileDonneesPatientTab from "@/components/profile/ProfileDonneesPatientTab.vue"
 import ProfilePlaceholderTab from "@/components/profile/ProfilePlaceholderTab.vue"
 import ProfileQuestionnairesTab from "@/components/profile/ProfileQuestionnairesTab.vue"
-import ProfileSyntheseTab from "@/components/profile/ProfileSyntheseTab.vue"
+import ProfileTraitementsTab from "@/components/profile/ProfileTraitementsTab.vue"
 import { ISOToShortenedDate } from "@/composables/useDates"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
@@ -13,11 +13,12 @@ import {
   mdiAccountOutline,
   mdiCalendarOutline,
   mdiClipboardListOutline,
+  mdiCogOutline,
+  mdiDotsVertical,
   mdiEmailOutline,
   mdiFolderOutline,
+  mdiLogoutVariant,
   mdiPill,
-  mdiPulse,
-  mdiViewDashboardOutline,
 } from "@mdi/js"
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
@@ -32,15 +33,13 @@ const route = useRoute()
 const currentUser = computed(() => selfStore.item || {})
 
 const TABS = [
-  { value: 'synthese', label: 'Synthèse', icon: mdiViewDashboardOutline },
   { value: 'donnees-patient', label: 'Données patient', icon: mdiAccountOutline },
-  { value: 'activites', label: 'Activités', icon: mdiPulse },
   { value: 'traitements', label: 'Traitements', icon: mdiPill },
   { value: 'documents', label: 'Documents', icon: mdiFolderOutline },
   { value: 'questionnaires', label: 'Questionnaires', icon: mdiClipboardListOutline },
 ]
 const TAB_VALUES = TABS.map((t) => t.value)
-const DEFAULT_TAB = 'synthese'
+const DEFAULT_TAB = 'donnees-patient'
 
 const activeTab = ref(TAB_VALUES.includes(route.query.tab) ? route.query.tab : DEFAULT_TAB)
 
@@ -58,18 +57,7 @@ watch(activeTab, (val) => {
   router.replace({ query: { ...route.query, tab: target } })
 })
 
-const tabPlaceholders = {
-  'activites': {
-    title: 'Activités',
-    subtitle: 'Suivez l\'historique de vos activités et soins.',
-    icon: mdiPulse,
-  },
-  'traitements': {
-    title: 'Traitements',
-    subtitle: 'Consultez vos traitements en cours et passés.',
-    icon: mdiPill,
-  },
-}
+const tabPlaceholders = {}
 
 const dobDisplay = computed(() => {
   const d = currentUser.value?.dob
@@ -112,7 +100,20 @@ async function logOut() {
         </v-row>
 
         <!-- =================== HERO / DETAILS CARD =================== -->
-        <v-card class="card-shadow pt-6 px-6 mb-4" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+        <v-card class="card-shadow pt-6 px-6 mb-4 position-relative"
+          :class="{ 'rounded-15': !$vuetify.display.mobile }">
+          <v-menu location="bottom end">
+            <template #activator="{ props }">
+              <v-btn :icon="mdiDotsVertical" variant="text" size="small" v-bind="props" class="profile-menu-btn"
+                aria-label="Menu" />
+            </template>
+            <v-list density="comfortable" min-width="200" class="card-shadow rounded-lg">
+              <v-list-item :prepend-icon="mdiCogOutline" title="Paramètres"
+                @click="router.push({ name: 'Settings' })" />
+              <v-list-item :prepend-icon="mdiLogoutVariant" title="Se déconnecter" base-color="error"
+                @click="logOut" />
+            </v-list>
+          </v-menu>
           <div class="d-flex flex-column align-center text-center">
             <Picture :docPath="`users/${selfStore.item.id}`" :storagePath="`users/${selfStore.item.id}`"
               v-model:source="selfStore.item.avatarUrl" pictureName="avatar" :size="96" for="avatar" :cover="true" />
@@ -150,8 +151,8 @@ async function logOut() {
         </v-card>
 
         <!-- =================== TAB CONTENT =================== -->
-        <ProfileSyntheseTab v-if="activeTab === 'synthese'" />
-        <ProfileDonneesPatientTab v-else-if="activeTab === 'donnees-patient'" />
+        <ProfileDonneesPatientTab v-if="activeTab === 'donnees-patient'" />
+        <ProfileTraitementsTab v-else-if="activeTab === 'traitements'" />
         <ProfileQuestionnairesTab v-else-if="activeTab === 'questionnaires'" />
         <ProfileDocumentsTab v-else-if="activeTab === 'documents'" />
         <ProfilePlaceholderTab v-else-if="tabPlaceholders[activeTab]" :title="tabPlaceholders[activeTab].title"
@@ -218,6 +219,13 @@ async function logOut() {
 
 .profile-tabs {
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.profile-menu-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
 }
 
 .profile-chips :deep(.v-slide-group__container) {

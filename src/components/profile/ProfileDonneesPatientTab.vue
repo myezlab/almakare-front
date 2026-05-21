@@ -85,8 +85,8 @@ const hasGeneralData = computed(() => {
 })
 const hasMedicalData = computed(() => {
   const u = currentUser.value
-  return u.hasDietaryRestrictions != null || u.hasMedicalHistory != null || u.hasCurrentTreatments != null ||
-    !!(u.dietaryRestrictions || u.medicalHistory || u.currentTreatments)
+  return u.hasDietaryRestrictions != null || u.hasMedicalHistory != null ||
+    !!(u.dietaryRestrictions || u.medicalHistory)
 })
 const hasClinicalData = computed(() => {
   const u = currentUser.value
@@ -114,8 +114,6 @@ const medicalModel = ref({
   dietaryRestrictions: '',
   hasMedicalHistory: null,
   medicalHistory: '',
-  hasCurrentTreatments: null,
-  currentTreatments: '',
 })
 
 const clinicalModel = ref({
@@ -149,8 +147,6 @@ watch(() => currentUser.value, (item) => {
     dietaryRestrictions: item.dietaryRestrictions || '',
     hasMedicalHistory: item.hasMedicalHistory ?? (item.medicalHistory ? true : null),
     medicalHistory: item.medicalHistory || '',
-    hasCurrentTreatments: item.hasCurrentTreatments ?? (item.currentTreatments ? true : null),
-    currentTreatments: item.currentTreatments || '',
   }
   clinicalModel.value = {
     weight: item.weight ?? null,
@@ -204,8 +200,6 @@ async function handleSaveMedical(proxyModel, confirmSave) {
       dietaryRestrictions: value.hasDietaryRestrictions ? value.dietaryRestrictions : '',
       hasMedicalHistory: value.hasMedicalHistory,
       medicalHistory: value.hasMedicalHistory ? value.medicalHistory : '',
-      hasCurrentTreatments: value.hasCurrentTreatments,
-      currentTreatments: value.hasCurrentTreatments ? value.currentTreatments : '',
     }
     confirmSave()
     Object.assign(selfStore.item, updateData)
@@ -423,14 +417,6 @@ function cancelClinical(cancel) {
                     : (currentUser.medicalHistory || EMPTY) }}
                 </div>
               </v-col>
-              <v-col cols="12" md="6">
-                <div class="field-label">Traitements en cours</div>
-                <div class="field-value field-value-multiline">
-                  {{ currentUser.hasCurrentTreatments === false
-                    ? 'Aucun'
-                    : (currentUser.currentTreatments || EMPTY) }}
-                </div>
-              </v-col>
             </v-row>
           </v-card-text>
         </template>
@@ -478,19 +464,6 @@ function cancelClinical(cancel) {
                     <v-textarea v-if="proxyModel.value.hasMedicalHistory === true"
                       v-model.trim="proxyModel.value.medicalHistory" label="Précisez vos antécédents" variant="outlined"
                       rounded="lg" rows="2" auto-grow :rules="[v => !!v || 'Veuillez préciser ou répondre Non']" />
-                  </v-col>
-
-                  <v-col cols="12" md="6">
-                    <div class="field-label mb-2">Suivez-vous un traitement en cours&nbsp;?</div>
-                    <v-btn-toggle v-model="proxyModel.value.hasCurrentTreatments" mandatory="force" color="primary"
-                      rounded="lg" density="comfortable" variant="outlined" class="mb-3">
-                      <v-btn :value="true" class="text-none">Oui</v-btn>
-                      <v-btn :value="false" class="text-none">Non</v-btn>
-                    </v-btn-toggle>
-                    <v-textarea v-if="proxyModel.value.hasCurrentTreatments === true"
-                      v-model.trim="proxyModel.value.currentTreatments" label="Précisez vos traitements"
-                      variant="outlined" rounded="lg" rows="2" auto-grow
-                      :rules="[v => !!v || 'Veuillez préciser ou répondre Non']" />
                   </v-col>
                 </v-row>
               </v-card-text>

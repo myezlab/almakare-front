@@ -44,8 +44,8 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/prendre-rendez-vous',
-      name: 'BookAppointment',
+      path: '/rendez-vous',
+      name: 'Rendezvous',
       component: () => import('./views/BookAppointmentView.vue'),
       meta: { requiresAuth: true },
     },
@@ -53,6 +53,12 @@ const router = createRouter({
       path: '/profil',
       name: 'Profile',
       component: () => import('./views/ProfileView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/parametres',
+      name: 'Settings',
+      component: () => import('./views/SettingsView.vue'),
       meta: { requiresAuth: true },
     },
     {

@@ -4,14 +4,65 @@ import { ref, watch } from 'vue'
 
 const APPOINTMENTS_STORAGE_KEY = 'almakare.appointments.items'
 
+const APPOINTMENTS_SEED = [
+  {
+    id: 'appt-seed-001',
+    doctorId: 'tm-seed-001',
+    acteId: 'acte-consult-1',
+    patientId: '123456',
+    patientFullName: 'Patient',
+    date: '2025-09-12',
+    startTime: '10:00',
+    endTime: '10:45',
+    locationId: 'loc-rousseau-cabinet',
+    locationName: 'Cabinet du Dr Rousseau',
+    locationAddress: '24 rue de Rivoli, 75004 Paris',
+    notes: 'Première consultation — fatigue diurne et ronflements',
+    status: 'completed',
+    createdAt: '2025-08-28T09:00:00.000Z',
+  },
+  {
+    id: 'appt-seed-002',
+    doctorId: 'tm-seed-001',
+    acteId: 'acte-consult-2',
+    patientId: '123456',
+    patientFullName: 'Patient',
+    date: '2025-12-04',
+    startTime: '14:30',
+    endTime: '14:55',
+    locationId: 'loc-rousseau-cabinet',
+    locationName: 'Cabinet du Dr Rousseau',
+    locationAddress: '24 rue de Rivoli, 75004 Paris',
+    notes: 'Suivi après résultats polysomnographie',
+    status: 'completed',
+    createdAt: '2025-11-15T10:30:00.000Z',
+  },
+  {
+    id: 'appt-seed-003',
+    doctorId: 'tm-seed-002',
+    acteId: 'acte-consult-bilan',
+    patientId: '123456',
+    patientFullName: 'Patient',
+    date: '2026-03-18',
+    startTime: '09:00',
+    endTime: '10:00',
+    locationId: 'loc-bernard-paris',
+    locationName: 'Cabinet de neurologie du sommeil',
+    locationAddress: '12 boulevard Haussmann, 75009 Paris',
+    notes: 'Second avis neurologique — insomnie chronique',
+    status: 'completed',
+    createdAt: '2026-02-20T08:00:00.000Z',
+  },
+]
+
 function loadAppointments() {
   try {
     const raw = localStorage.getItem(APPOINTMENTS_STORAGE_KEY)
-    if (raw === null) return []
+    if (raw === null) return [...APPOINTMENTS_SEED]
     const parsed = JSON.parse(raw)
     return parsed.filter((a) => a && a.date && a.startTime && a.endTime)
   } catch {
-    return []
+    return [...APPOINTMENTS_SEED]
   }
 }
 

@@ -82,7 +82,7 @@ const epworthScoreLabel = computed(() => {
 
         <!-- Book appointment hero CTA -->
         <v-card :class="{ 'mt-6': !$vuetify.display.mobile }" class="pa-6 rounded-15 cursor-pointer book-appt-hero" flat
-          @click="router.push({ name: 'BookAppointment' })">
+          @click="router.push({ name: 'Rendezvous' })">
           <div class="book-appt-hero-glow" aria-hidden="true"></div>
           <v-row align="center" class="position-relative">
             <v-col>
@@ -96,7 +96,7 @@ const epworthScoreLabel = computed(() => {
                 Prenez rendez-vous en quelques clics
               </div>
               <v-btn :prepend-icon="mdiCalendarPlusOutline" color="white" rounded="lg" size="large"
-                @click.stop="router.push({ name: 'BookAppointment' })" class="text-none book-appt-hero-btn">
+                @click.stop="router.push({ name: 'Rendezvous' })" class="text-none book-appt-hero-btn">
                 Prendre rendez-vous
               </v-btn>
             </v-col>
