@@ -9,16 +9,21 @@ import {
   mdiArrowLeft,
   mdiCalendarCheckOutline,
   mdiCalendarClockOutline,
+  mdiCashMultiple,
   mdiChevronLeft,
   mdiChevronRight,
   mdiClockOutline,
   mdiClose,
   mdiCloseCircleOutline,
+  mdiCrosshairsGps,
   mdiDoctor,
   mdiDotsVertical,
   mdiHospitalBuilding,
+  mdiInformationOutline,
+  mdiMagnify,
   mdiMapMarkerOutline,
   mdiNotebookOutline,
+  mdiTimerSandComplete,
 } from '@mdi/js'
 import { computed, ref } from 'vue'
 
@@ -29,32 +34,257 @@ const messagesStore = useMessagesStore()
 const organisationStore = useOrganisationStore()
 
 const establishments = computed(() => organisationStore.item.establishments || [])
-function establishmentFor(id) {
-  if (!id) return null
-  return establishments.value.find((e) => e.id === id) || null
-}
+const actes = computed(() => organisationStore.item.actes || [])
 
-const doctors = computed(() =>
+const allDoctors = computed(() =>
   teamStore.items.filter((m) => {
     const roles = Array.isArray(m.roles) && m.roles.length > 0 ? m.roles : (m.role ? [m.role] : [])
     return roles.includes('doctor') && m.invitationStatus === 'accepted'
   }),
 )
 
+function establishmentFor(id) {
+  if (!id) return null
+  return establishments.value.find((e) => e.id === id) || null
+}
+
+function acteFor(id) {
+  if (!id) return null
+  return actes.value.find((a) => a.id === id) || null
+}
+
+function doctorEstablishments(doctor) {
+  return (doctor?.establishmentIds || [])
+    .map((id) => establishmentFor(id))
+    .filter(Boolean)
+}
+
+// =================== STEP MACHINE ===================
+// 'search'   → search + cards (centres + doctors)
+// 'centre'   → list of doctors for the selected centre
+// 'acte'     → choose consultation/acte (filtered by first-visit history)
+// 'calendar' → pick a time slot for chosen acte
+
+const step = ref('search')
+const selectedCentre = ref(null)
 const selectedDoctor = ref(null)
+const selectedActe = ref(null)
+const acteInfoOpen = ref(false)
+const acteInfoTarget = ref(null)
+const searchQuery = ref('')
 
-function selectDoctor(doctor) {
+function pickCentre(centre) {
+  selectedCentre.value = centre
+  step.value = 'centre'
+}
+
+function pickDoctor(doctor) {
   selectedDoctor.value = doctor
+  step.value = 'acte'
 }
 
-function clearDoctor() {
+function showActeInfo(acte) {
+  acteInfoTarget.value = acte
+  acteInfoOpen.value = true
+}
+
+function chooseActe(acte) {
+  selectedActe.value = acte
+  acteInfoOpen.value = false
+  acteInfoTarget.value = null
+  selectedLocationId.value = null
+  step.value = 'calendar'
+}
+
+function goBack() {
+  if (step.value === 'calendar') {
+    selectedActe.value = null
+    step.value = 'acte'
+    return
+  }
+  if (step.value === 'acte') {
+    selectedDoctor.value = null
+    step.value = selectedCentre.value ? 'centre' : 'search'
+    return
+  }
+  if (step.value === 'centre') {
+    selectedCentre.value = null
+    step.value = 'search'
+    return
+  }
+}
+
+function resetFlow() {
+  step.value = 'search'
+  selectedCentre.value = null
   selectedDoctor.value = null
+  selectedActe.value = null
+  selectedLocationId.value = null
+  searchQuery.value = ''
 }
 
-function initials(person) {
-  return `${person?.firstName?.[0] ?? ''}${person?.lastName?.[0] ?? ''}`.toUpperCase()
+const showBack = computed(() => step.value !== 'search')
+
+const headerTitle = computed(() => {
+  switch (step.value) {
+    case 'centre': return selectedCentre.value?.name || 'Centre du sommeil'
+    case 'acte': return 'Choisir une consultation'
+    case 'calendar': return 'Choisir un créneau'
+    default: return 'Prendre rendez-vous'
+  }
+})
+
+const headerSubtitle = computed(() => {
+  if (step.value === 'centre') return 'Sélectionnez un médecin du centre'
+  if (step.value === 'acte') return selectedDoctor.value
+    ? `Dr ${selectedDoctor.value.firstName} ${selectedDoctor.value.lastName}`
+    : ''
+  if (step.value === 'calendar' && selectedDoctor.value && selectedActe.value) {
+    return `Dr ${selectedDoctor.value.firstName} ${selectedDoctor.value.lastName} · ${selectedActe.value.label}`
+  }
+  return 'Recherchez un médecin ou un centre du sommeil'
+})
+
+// =================== SEARCH RESULTS ===================
+function matchesQuery(text) {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return true
+  return String(text || '').toLowerCase().includes(q)
 }
 
+// =================== GEOLOCATION ===================
+const userLocation = ref(null)
+const locationLoading = ref(false)
+const locationError = ref('')
+
+function distanceKm(a, b) {
+  if (!a || !b) return null
+  const R = 6371
+  const toRad = (d) => (d * Math.PI) / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLng = toRad(b.lng - a.lng)
+  const x = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(x))
+}
+
+function centreDistance(centre) {
+  if (!userLocation.value || !centre?.coordinates) return null
+  return distanceKm(userLocation.value, centre.coordinates)
+}
+
+function doctorDistance(doctor) {
+  if (!userLocation.value) return null
+  const distances = (doctor?.locations || [])
+    .map((l) => l.coordinates ? distanceKm(userLocation.value, l.coordinates) : null)
+    .filter((d) => d != null)
+  if (distances.length === 0) return null
+  return Math.min(...distances)
+}
+
+function formatDistance(km) {
+  if (km == null) return ''
+  if (km < 1) return `${Math.round(km * 1000)} m`
+  if (km < 10) return `${km.toFixed(1)} km`
+  return `${Math.round(km)} km`
+}
+
+function requestAroundMe() {
+  if (userLocation.value) {
+    clearAroundMe()
+    return
+  }
+  if (!navigator.geolocation) {
+    locationError.value = 'La géolocalisation n\'est pas disponible sur votre appareil.'
+    return
+  }
+  locationLoading.value = true
+  locationError.value = ''
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      userLocation.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+      locationLoading.value = false
+    },
+    (err) => {
+      locationLoading.value = false
+      if (err.code === err.PERMISSION_DENIED) {
+        locationError.value = 'Autorisation refusée. Activez la localisation pour voir les résultats à proximité.'
+      } else if (err.code === err.POSITION_UNAVAILABLE) {
+        locationError.value = 'Position indisponible. Réessayez dans un instant.'
+      } else if (err.code === err.TIMEOUT) {
+        locationError.value = 'Délai dépassé. Réessayez.'
+      } else {
+        locationError.value = 'Impossible d\'obtenir votre position.'
+      }
+    },
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+  )
+}
+
+function clearAroundMe() {
+  userLocation.value = null
+  locationError.value = ''
+}
+
+const filteredCentres = computed(() => {
+  const list = establishments.value.filter((c) =>
+    matchesQuery(`${c.name} ${c.location} ${c.description || ''} ${c.address || ''}`),
+  )
+  if (!userLocation.value) return list
+  return [...list].sort((a, b) => {
+    const da = centreDistance(a) ?? Infinity
+    const db = centreDistance(b) ?? Infinity
+    return da - db
+  })
+})
+
+const filteredDoctors = computed(() => {
+  const list = allDoctors.value.filter((d) =>
+    matchesQuery(`${d.firstName} ${d.lastName} ${d.specialty || ''}`),
+  )
+  if (!userLocation.value) return list
+  return [...list].sort((a, b) => {
+    const da = doctorDistance(a) ?? Infinity
+    const db = doctorDistance(b) ?? Infinity
+    return da - db
+  })
+})
+
+const doctorsOfSelectedCentre = computed(() => {
+  if (!selectedCentre.value) return []
+  return allDoctors.value.filter((d) =>
+    (d.establishmentIds || []).includes(selectedCentre.value.id),
+  )
+})
+
+// =================== ACTE SELECTION ===================
+const patient = computed(() => selfStore.item || {})
+
+const isFirstVisitWithDoctor = computed(() => {
+  if (!selectedDoctor.value) return true
+  return !appointmentsStore.hasPriorAppointmentWithDoctor(patient.value.id, selectedDoctor.value.id)
+})
+
+const availableActes = computed(() => {
+  const doctor = selectedDoctor.value
+  if (!doctor) return []
+  const proposedIds = doctor.acteIds || []
+  const proposed = proposedIds
+    .map((id) => acteFor(id))
+    .filter((a) => a && a.visible !== false)
+  const wantFirstVisit = isFirstVisitWithDoctor.value
+  return proposed.filter((a) => Boolean(a.isFirstVisit) === wantFirstVisit)
+})
+
+function formatDuration(mins) {
+  if (!mins) return ''
+  if (mins < 60) return `~${mins} min`
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return m === 0 ? `~${h}h` : `~${h}h${String(m).padStart(2, '0')}`
+}
+
+// =================== CALENDAR ===================
 const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const MONTH_LABELS = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -113,44 +343,53 @@ function goToday() {
   weekStart.value = startOfWeek(new Date())
 }
 
-const doctorSlots = computed(() => {
-  if (!selectedDoctor.value) return []
-  return appointmentsStore.slotsForDoctor(selectedDoctor.value.id)
-})
+const selectedLocationId = ref(null)
+
+const doctorLocations = computed(() => selectedDoctor.value?.locations || [])
 
 function availableSlotsForDay(date) {
-  const iso = toISODate(date)
-  return doctorSlots.value
-    .filter((s) => s.date === iso && !appointmentsStore.isSlotBooked(s.id))
-    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+  if (!selectedDoctor.value || !selectedActe.value) return []
+  return appointmentsStore.availableSlots({
+    doctor: selectedDoctor.value,
+    date,
+    durationMinutes: selectedActe.value.averageDurationMinutes,
+    locationId: selectedLocationId.value,
+  })
 }
 
 function formatLongDate(date) {
   return `${DAY_LABELS[(date.getDay() === 0 ? 6 : date.getDay() - 1)]} ${date.getDate()} ${MONTH_LABELS[date.getMonth()]}`
 }
 
+// =================== BOOKING CONFIRMATION ===================
 const confirmDialog = ref(false)
 const confirmSlot = ref(null)
 const confirmNotes = ref('')
 
-function openConfirm(slot) {
-  confirmSlot.value = slot
+function openConfirm(slot, day) {
+  confirmSlot.value = { ...slot, date: toISODate(day) }
   confirmNotes.value = ''
   confirmDialog.value = true
 }
 
 function confirmBooking() {
-  if (!confirmSlot.value || !selectedDoctor.value) return
-  const patient = selfStore.item || {}
-  const fullName = patient.fullName
-    || `${patient.firstName || ''} ${patient.lastName || ''}`.trim()
-    || patient.email
+  if (!confirmSlot.value || !selectedDoctor.value || !selectedActe.value) return
+  const p = patient.value
+  const fullName = p.fullName
+    || `${p.firstName || ''} ${p.lastName || ''}`.trim()
+    || p.email
     || 'Patient'
-  const booked = appointmentsStore.bookSlot({
-    slotId: confirmSlot.value.id,
+  const booked = appointmentsStore.bookAppointment({
     doctorId: selectedDoctor.value.id,
-    patientId: patient.id,
+    acteId: selectedActe.value.id,
+    patientId: p.id,
     patientFullName: fullName,
+    date: confirmSlot.value.date,
+    startTime: confirmSlot.value.startTime,
+    endTime: confirmSlot.value.endTime,
+    locationId: confirmSlot.value.locationId,
+    locationName: confirmSlot.value.locationName,
+    locationAddress: confirmSlot.value.locationAddress,
     notes: confirmNotes.value.trim(),
   })
   if (!booked) {
@@ -160,9 +399,10 @@ function confirmBooking() {
   }
   messagesStore.add({ type: 'success', text: 'Rendez-vous confirmé' })
   confirmDialog.value = false
-  selectedDoctor.value = null
+  resetFlow()
 }
 
+// =================== CANCEL ===================
 const cancelDialog = ref(false)
 const appointmentToCancel = ref(null)
 
@@ -184,21 +424,36 @@ function confirmCancel() {
 }
 
 const myAppointments = computed(() => {
-  const patient = selfStore.item || {}
+  const p = patient.value
   return appointmentsStore
-    .appointmentsForPatient(patient.id)
+    .appointmentsForPatient(p.id)
     .map((a) => {
-      const slot = appointmentsStore.slots.find((s) => s.id === a.slotId)
       const doctor = teamStore.items.find((m) => m.id === a.doctorId)
-      return { ...a, slot, doctor }
+      return { ...a, doctor, acte: acteFor(a.acteId) }
     })
-    .filter((a) => a.slot)
     .sort((a, b) => {
-      const da = `${a.slot.date} ${a.slot.startTime}`
-      const db = `${b.slot.date} ${b.slot.startTime}`
+      const da = `${a.date} ${a.startTime}`
+      const db = `${b.date} ${b.startTime}`
       return da.localeCompare(db)
     })
 })
+
+function initials(person) {
+  return `${person?.firstName?.[0] ?? ''}${person?.lastName?.[0] ?? ''}`.toUpperCase()
+}
+
+function centreInitials(centre) {
+  if (!centre?.name) return ''
+  return centre.name
+    .replace(/centre du sommeil/i, '')
+    .replace(/[—\-:]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+}
 </script>
 
 <template>
@@ -206,28 +461,22 @@ const myAppointments = computed(() => {
     <v-row justify="center" class="mt-8 mb-16 pb-10">
       <v-col :cols="$vuetify.display.mobile ? 12 : 10">
 
+        <!-- =================== HEADER =================== -->
         <v-row class="mb-6" align="center" :class="{ 'mx-6': $vuetify.display.mobile }">
-          <v-col cols="auto" v-if="selectedDoctor">
-            <v-btn :icon="mdiArrowLeft" variant="text" @click="clearDoctor" aria-label="Retour" />
+          <v-col cols="auto" v-if="showBack">
+            <v-btn :icon="mdiArrowLeft" variant="text" @click="goBack" aria-label="Retour" />
           </v-col>
           <v-col align-self="center">
-            <div class="text-headline-medium font-weight-bold">
-              {{ selectedDoctor ? 'Choisir un créneau' : 'Prendre rendez-vous' }}
-            </div>
+            <div class="text-headline-medium font-weight-bold">{{ headerTitle }}</div>
             <div class="text-body-medium text-medium-emphasis mt-1">
               <v-icon :icon="mdiCalendarClockOutline" size="18" class="mr-1" />
-              <template v-if="selectedDoctor">
-                Dr {{ selectedDoctor.firstName }} {{ selectedDoctor.lastName }}
-              </template>
-              <template v-else>
-                Choisissez un médecin de votre équipe pour voir ses disponibilités
-              </template>
+              {{ headerSubtitle }}
             </div>
           </v-col>
         </v-row>
 
-        <!-- =================== UPCOMING APPOINTMENTS =================== -->
-        <v-card v-if="!selectedDoctor && myAppointments.length > 0"
+        <!-- =================== UPCOMING APPOINTMENTS (search step only) =================== -->
+        <v-card v-if="step === 'search' && myAppointments.length > 0"
           class="card-shadow pa-6 mb-4" :class="{ 'rounded-15': !$vuetify.display.mobile }">
           <div class="text-title-medium font-weight-bold mb-3">
             <v-icon :icon="mdiCalendarCheckOutline" size="20" class="mr-2" color="primary" />
@@ -239,17 +488,18 @@ const myAppointments = computed(() => {
             </div>
             <div class="appt-row-main">
               <div class="appt-row-title">
-                {{ a.slot.date }} · {{ a.slot.startTime }} – {{ a.slot.endTime }}
+                {{ a.date }} · {{ a.startTime }} – {{ a.endTime }}
               </div>
               <div class="appt-row-sub">
                 Dr {{ a.doctor?.firstName }} {{ a.doctor?.lastName }}
+                <span v-if="a.acte" class="ml-1">· {{ a.acte.label }}</span>
                 <span v-if="a.notes" class="ml-1">· {{ a.notes }}</span>
               </div>
-              <div v-if="establishmentFor(a.slot.establishmentId)" class="appt-row-establishment">
-                <v-icon :icon="mdiHospitalBuilding" size="12" class="mr-1" />
-                {{ establishmentFor(a.slot.establishmentId).name }}
-                <span v-if="establishmentFor(a.slot.establishmentId).location" class="text-medium-emphasis">
-                  · {{ establishmentFor(a.slot.establishmentId).location }}
+              <div v-if="a.locationAddress || a.locationName" class="appt-row-establishment">
+                <v-icon :icon="mdiMapMarkerOutline" size="12" class="mr-1" />
+                <span v-if="a.locationName" class="font-weight-medium">{{ a.locationName }}</span>
+                <span v-if="a.locationAddress" :class="{ 'text-medium-emphasis ml-1': a.locationName }">
+                  <template v-if="a.locationName">· </template>{{ a.locationAddress }}
                 </span>
               </div>
             </div>
@@ -271,105 +521,353 @@ const myAppointments = computed(() => {
           </div>
         </v-card>
 
-        <!-- =================== DOCTOR LIST =================== -->
-        <v-card v-if="!selectedDoctor" class="card-shadow pa-6"
-          :class="{ 'rounded-15': !$vuetify.display.mobile }">
-          <div class="text-title-medium font-weight-bold mb-3">
-            Médecins de l'équipe
-          </div>
-          <div v-if="doctors.length === 0" class="text-body-small text-medium-emphasis text-center pa-6">
-            Aucun médecin disponible pour le moment.
-          </div>
-          <div v-else class="doctor-grid">
-            <button v-for="doc in doctors" :key="doc.id" class="doctor-card" @click="selectDoctor(doc)">
-              <v-avatar color="primary" variant="tonal" size="64" class="mb-2">
-                <v-img v-if="doc.avatarUrl" :src="doc.avatarUrl" cover />
-                <span v-else class="text-title-small font-weight-bold">{{ initials(doc) }}</span>
-              </v-avatar>
-              <div class="doctor-card-name">Dr {{ doc.firstName }} {{ doc.lastName }}</div>
-              <div v-if="doc.specialty" class="doctor-card-specialty">{{ doc.specialty }}</div>
-              <div class="doctor-card-meta">
-                <v-icon :icon="mdiDoctor" size="13" class="mr-1" />
-                Médecin
-              </div>
-            </button>
-          </div>
-        </v-card>
-
-        <!-- =================== DOCTOR CALENDAR =================== -->
-        <v-card v-else class="card-shadow pa-4 pa-md-6"
-          :class="{ 'rounded-15': !$vuetify.display.mobile }">
-          <div class="d-flex align-center mb-3">
-            <v-avatar color="primary" variant="tonal" size="56" class="mr-3">
-              <v-img v-if="selectedDoctor.avatarUrl" :src="selectedDoctor.avatarUrl" cover />
-              <span v-else class="text-title-small font-weight-bold">{{ initials(selectedDoctor) }}</span>
-            </v-avatar>
-            <div class="flex-grow-1">
-              <div class="text-title-medium font-weight-bold">
-                Dr {{ selectedDoctor.firstName }} {{ selectedDoctor.lastName }}
-              </div>
-              <div class="d-flex flex-wrap align-center ga-2 mt-1">
-                <v-chip v-if="selectedDoctor.specialty" size="x-small" variant="tonal" color="primary"
-                  class="font-weight-bold">
-                  {{ selectedDoctor.specialty }}
-                </v-chip>
-                <span class="text-body-small text-medium-emphasis">{{ selectedDoctor.email }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="selectedDoctor.description" class="doctor-description mb-4">
-            {{ selectedDoctor.description }}
-          </div>
-
-          <v-divider class="mb-4" />
-
-          <div class="d-flex align-center mb-4">
-            <v-btn :icon="mdiChevronLeft" variant="text" size="small" @click="prevWeek" />
-            <div class="flex-grow-1 text-center">
-              <div class="text-title-medium font-weight-bold">{{ weekRangeLabel }}</div>
-              <v-btn variant="text" size="x-small" color="primary" rounded="lg" class="text-none mt-1"
-                @click="goToday">
-                Cette semaine
+        <!-- =================== STEP 1 : SEARCH =================== -->
+        <template v-if="step === 'search'">
+          <v-card class="card-shadow pa-6 mb-4"
+            :class="{ 'rounded-15': !$vuetify.display.mobile }">
+            <div class="search-row">
+              <v-text-field v-model="searchQuery" :prepend-inner-icon="mdiMagnify"
+                placeholder="Rechercher un médecin, un centre du sommeil, une spécialité…"
+                variant="outlined" rounded="lg" hide-details density="comfortable" clearable
+                class="flex-grow-1 search-input" />
+              <v-btn :prepend-icon="mdiCrosshairsGps"
+                :color="userLocation ? 'primary' : undefined"
+                :variant="userLocation ? 'flat' : 'outlined'"
+                rounded="lg" size="large"
+                class="text-none search-around-btn"
+                :loading="locationLoading"
+                @click="requestAroundMe">
+                Autour de moi
               </v-btn>
             </div>
-            <v-btn :icon="mdiChevronRight" variant="text" size="small" @click="nextWeek" />
-          </div>
+            <div v-if="locationError" class="text-body-small text-error mt-3 d-flex align-center">
+              <v-icon :icon="mdiAlertOutline" size="14" class="mr-1" />
+              {{ locationError }}
+            </div>
+            <div v-else-if="userLocation"
+              class="text-body-small text-medium-emphasis mt-3 d-flex align-center flex-wrap">
+              <v-icon :icon="mdiMapMarkerOutline" size="14" class="mr-1" color="primary" />
+              <span>Résultats triés par distance depuis votre position</span>
+              <v-btn variant="text" size="x-small" color="primary"
+                class="ml-2 text-none" @click="clearAroundMe">
+                Effacer
+              </v-btn>
+            </div>
+          </v-card>
 
-          <div class="patient-days">
-            <div v-for="(day, idx) in weekDays" :key="idx" class="patient-day"
-              :class="{ 'patient-day-today': toISODate(day) === todayISO }">
-              <div class="patient-day-header">
-                <div class="patient-day-name">{{ DAY_LABELS[idx] }}</div>
-                <div class="patient-day-num">{{ day.getDate() }}</div>
-                <div class="patient-day-month">{{ MONTH_LABELS[day.getMonth()].slice(0, 3) }}.</div>
-              </div>
-              <div class="patient-day-slots">
-                <div v-if="availableSlotsForDay(day).length === 0" class="patient-day-empty">
-                  Pas de disponibilité
+          <!-- Centres du sommeil -->
+          <v-card v-if="filteredCentres.length > 0" class="card-shadow pa-6 mb-4"
+            :class="{ 'rounded-15': !$vuetify.display.mobile }">
+            <div class="text-title-medium font-weight-bold mb-3">
+              <v-icon :icon="mdiHospitalBuilding" size="20" class="mr-2" color="primary" />
+              Centres du sommeil
+            </div>
+            <div class="centre-grid">
+              <button v-for="centre in filteredCentres" :key="centre.id" class="centre-card"
+                @click="pickCentre(centre)">
+                <v-avatar color="primary" variant="tonal" size="56" class="mr-3">
+                  <v-img v-if="centre.logoUrl" :src="centre.logoUrl" cover />
+                  <span v-else class="text-title-small font-weight-bold">{{ centreInitials(centre) }}</span>
+                </v-avatar>
+                <div class="centre-card-body">
+                  <div class="centre-card-name">{{ centre.name }}</div>
+                  <div v-if="centre.location" class="centre-card-location">
+                    <v-icon :icon="mdiMapMarkerOutline" size="13" class="mr-1" />
+                    {{ centre.location }}
+                    <span v-if="centreDistance(centre) != null" class="centre-card-distance">
+                      {{ formatDistance(centreDistance(centre)) }}
+                    </span>
+                  </div>
                 </div>
-                <button v-for="slot in availableSlotsForDay(day)" :key="slot.id" class="patient-slot"
-                  @click="openConfirm(slot)">
-                  <div class="patient-slot-time">
-                    <v-icon :icon="mdiClockOutline" size="13" class="mr-1" />
-                    {{ slot.startTime }} – {{ slot.endTime }}
-                  </div>
-                  <div v-if="establishmentFor(slot.establishmentId)" class="patient-slot-establishment">
-                    <v-icon :icon="mdiHospitalBuilding" size="11" class="mr-1" />
-                    {{ establishmentFor(slot.establishmentId).name }}
-                  </div>
-                </button>
+              </button>
+            </div>
+          </v-card>
+
+          <!-- Médecins -->
+          <v-card class="card-shadow pa-6"
+            :class="{ 'rounded-15': !$vuetify.display.mobile }">
+            <div class="text-title-medium font-weight-bold mb-3">
+              <v-icon :icon="mdiDoctor" size="20" class="mr-2" color="primary" />
+              Médecins
+            </div>
+            <div v-if="filteredDoctors.length === 0"
+              class="text-body-small text-medium-emphasis text-center pa-6">
+              Aucun médecin ne correspond à votre recherche.
+            </div>
+            <div v-else class="doctor-grid">
+              <button v-for="doc in filteredDoctors" :key="doc.id" class="doctor-card"
+                @click="pickDoctor(doc)">
+                <v-avatar color="primary" variant="tonal" size="64" class="mb-2">
+                  <v-img v-if="doc.avatarUrl" :src="doc.avatarUrl" cover />
+                  <span v-else class="text-title-small font-weight-bold">{{ initials(doc) }}</span>
+                </v-avatar>
+                <div class="doctor-card-name">Dr {{ doc.firstName }} {{ doc.lastName }}</div>
+                <div v-if="doc.specialty" class="doctor-card-specialty">{{ doc.specialty }}</div>
+                <div v-if="doctorEstablishments(doc).length" class="doctor-card-meta">
+                  <v-icon :icon="mdiHospitalBuilding" size="13" class="mr-1" />
+                  {{ doctorEstablishments(doc).map((e) => e.name.replace(/Centre du sommeil — /, '')).join(', ') }}
+                </div>
+                <div v-if="doctorDistance(doc) != null" class="doctor-card-distance">
+                  <v-icon :icon="mdiMapMarkerOutline" size="12" class="mr-1" />
+                  {{ formatDistance(doctorDistance(doc)) }}
+                </div>
+              </button>
+            </div>
+          </v-card>
+        </template>
+
+        <!-- =================== STEP 2 : CENTRE → DOCTORS =================== -->
+        <template v-else-if="step === 'centre' && selectedCentre">
+          <v-card class="card-shadow pa-6"
+            :class="{ 'rounded-15': !$vuetify.display.mobile }">
+            <div class="d-flex align-center mb-4">
+              <v-avatar color="primary" variant="tonal" size="56" class="mr-3">
+                <span class="text-title-small font-weight-bold">{{ centreInitials(selectedCentre) }}</span>
+              </v-avatar>
+              <div class="flex-grow-1">
+                <div class="text-title-medium font-weight-bold">{{ selectedCentre.name }}</div>
+                <div v-if="selectedCentre.location" class="text-body-small text-medium-emphasis d-flex align-center mt-1">
+                  <v-icon :icon="mdiMapMarkerOutline" size="14" class="mr-1" />
+                  {{ selectedCentre.location }}
+                </div>
               </div>
             </div>
-          </div>
-        </v-card>
+
+            <div v-if="selectedCentre.description" class="doctor-description mb-4">
+              {{ selectedCentre.description }}
+            </div>
+
+            <v-divider class="mb-4" />
+
+            <div class="text-title-small font-weight-bold mb-3">
+              Médecins du centre
+            </div>
+            <div v-if="doctorsOfSelectedCentre.length === 0"
+              class="text-body-small text-medium-emphasis text-center pa-6">
+              Aucun médecin disponible pour ce centre.
+            </div>
+            <div v-else class="doctor-grid">
+              <button v-for="doc in doctorsOfSelectedCentre" :key="doc.id" class="doctor-card"
+                @click="pickDoctor(doc)">
+                <v-avatar color="primary" variant="tonal" size="64" class="mb-2">
+                  <v-img v-if="doc.avatarUrl" :src="doc.avatarUrl" cover />
+                  <span v-else class="text-title-small font-weight-bold">{{ initials(doc) }}</span>
+                </v-avatar>
+                <div class="doctor-card-name">Dr {{ doc.firstName }} {{ doc.lastName }}</div>
+                <div v-if="doc.specialty" class="doctor-card-specialty">{{ doc.specialty }}</div>
+              </button>
+            </div>
+          </v-card>
+        </template>
+
+        <!-- =================== STEP 3 : ACTE SELECTION =================== -->
+        <template v-else-if="step === 'acte' && selectedDoctor">
+          <v-card class="card-shadow pa-4 pa-md-6"
+            :class="{ 'rounded-15': !$vuetify.display.mobile }">
+            <div class="d-flex align-center mb-4">
+              <v-avatar color="primary" variant="tonal" size="56" class="mr-3">
+                <v-img v-if="selectedDoctor.avatarUrl" :src="selectedDoctor.avatarUrl" cover />
+                <span v-else class="text-title-small font-weight-bold">{{ initials(selectedDoctor) }}</span>
+              </v-avatar>
+              <div class="flex-grow-1">
+                <div class="text-title-medium font-weight-bold">
+                  Dr {{ selectedDoctor.firstName }} {{ selectedDoctor.lastName }}
+                </div>
+                <div class="d-flex flex-wrap align-center ga-2 mt-1">
+                  <v-chip v-if="selectedDoctor.specialty" size="x-small" variant="tonal" color="primary"
+                    class="font-weight-bold">
+                    {{ selectedDoctor.specialty }}
+                  </v-chip>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="selectedDoctor.description" class="doctor-description mb-4">
+              {{ selectedDoctor.description }}
+            </div>
+
+            <v-divider class="mb-4" />
+
+            <div class="acte-intro mb-3">
+              <template v-if="isFirstVisitWithDoctor">
+                <strong>Première consultation</strong> — vous n'avez pas encore consulté ce médecin.
+                Choisissez le type de consultation initiale qui vous convient.
+              </template>
+              <template v-else>
+                <strong>Consultation de suivi</strong> — vous avez déjà consulté ce médecin.
+              </template>
+            </div>
+
+            <div v-if="availableActes.length === 0"
+              class="text-body-small text-medium-emphasis text-center pa-6">
+              Aucune consultation disponible auprès de ce médecin.
+            </div>
+            <div v-else class="acte-list">
+              <button v-for="acte in availableActes" :key="acte.id" class="acte-card"
+                :style="{ '--acte-color': acte.agendaColor || 'rgb(var(--v-theme-primary))' }"
+                @click="showActeInfo(acte)">
+                <div class="acte-card-dot" />
+                <div class="acte-card-body">
+                  <div class="acte-card-title">{{ acte.label }}</div>
+                  <div class="acte-card-meta">
+                    <span class="acte-card-meta-item">
+                      <v-icon :icon="mdiTimerSandComplete" size="13" class="mr-1" />
+                      {{ formatDuration(acte.averageDurationMinutes) }}
+                    </span>
+                    <span v-if="acte.price" class="acte-card-meta-item">
+                      <v-icon :icon="mdiCashMultiple" size="13" class="mr-1" />
+                      {{ acte.price }} €
+                    </span>
+                  </div>
+                </div>
+                <v-icon :icon="mdiInformationOutline" size="20" color="medium-emphasis" />
+              </button>
+            </div>
+          </v-card>
+        </template>
+
+        <!-- =================== STEP 4 : CALENDAR =================== -->
+        <template v-else-if="step === 'calendar' && selectedDoctor && selectedActe">
+          <v-card class="card-shadow pa-4 pa-md-6"
+            :class="{ 'rounded-15': !$vuetify.display.mobile }">
+            <div class="acte-banner mb-3">
+              <div class="acte-banner-dot"
+                :style="{ background: selectedActe.agendaColor || 'rgb(var(--v-theme-primary))' }" />
+              <div class="acte-banner-body">
+                <div class="acte-banner-title">{{ selectedActe.label }}</div>
+                <div class="acte-banner-meta">
+                  <v-icon :icon="mdiTimerSandComplete" size="14" class="mr-1" />
+                  {{ formatDuration(selectedActe.averageDurationMinutes) }}
+                  <span v-if="selectedActe.price" class="ml-3">
+                    <v-icon :icon="mdiCashMultiple" size="14" class="mr-1" />
+                    {{ selectedActe.price }} €
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="doctorLocations.length > 1" class="location-filter mb-4">
+              <div class="location-filter-label">
+                <v-icon :icon="mdiMapMarkerOutline" size="14" class="mr-1" />
+                Adresse
+              </div>
+              <div class="location-chips">
+                <button class="location-chip"
+                  :class="{ 'location-chip-active': selectedLocationId === null }"
+                  @click="selectedLocationId = null">
+                  Toutes
+                </button>
+                <button v-for="loc in doctorLocations" :key="loc.id"
+                  class="location-chip"
+                  :class="{ 'location-chip-active': selectedLocationId === loc.id }"
+                  @click="selectedLocationId = loc.id">
+                  {{ loc.shortLabel || loc.name }}
+                </button>
+              </div>
+              <div v-if="selectedLocationId" class="location-filter-address">
+                {{ doctorLocations.find((l) => l.id === selectedLocationId)?.address }}
+              </div>
+            </div>
+
+            <div class="d-flex align-center mb-4">
+              <v-btn :icon="mdiChevronLeft" variant="text" size="small" @click="prevWeek" />
+              <div class="flex-grow-1 text-center">
+                <div class="text-title-medium font-weight-bold">{{ weekRangeLabel }}</div>
+                <v-btn variant="text" size="x-small" color="primary" rounded="lg" class="text-none mt-1"
+                  @click="goToday">
+                  Cette semaine
+                </v-btn>
+              </div>
+              <v-btn :icon="mdiChevronRight" variant="text" size="small" @click="nextWeek" />
+            </div>
+
+            <div class="patient-days">
+              <div v-for="(day, idx) in weekDays" :key="idx" class="patient-day"
+                :class="{ 'patient-day-today': toISODate(day) === todayISO }">
+                <div class="patient-day-header">
+                  <div class="patient-day-name">{{ DAY_LABELS[idx] }}</div>
+                  <div class="patient-day-num">{{ day.getDate() }}</div>
+                  <div class="patient-day-month">{{ MONTH_LABELS[day.getMonth()].slice(0, 3) }}.</div>
+                </div>
+                <div class="patient-day-slots">
+                  <div v-if="availableSlotsForDay(day).length === 0" class="patient-day-empty">
+                    Pas de disponibilité
+                  </div>
+                  <button v-for="slot in availableSlotsForDay(day)"
+                    :key="`${toISODate(day)}-${slot.startTime}-${slot.locationId}`"
+                    class="patient-slot"
+                    @click="openConfirm(slot, day)">
+                    <span class="patient-slot-time">
+                      <v-icon :icon="mdiClockOutline" size="13" class="mr-1" />
+                      {{ slot.startTime }}
+                    </span>
+                    <span v-if="!selectedLocationId && doctorLocations.length > 1"
+                      class="patient-slot-loc">
+                      {{ slot.locationShortLabel }}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </v-card>
+        </template>
 
       </v-col>
     </v-row>
 
+    <!-- =================== ACTE INFO DIALOG =================== -->
+    <v-dialog v-model="acteInfoOpen" max-width="520" :fullscreen="false">
+      <v-card v-if="acteInfoTarget" class="pa-2 rounded-15">
+        <v-card-title class="px-6 pt-5 pb-2 d-flex align-center">
+          <div class="flex-grow-1">
+            <div class="text-headline-small font-weight-bold">{{ acteInfoTarget.label }}</div>
+            <div class="text-body-small text-medium-emphasis mt-1">
+              Détails de la consultation
+            </div>
+          </div>
+          <v-btn :icon="mdiClose" variant="text" size="small" @click="acteInfoOpen = false" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="px-6 py-4">
+          <div class="acte-info-meta mb-4">
+            <div class="acte-info-meta-item">
+              <v-icon :icon="mdiTimerSandComplete" size="18" class="mr-2" color="primary" />
+              <div>
+                <div class="font-weight-bold text-body-medium">
+                  {{ formatDuration(acteInfoTarget.averageDurationMinutes) }}
+                </div>
+                <div class="text-body-small text-medium-emphasis">Durée moyenne</div>
+              </div>
+            </div>
+            <div v-if="acteInfoTarget.price" class="acte-info-meta-item">
+              <v-icon :icon="mdiCashMultiple" size="18" class="mr-2" color="primary" />
+              <div>
+                <div class="font-weight-bold text-body-medium">{{ acteInfoTarget.price }} €</div>
+                <div class="text-body-small text-medium-emphasis">Tarif indicatif</div>
+              </div>
+            </div>
+          </div>
+          <div v-if="acteInfoTarget.description" class="acte-info-description">
+            {{ acteInfoTarget.description }}
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="px-6 py-4">
+          <v-spacer />
+          <v-btn variant="text" rounded="lg" class="text-none" @click="acteInfoOpen = false">
+            Retour
+          </v-btn>
+          <v-btn color="primary" rounded="lg" flat class="text-none ml-2"
+            @click="chooseActe(acteInfoTarget)">
+            Choisir et voir les disponibilités
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- =================== CONFIRMATION DIALOG =================== -->
-    <v-dialog v-model="confirmDialog" max-width="460" :fullscreen="false">
-      <v-card v-if="confirmSlot && selectedDoctor" class="pa-2 rounded-15">
+    <v-dialog v-model="confirmDialog" max-width="480" :fullscreen="false">
+      <v-card v-if="confirmSlot && selectedDoctor && selectedActe" class="pa-2 rounded-15">
         <v-card-title class="px-6 pt-5 pb-2 d-flex align-center">
           <div class="flex-grow-1">
             <div class="text-headline-small font-weight-bold">Confirmer le rendez-vous</div>
@@ -389,20 +887,25 @@ const myAppointments = computed(() => {
               {{ formatLongDate(new Date(confirmSlot.date)) }}
             </div>
           </div>
-          <div class="info-line mb-3">
+          <div class="info-line mb-2">
             <v-icon :icon="mdiDoctor" size="18" class="mr-2" color="primary" />
             <strong>Dr {{ selectedDoctor.firstName }} {{ selectedDoctor.lastName }}</strong>
           </div>
-          <div v-if="establishmentFor(confirmSlot.establishmentId)" class="establishment-card mb-3">
-            <v-icon :icon="mdiHospitalBuilding" size="18" class="mr-2 mt-1" color="primary" />
+          <div class="info-line mb-3">
+            <div class="acte-banner-dot mr-2"
+              :style="{ background: selectedActe.agendaColor || 'rgb(var(--v-theme-primary))' }" />
+            <span>{{ selectedActe.label }}
+              <span class="text-medium-emphasis">· {{ formatDuration(selectedActe.averageDurationMinutes) }}</span>
+            </span>
+          </div>
+          <div v-if="confirmSlot.locationAddress || confirmSlot.locationName" class="establishment-card mb-3">
+            <v-icon :icon="mdiMapMarkerOutline" size="18" class="mr-2 mt-1" color="primary" />
             <div>
-              <div class="font-weight-bold text-body-medium">
-                {{ establishmentFor(confirmSlot.establishmentId).name }}
+              <div v-if="confirmSlot.locationName" class="font-weight-bold text-body-medium">
+                {{ confirmSlot.locationName }}
               </div>
-              <div v-if="establishmentFor(confirmSlot.establishmentId).location"
-                class="text-body-small text-medium-emphasis d-flex align-center mt-1">
-                <v-icon :icon="mdiMapMarkerOutline" size="14" class="mr-1" />
-                {{ establishmentFor(confirmSlot.establishmentId).location }}
+              <div v-if="confirmSlot.locationAddress" class="text-body-small text-medium-emphasis mt-1">
+                {{ confirmSlot.locationAddress }}
               </div>
             </div>
           </div>
@@ -420,7 +923,7 @@ const myAppointments = computed(() => {
       </v-card>
     </v-dialog>
 
-    <!-- =================== CANCEL APPOINTMENT DIALOG =================== -->
+    <!-- =================== CANCEL DIALOG =================== -->
     <v-dialog v-model="cancelDialog" max-width="420" :fullscreen="false">
       <v-card v-if="appointmentToCancel" class="pa-2 rounded-15">
         <v-card-text class="px-6 pt-6 pb-2 text-center">
@@ -430,9 +933,9 @@ const myAppointments = computed(() => {
           <div class="text-headline-small font-weight-bold mb-2">Annuler ce rendez-vous ?</div>
           <div class="text-body-medium text-medium-emphasis">
             Le créneau du
-            <strong>{{ appointmentToCancel.slot?.date }}</strong>
+            <strong>{{ appointmentToCancel.date }}</strong>
             à
-            <strong>{{ appointmentToCancel.slot?.startTime }}</strong>
+            <strong>{{ appointmentToCancel.startTime }}</strong>
             avec
             <strong>Dr {{ appointmentToCancel.doctor?.firstName }} {{ appointmentToCancel.doctor?.lastName }}</strong>
             sera libéré.
@@ -459,6 +962,90 @@ const myAppointments = computed(() => {
 </template>
 
 <style scoped>
+/* ============ SEARCH ROW ============ */
+.search-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.search-around-btn {
+  flex-shrink: 0;
+  height: 48px;
+}
+
+@media (max-width: 600px) {
+  .search-around-btn {
+    width: 100%;
+  }
+}
+
+/* ============ CENTRES ============ */
+.centre-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.centre-card {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: white;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.centre-card:hover {
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  background: rgba(var(--v-theme-primary), 0.04);
+  transform: translateY(-2px);
+}
+
+.centre-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.centre-card-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.88);
+  line-height: 1.3;
+}
+
+.centre-card-location {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  display: inline-flex;
+  align-items: center;
+}
+
+.centre-card-distance {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.1);
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+/* ============ DOCTORS ============ */
 .doctor-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -487,10 +1074,6 @@ const myAppointments = computed(() => {
   transform: translateY(-2px);
 }
 
-.doctor-card:active {
-  transform: translateY(0);
-}
-
 .doctor-card-name {
   font-weight: 700;
   font-size: 14px;
@@ -511,8 +1094,21 @@ const myAppointments = computed(() => {
 
 .doctor-card-meta {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: 11.5px;
   color: rgba(0, 0, 0, 0.55);
+  display: inline-flex;
+  align-items: center;
+  text-align: center;
+}
+
+.doctor-card-distance {
+  margin-top: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.1);
+  padding: 2px 10px;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
 }
@@ -527,6 +1123,136 @@ const myAppointments = computed(() => {
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
+/* ============ ACTES ============ */
+.acte-intro {
+  font-size: 13.5px;
+  color: rgba(0, 0, 0, 0.72);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-primary), 0.06);
+  border: 1px solid rgba(var(--v-theme-primary), 0.2);
+}
+
+.acte-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.acte-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.acte-card:hover {
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  background: rgba(var(--v-theme-primary), 0.04);
+  transform: translateY(-1px);
+}
+
+.acte-card-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 36px;
+  border-radius: 4px;
+  background: var(--acte-color);
+}
+
+.acte-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.acte-card-title {
+  font-weight: 700;
+  font-size: 14.5px;
+  color: rgba(0, 0, 0, 0.88);
+  line-height: 1.3;
+}
+
+.acte-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.acte-card-meta-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.acte-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-primary), 0.06);
+  border: 1px solid rgba(var(--v-theme-primary), 0.2);
+}
+
+.acte-banner-dot {
+  width: 10px;
+  height: 28px;
+  border-radius: 4px;
+  background: rgb(var(--v-theme-primary));
+  flex-shrink: 0;
+}
+
+.acte-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.acte-banner-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.88);
+  line-height: 1.3;
+}
+
+.acte-banner-meta {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.acte-info-meta {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.acte-info-meta-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.acte-info-description {
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(0, 0, 0, 0.78);
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* ============ CALENDAR ============ */
 .patient-days {
   display: flex;
   flex-direction: column;
@@ -594,6 +1320,64 @@ const myAppointments = computed(() => {
   font-style: italic;
 }
 
+.location-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.location-filter-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(0, 0, 0, 0.55);
+  display: inline-flex;
+  align-items: center;
+}
+
+.location-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.location-chip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: white;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.location-chip:hover {
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  color: rgb(var(--v-theme-primary));
+}
+
+.location-chip-active {
+  background: rgb(var(--v-theme-primary));
+  border-color: rgb(var(--v-theme-primary));
+  color: white;
+}
+
+.location-chip-active:hover {
+  color: white;
+}
+
+.location-filter-address {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
 .patient-slot {
   display: inline-flex;
   flex-direction: column;
@@ -616,15 +1400,25 @@ const myAppointments = computed(() => {
   align-items: center;
 }
 
-.patient-slot-establishment {
-  display: inline-flex;
-  align-items: center;
+.patient-slot-loc {
   font-size: 10.5px;
   font-weight: 500;
-  color: rgba(0, 0, 0, 0.6);
-  margin-top: 2px;
+  color: rgba(0, 0, 0, 0.55);
+  margin-top: 1px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
+.patient-slot:hover {
+  background: rgba(var(--v-theme-primary), 0.12);
+  transform: translateY(-1px);
+}
+
+.patient-slot:active {
+  transform: translateY(0);
+}
+
+/* ============ CONFIRM / APPOINTMENTS ============ */
 .establishment-card {
   display: flex;
   align-items: flex-start;
@@ -640,15 +1434,6 @@ const myAppointments = computed(() => {
   margin-top: 2px;
   display: inline-flex;
   align-items: center;
-}
-
-.patient-slot:hover {
-  background: rgba(var(--v-theme-primary), 0.12);
-  transform: translateY(-1px);
-}
-
-.patient-slot:active {
-  transform: translateY(0);
 }
 
 .confirm-banner {

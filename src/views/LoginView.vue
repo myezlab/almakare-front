@@ -63,7 +63,7 @@ async function handleSignIn() {
   try {
     selfStore.item.id = "123456"
     selfStore.item.email = signInEmail.value
-    messagesStore.add({ type: "success", text: 'Connexion réussie' })
+    messagesStore.add({ id: "welcome", type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
     console.error("Sign-in error:", error)
@@ -81,7 +81,7 @@ async function handleSignUp() {
     selfStore.item.email = signUpEmail.value
     selfStore.item.agreementPersonal = true
     selfStore.item.agreementPersonalDate = new Date().toISOString()
-    messagesStore.add({ type: "success", text: 'Connexion réussie' })
+    messagesStore.add({ id: "welcome", type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
     console.error("Sign-up error:", error)
@@ -107,7 +107,7 @@ async function handleGoogleSignIn() {
       selfStore.item.agreementPersonal = true
       selfStore.item.agreementPersonalDate = new Date().toISOString()
     }
-    messagesStore.add({ type: "success", text: 'Connexion réussie' })
+    messagesStore.add({ id: "welcome", type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
     console.error("Google sign-in error:", error)

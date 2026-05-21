@@ -5,20 +5,53 @@ import { ref, watch } from 'vue'
 const STORAGE_KEY = 'myezlab.organisation'
 
 function migrateDevices(state) {
-  const seedDevicesByEstablishmentId = Object.fromEntries(
-    (ORGANISATION_SEED.establishments || []).map((e) => [e.id, e.devices || []]),
+  const seedEstablishmentsById = Object.fromEntries(
+    (ORGANISATION_SEED.establishments || []).map((e) => [e.id, e]),
   )
+  const seedEstablishmentIds = new Set(Object.keys(seedEstablishmentsById))
+  const existingIds = new Set((state.establishments || []).map((e) => e.id))
   const establishments = (state.establishments || []).map((e) => {
-    if (Array.isArray(e.devices)) return e
-    const seeded = seedDevicesByEstablishmentId[e.id]
+    const seed = seedEstablishmentsById[e.id]
     return {
       ...e,
-      devices: seeded ? JSON.parse(JSON.stringify(seeded)) : [],
+      description: e.description ?? seed?.description ?? '',
+      devices: Array.isArray(e.devices)
+        ? e.devices
+        : seed?.devices
+          ? JSON.parse(JSON.stringify(seed.devices))
+          : [],
     }
   })
-  const actes = Array.isArray(state.actes)
-    ? state.actes
-    : JSON.parse(JSON.stringify(ORGANISATION_SEED.actes || []))
+  for (const id of seedEstablishmentIds) {
+    if (!existingIds.has(id)) {
+      establishments.push(JSON.parse(JSON.stringify(seedEstablishmentsById[id])))
+    }
+  }
+
+  const seedActesById = Object.fromEntries(
+    (ORGANISATION_SEED.actes || []).map((a) => [a.id, a]),
+  )
+  const seedActeIds = new Set(Object.keys(seedActesById))
+  const existingActes = Array.isArray(state.actes) ? state.actes : []
+  const existingActeIds = new Set(existingActes.map((a) => a.id))
+  const actes = existingActes.length === 0
+    ? JSON.parse(JSON.stringify(ORGANISATION_SEED.actes || []))
+    : existingActes.map((a) => {
+      const seed = seedActesById[a.id]
+      return {
+        ...a,
+        description: a.description ?? seed?.description ?? '',
+        isFirstVisit: a.isFirstVisit ?? seed?.isFirstVisit ?? false,
+      }
+    })
+  if (existingActes.length > 0) {
+    for (const id of seedActeIds) {
+      if (!existingActeIds.has(id)) {
+        actes.push(JSON.parse(JSON.stringify(seedActesById[id])))
+      }
+    }
+  }
+
   return { ...state, establishments, actes }
 }
 

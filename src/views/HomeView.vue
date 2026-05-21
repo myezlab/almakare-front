@@ -1,6 +1,6 @@
 <script setup>
-import patientIllustration from '@/assets/illustrations/patient.svg'
-import sleepingCenterIllustration from '@/assets/illustrations/sleeping-center.svg'
+import organizedIllustration from '@/assets/illustrations/organized.svg'
+import wakeUpIllustration from '@/assets/illustrations/wake-up.svg'
 import logoText from '@/assets/img/logo-text-white.svg'
 import logo from '@/assets/img/logo.svg'
 import HomeFooter from '@/components/HomeFooter.vue'
@@ -36,7 +36,7 @@ function scrollToFeatures() {
 }
 
 const stats = [
-  { value: '4M+', label: 'Personnes concernées en France' },
+  { value: '2,5M', label: 'Personnes concernées en France' },
   { value: '80%', label: 'Des cas non diagnostiqués' },
   { value: '24/7', label: 'Accès à votre suivi' },
 ]
@@ -166,7 +166,7 @@ const steps = [
           <v-col cols="12" md="6" class="d-flex justify-center">
             <div class="hero-illustration-wrap">
               <div class="hero-blob"></div>
-              <img :src="patientIllustration" alt="" class="hero-illustration" />
+              <img :src="wakeUpIllustration" alt="" class="hero-illustration" />
             </div>
           </v-col>
         </v-row>
@@ -241,7 +241,7 @@ const steps = [
           </v-col>
           <v-col cols="12" md="6"
             :class="$vuetify.display.mobile ? 'order-1 mb-6 text-center' : 'd-flex justify-center'">
-            <img :src="sleepingCenterIllustration" alt="" class="highlight-illustration" />
+            <img :src="organizedIllustration" alt="" class="highlight-illustration" />
           </v-col>
         </v-row>
       </v-container>
@@ -440,9 +440,6 @@ const steps = [
 
 .hero-blob {
   position: absolute;
-  inset: 10% 5%;
-  background: radial-gradient(circle at 30% 30%, rgba(127, 179, 213, 0.35), rgba(18, 59, 109, 0.12) 60%, transparent 75%);
-  filter: blur(36px);
   z-index: 0;
 }
 

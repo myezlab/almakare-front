@@ -4,11 +4,8 @@ import { useSelfStore } from "@/stores/self"
 import {
   mdiCardAccountDetailsOutline,
   mdiCheck,
-  mdiCheckCircle,
   mdiClose,
   mdiCreditCardOutline,
-  mdiDotsHorizontal,
-  mdiEyeOutline,
   mdiFileDocumentCheckOutline,
   mdiFileDocumentOutline,
   mdiFileDocumentPlusOutline,
@@ -73,13 +70,6 @@ if (!selfStore.item.documents) selfStore.item.documents = {}
 if (!selfStore.item.documents.other) selfStore.item.documents.other = []
 
 const documents = computed(() => selfStore.item.documents || {})
-
-const uploadedCount = computed(
-  () => REQUIRED_DOCS.filter((d) => !!documents.value[d.key]).length,
-)
-const totalCount = REQUIRED_DOCS.length
-const progressValue = computed(() => (uploadedCount.value / totalCount) * 100)
-const isComplete = computed(() => uploadedCount.value === totalCount)
 
 const otherFiles = computed(() => documents.value.other || [])
 
@@ -150,21 +140,12 @@ function formatSize(bytes) {
       <v-card class="card-shadow pa-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
 
         <!-- =================== HEADER =================== -->
-        <div class="d-flex align-start justify-space-between flex-wrap ga-3 mb-2">
-          <div class="flex-grow-1">
-            <div class="text-headline-small font-weight-bold">Documents</div>
-            <div class="text-body-small text-medium-emphasis">
-              Déposez vos pièces administratives pour faciliter votre prise en charge.
-            </div>
+        <div class="mb-6">
+          <div class="text-headline-small font-weight-bold">Documents</div>
+          <div class="text-body-small text-medium-emphasis">
+            Déposez vos pièces administratives pour faciliter votre prise en charge.
           </div>
-          <v-chip size="small" variant="tonal" :color="isComplete ? 'success' : 'primary'"
-            :prepend-icon="isComplete ? mdiCheckCircle : mdiPaperclip" class="font-weight-medium">
-            {{ uploadedCount }} / {{ totalCount }} déposés
-          </v-chip>
         </div>
-
-        <v-progress-linear :model-value="progressValue" :color="isComplete ? 'success' : 'primary'" rounded height="6"
-          bg-opacity="0.08" class="mt-3 mb-6" />
 
         <!-- =================== REQUIRED DOCS GRID =================== -->
         <v-row>

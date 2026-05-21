@@ -10,15 +10,33 @@ function seedById() {
   return map
 }
 
+function migrateLocations(m, seed) {
+  if (Array.isArray(m.locations) && m.locations.length > 0) return m.locations
+  if (seed?.locations) return JSON.parse(JSON.stringify(seed.locations))
+  if (m.cabinetAddress || m.workingHours) {
+    return [{
+      id: `loc-${m.id}-default`,
+      name: m.cabinetName || 'Cabinet',
+      shortLabel: 'Cabinet',
+      address: m.cabinetAddress || '',
+      workingHours: m.workingHours || {},
+    }]
+  }
+  return []
+}
+
 function hydrateFromSeed(items) {
   const byId = seedById()
   return items.map((m) => {
     const seed = byId[m.id]
-    if (!seed) return m
+    if (!seed) return { ...m, locations: migrateLocations(m, null) }
     return {
       ...m,
       specialty: m.specialty ?? seed.specialty,
       description: m.description ?? seed.description,
+      establishmentIds: m.establishmentIds ?? seed.establishmentIds,
+      acteIds: m.acteIds ?? seed.acteIds,
+      locations: migrateLocations(m, seed),
     }
   })
 }

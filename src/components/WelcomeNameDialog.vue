@@ -26,7 +26,7 @@ async function handleContinue() {
       lastName: last,
       fullName: `${first} ${last}`,
     })
-    messagesStore.add({ type: "success", text: "Bienvenue !" })
+    messagesStore.add({ id: "welcome", type: "success", text: "Bienvenue !" })
   } catch {
     messagesStore.add({ type: "error", text: "Erreur lors de l'enregistrement" })
   } finally {
