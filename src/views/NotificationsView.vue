@@ -1,11 +1,13 @@
 <script setup>
 import { ISOToRelativeTime } from "@/composables/useDates.js"
+import { useReadState } from "@/composables/useReadState.js"
 import notificationsData from '@/data/notifications.json'
-import { mdiAccount, mdiBell, mdiBellOutline, mdiChat, mdiCheckCircle, mdiCircle, mdiPen, mdiRefresh } from "@mdi/js"
+import { mdiAccount, mdiBell, mdiBellOutline, mdiCheckCircle, mdiCircle, mdiPen, mdiRefresh } from "@mdi/js"
 import { ref } from "vue"
 import { useRouter } from "vue-router"
 
 const router = useRouter()
+const { isNotificationRead, markNotificationRead } = useReadState()
 
 const notifications = ref(notificationsData.map(n => ({
   ...n,
@@ -15,20 +17,21 @@ const notifications = ref(notificationsData.map(n => ({
 const loading = ref(false)
 
 const notificationTypeIcons = {
-  newMessage: { icon: mdiChat, color: 'primary' },
-  participationConfirmation: { icon: mdiCheckCircle, color: 'success' },
-  contractSigned: { icon: mdiPen, color: 'warning' },
+  newMessage: { icon: mdiBell, color: 'primary' },
+  appointmentConfirmed: { icon: mdiCheckCircle, color: 'success' },
+  documentSigned: { icon: mdiPen, color: 'warning' },
   default: { icon: mdiBell, color: 'grey' }
 }
 
 const notificationTypeTexts = {
   newMessage: 'Nouveau message',
-  participationConfirmation: 'Participation confirmée',
-  contractSigned: 'Rapport signé'
+  appointmentConfirmed: 'Rendez-vous confirmé',
+  documentSigned: 'Document signé'
 }
 
 function markAsRead(notification) {
   notification.read = true
+  markNotificationRead(notification.id)
 }
 
 function clickNotification(notification) {
@@ -97,7 +100,7 @@ function getTitle(notification) {
                   </div>
                   <div v-if="notification.createdAt" class="text-label-small text-grey mt-2 first-letter-uppercase">
                     {{ ISOToRelativeTime(notification.createdAt.toDate()) }}
-                    <template v-if="!notification.read">
+                    <template v-if="!isNotificationRead(notification)">
                       <span class="mx-2">•</span>
                       <span class="text-primary cursor-pointer" @click.stop="markAsRead(notification)">
                         Marquer comme lu
@@ -105,7 +108,7 @@ function getTitle(notification) {
                     </template>
                   </div>
                 </v-col>
-                <v-col cols="auto" v-if="!notification.read">
+                <v-col cols="auto" v-if="!isNotificationRead(notification)">
                   <v-icon color="primary" size="12" :icon="mdiCircle"></v-icon>
                 </v-col>
               </v-row>

@@ -62,6 +62,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/messages/:threadId',
+      name: 'Conversation',
+      component: () => import('./views/ConversationView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/test-epworth',
       name: 'EpworthTest',
       component: () => import('./views/EpworthTestView.vue'),

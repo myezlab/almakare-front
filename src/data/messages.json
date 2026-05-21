@@ -1,0 +1,117 @@
+[
+  {
+    "id": "thread-001",
+    "participantFullName": "Dr Antoine Bernard",
+    "participantRole": "Neurologue du sommeil",
+    "participantAvatarUrl": "https://randomuser.me/api/portraits/men/32.jpg",
+    "lastMessageText": "Merci de téléverser votre dernière polysomnographie avant notre prochain rendez-vous.",
+    "lastMessageAt": "2026-05-20T17:45:00Z",
+    "unreadCount": 2,
+    "messages": [
+      {
+        "id": "m-001-1",
+        "from": "doctor",
+        "text": "Bonjour, j'ai bien reçu votre dossier. Pouvez-vous me transmettre votre dernière polysomnographie ?",
+        "createdAt": "2026-05-20T17:30:00Z"
+      },
+      {
+        "id": "m-001-2",
+        "from": "doctor",
+        "text": "Merci de téléverser votre dernière polysomnographie avant notre prochain rendez-vous.",
+        "createdAt": "2026-05-20T17:45:00Z"
+      }
+    ]
+  },
+  {
+    "id": "thread-002",
+    "participantFullName": "Dr Camille Rousseau",
+    "participantRole": "Pneumologue",
+    "participantAvatarUrl": "https://randomuser.me/api/portraits/women/44.jpg",
+    "lastMessageText": "Pensez à apporter vos ordonnances et bilans récents lors de votre consultation du 28 mai.",
+    "lastMessageAt": "2026-05-19T11:20:00Z",
+    "unreadCount": 1,
+    "messages": [
+      {
+        "id": "m-002-1",
+        "from": "doctor",
+        "text": "Bonjour, je confirme notre rendez-vous du 28 mai à 10h30 au cabinet.",
+        "createdAt": "2026-05-19T11:15:00Z"
+      },
+      {
+        "id": "m-002-2",
+        "from": "doctor",
+        "text": "Pensez à apporter vos ordonnances et bilans récents lors de votre consultation du 28 mai.",
+        "createdAt": "2026-05-19T11:20:00Z"
+      }
+    ]
+  },
+  {
+    "id": "thread-003",
+    "participantFullName": "Service administratif",
+    "participantRole": "Secrétariat",
+    "participantAvatarUrl": null,
+    "lastMessageText": "Votre carte vitale a bien été enregistrée, merci.",
+    "lastMessageAt": "2026-05-15T09:10:00Z",
+    "unreadCount": 0,
+    "messages": [
+      {
+        "id": "m-003-1",
+        "from": "patient",
+        "text": "Bonjour, je vous transmets une copie de ma carte vitale.",
+        "createdAt": "2026-05-14T16:40:00Z"
+      },
+      {
+        "id": "m-003-2",
+        "from": "doctor",
+        "text": "Votre carte vitale a bien été enregistrée, merci.",
+        "createdAt": "2026-05-15T09:10:00Z"
+      }
+    ]
+  },
+  {
+    "id": "thread-004",
+    "participantFullName": "Léa Moreau",
+    "participantRole": "Infirmière coordinatrice",
+    "participantAvatarUrl": "https://randomuser.me/api/portraits/women/68.jpg",
+    "lastMessageText": "Voici la procédure à suivre la veille de votre polysomnographie.",
+    "lastMessageAt": "2026-05-10T14:00:00Z",
+    "unreadCount": 0,
+    "messages": [
+      {
+        "id": "m-004-1",
+        "from": "doctor",
+        "text": "Bonjour, je suis Léa, votre infirmière coordinatrice pour le bilan du sommeil.",
+        "createdAt": "2026-05-10T13:55:00Z"
+      },
+      {
+        "id": "m-004-2",
+        "from": "doctor",
+        "text": "Voici la procédure à suivre la veille de votre polysomnographie.",
+        "createdAt": "2026-05-10T14:00:00Z"
+      }
+    ]
+  },
+  {
+    "id": "thread-005",
+    "participantFullName": "Dr Élodie Garnier",
+    "participantRole": "ORL",
+    "participantAvatarUrl": "https://randomuser.me/api/portraits/women/12.jpg",
+    "lastMessageText": "Au plaisir de vous revoir pour le contrôle dans 6 mois.",
+    "lastMessageAt": "2026-04-22T10:30:00Z",
+    "unreadCount": 0,
+    "messages": [
+      {
+        "id": "m-005-1",
+        "from": "doctor",
+        "text": "Le compte-rendu de votre consultation est disponible dans vos documents.",
+        "createdAt": "2026-04-22T10:25:00Z"
+      },
+      {
+        "id": "m-005-2",
+        "from": "doctor",
+        "text": "Au plaisir de vous revoir pour le contrôle dans 6 mois.",
+        "createdAt": "2026-04-22T10:30:00Z"
+      }
+    ]
+  }
+]

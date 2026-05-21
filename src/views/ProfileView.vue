@@ -11,9 +11,7 @@ import { useSelfStore } from "@/stores/self"
 import {
   mdiAccountCircleOutline,
   mdiAccountOutline,
-  mdiCalendarClockOutline,
   mdiCalendarOutline,
-  mdiCalendarPlusOutline,
   mdiClipboardListOutline,
   mdiEmailOutline,
   mdiFolderOutline,
@@ -36,8 +34,6 @@ const currentUser = computed(() => selfStore.item || {})
 const TABS = [
   { value: 'synthese', label: 'Synthèse', icon: mdiViewDashboardOutline },
   { value: 'donnees-patient', label: 'Données patient', icon: mdiAccountOutline },
-  { value: 'planifier', label: 'Planifier', icon: mdiCalendarClockOutline },
-  { value: 'programmer', label: 'Programmer', icon: mdiCalendarPlusOutline },
   { value: 'activites', label: 'Activités', icon: mdiPulse },
   { value: 'traitements', label: 'Traitements', icon: mdiPill },
   { value: 'documents', label: 'Documents', icon: mdiFolderOutline },
@@ -63,16 +59,6 @@ watch(activeTab, (val) => {
 })
 
 const tabPlaceholders = {
-  'planifier': {
-    title: 'Planifier',
-    subtitle: 'Organisez vos prochains rendez-vous et examens.',
-    icon: mdiCalendarClockOutline,
-  },
-  'programmer': {
-    title: 'Programmer',
-    subtitle: 'Programmez vos séances et soins à venir.',
-    icon: mdiCalendarPlusOutline,
-  },
   'activites': {
     title: 'Activités',
     subtitle: 'Suivez l\'historique de vos activités et soins.',

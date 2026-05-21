@@ -20,6 +20,7 @@ import {
   mdiDotsVertical,
   mdiHospitalBuilding,
   mdiInformationOutline,
+  mdiLockOutline,
   mdiMagnify,
   mdiMapMarkerOutline,
   mdiNotebookOutline,
@@ -265,15 +266,33 @@ const isFirstVisitWithDoctor = computed(() => {
   return !appointmentsStore.hasPriorAppointmentWithDoctor(patient.value.id, selectedDoctor.value.id)
 })
 
-const availableActes = computed(() => {
+const proposedActes = computed(() => {
   const doctor = selectedDoctor.value
   if (!doctor) return []
-  const proposedIds = doctor.acteIds || []
-  const proposed = proposedIds
+  return (doctor.acteIds || [])
     .map((id) => acteFor(id))
     .filter((a) => a && a.visible !== false)
+})
+
+const availableActes = computed(() => {
   const wantFirstVisit = isFirstVisitWithDoctor.value
-  return proposed.filter((a) => Boolean(a.isFirstVisit) === wantFirstVisit)
+  return proposedActes.value.filter((a) => Boolean(a.isFirstVisit) === wantFirstVisit)
+})
+
+const lockedActes = computed(() => {
+  const wantFirstVisit = isFirstVisitWithDoctor.value
+  return proposedActes.value.filter((a) => Boolean(a.isFirstVisit) !== wantFirstVisit)
+})
+
+const lockedReason = computed(() =>
+  isFirstVisitWithDoctor.value
+    ? 'Disponible après votre première consultation avec ce médecin'
+    : 'Réservée aux patient ayant déjà effectués une première consultation',
+)
+
+const isActeInfoLocked = computed(() => {
+  if (!acteInfoTarget.value) return false
+  return lockedActes.value.some((a) => a.id === acteInfoTarget.value.id)
 })
 
 function formatDuration(mins) {
@@ -482,7 +501,9 @@ function centreInitials(centre) {
             <v-icon :icon="mdiCalendarCheckOutline" size="20" class="mr-2" color="primary" />
             Mes rendez-vous à venir
           </div>
-          <div v-for="a in myAppointments" :key="a.id" class="appt-row">
+          <div v-for="(a, i) in myAppointments" :key="a.id"
+            class="appt-row"
+            :class="{ 'appt-row-divided': i < myAppointments.length - 1 }">
             <div class="appt-row-icon">
               <v-icon :icon="mdiCalendarCheckOutline" size="22" color="primary" />
             </div>
@@ -496,10 +517,11 @@ function centreInitials(centre) {
                 <span v-if="a.notes" class="ml-1">· {{ a.notes }}</span>
               </div>
               <div v-if="a.locationAddress || a.locationName" class="appt-row-establishment">
-                <v-icon :icon="mdiMapMarkerOutline" size="12" class="mr-1" />
-                <span v-if="a.locationName" class="font-weight-medium">{{ a.locationName }}</span>
-                <span v-if="a.locationAddress" :class="{ 'text-medium-emphasis ml-1': a.locationName }">
-                  <template v-if="a.locationName">· </template>{{ a.locationAddress }}
+                <v-icon :icon="mdiMapMarkerOutline" size="12" class="appt-row-establishment-icon mr-1" />
+                <span v-if="a.locationName" class="appt-row-establishment-name font-weight-medium">{{ a.locationName }}</span>
+                <span v-if="a.locationAddress" class="appt-row-establishment-address"
+                  :class="{ 'text-medium-emphasis': a.locationName }">
+                  <span v-if="a.locationName" class="appt-row-establishment-sep">· </span>{{ a.locationAddress }}
                 </span>
               </div>
             </div>
@@ -698,7 +720,7 @@ function centreInitials(centre) {
               </template>
             </div>
 
-            <div v-if="availableActes.length === 0"
+            <div v-if="availableActes.length === 0 && lockedActes.length === 0"
               class="text-body-small text-medium-emphasis text-center pa-6">
               Aucune consultation disponible auprès de ce médecin.
             </div>
@@ -723,6 +745,39 @@ function centreInitials(centre) {
                 <v-icon :icon="mdiInformationOutline" size="20" color="medium-emphasis" />
               </button>
             </div>
+
+            <template v-if="lockedActes.length > 0">
+              <div class="locked-section-label">
+                <v-icon :icon="mdiLockOutline" size="14" class="mr-1" />
+                Autres consultations proposées par ce médecin
+              </div>
+              <div class="acte-list">
+                <button v-for="acte in lockedActes" :key="acte.id" class="acte-card acte-card-locked"
+                  :style="{ '--acte-color': acte.agendaColor || 'rgb(var(--v-theme-primary))' }"
+                  :title="lockedReason"
+                  @click="showActeInfo(acte)">
+                  <div class="acte-card-dot" />
+                  <div class="acte-card-body">
+                    <div class="acte-card-title">{{ acte.label }}</div>
+                    <div class="acte-card-meta">
+                      <span class="acte-card-meta-item">
+                        <v-icon :icon="mdiTimerSandComplete" size="13" class="mr-1" />
+                        {{ formatDuration(acte.averageDurationMinutes) }}
+                      </span>
+                      <span v-if="acte.price" class="acte-card-meta-item">
+                        <v-icon :icon="mdiCashMultiple" size="13" class="mr-1" />
+                        {{ acte.price }} €
+                      </span>
+                    </div>
+                    <div class="acte-card-locked-reason">
+                      <v-icon :icon="mdiLockOutline" size="12" class="mr-1" />
+                      {{ lockedReason }}
+                    </div>
+                  </div>
+                  <v-icon :icon="mdiInformationOutline" size="20" color="medium-emphasis" />
+                </button>
+              </div>
+            </template>
           </v-card>
         </template>
 
@@ -851,13 +906,17 @@ function centreInitials(centre) {
             {{ acteInfoTarget.description }}
           </div>
         </v-card-text>
+        <div v-if="isActeInfoLocked" class="acte-info-locked-note mx-6 mb-2">
+          <v-icon :icon="mdiLockOutline" size="16" class="mr-2" color="medium-emphasis" />
+          <span>{{ lockedReason }}</span>
+        </div>
         <v-divider />
         <v-card-actions class="px-6 py-4">
           <v-spacer />
           <v-btn variant="text" rounded="lg" class="text-none" @click="acteInfoOpen = false">
             Retour
           </v-btn>
-          <v-btn color="primary" rounded="lg" flat class="text-none ml-2"
+          <v-btn v-if="!isActeInfoLocked" color="primary" rounded="lg" flat class="text-none ml-2"
             @click="chooseActe(acteInfoTarget)">
             Choisir et voir les disponibilités
           </v-btn>
@@ -1195,6 +1254,44 @@ function centreInitials(centre) {
   align-items: center;
 }
 
+.locked-section-label {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(0, 0, 0, 0.5);
+  display: inline-flex;
+  align-items: center;
+}
+
+.acte-card-locked {
+  opacity: 0.75;
+  background: rgba(0, 0, 0, 0.025);
+  border-style: dashed;
+}
+
+.acte-card-locked:hover {
+  opacity: 1;
+  border-color: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+.acte-card-locked .acte-card-dot {
+  opacity: 0.45;
+}
+
+.acte-card-locked-reason {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 11.5px;
+  font-style: italic;
+  color: rgba(0, 0, 0, 0.55);
+}
+
 .acte-banner {
   display: flex;
   align-items: center;
@@ -1240,6 +1337,17 @@ function centreInitials(centre) {
 .acte-info-meta-item {
   display: inline-flex;
   align-items: center;
+}
+
+.acte-info-locked-note {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.7);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px dashed rgba(0, 0, 0, 0.18);
 }
 
 .acte-info-description {
@@ -1432,8 +1540,24 @@ function centreInitials(centre) {
   font-size: 12px;
   color: rgba(0, 0, 0, 0.7);
   margin-top: 2px;
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  column-gap: 4px;
+}
+
+.appt-row-establishment-icon {
+  margin-right: 0 !important;
+}
+
+@media (max-width: 959px) {
+  .appt-row-establishment-address {
+    flex-basis: 100%;
+    padding-left: 16px;
+  }
+  .appt-row-establishment-sep {
+    display: none;
+  }
 }
 
 .confirm-banner {
@@ -1470,11 +1594,10 @@ function centreInitials(centre) {
   align-items: center;
   gap: 12px;
   padding: 12px 4px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.appt-row:last-child {
-  border-bottom: none;
+.appt-row-divided {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .appt-row-icon {

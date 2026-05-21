@@ -1,9 +1,11 @@
 <script setup>
 import logoText from '@/assets/img/logo-text-white.svg'
+import notificationsData from '@/data/notifications.json'
 import { useProfileCompletion } from '@/composables/useProfileCompletion'
+import { useReadState } from '@/composables/useReadState.js'
 import { useParamsStore } from '@/stores/params'
 import { useSelfStore } from '@/stores/self'
-import { mdiAccount, mdiCalendarPlusOutline, mdiChartBar, mdiClipboardPulse, mdiHospitalBuilding, mdiMoonWaningCrescent } from '@mdi/js'
+import { mdiAccount, mdiBellOutline, mdiCalendarPlusOutline, mdiChartBar, mdiClipboardPulse, mdiHospitalBuilding, mdiMoonWaningCrescent } from '@mdi/js'
 import { computed, defineAsyncComponent, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -14,10 +16,15 @@ const InstallAppCard = defineAsyncComponent(() =>
 const router = useRouter()
 const selfStore = useSelfStore()
 const paramsStore = useParamsStore()
+const { isNotificationRead } = useReadState()
 
 const loading = ref(true)
 const usersCount = ref(0)
 const projectsCount = ref(0)
+
+const unreadNotificationsCount = computed(
+  () => notificationsData.filter(n => !isNotificationRead(n)).length,
+)
 
 const currentUser = computed(() => selfStore.item || {})
 const { completionPercent } = useProfileCompletion(currentUser)
@@ -49,6 +56,11 @@ const epworthScoreLabel = computed(() => {
 <template>
   <div>
     <div v-if="selfStore.item.id" class="home-banner">
+      <v-badge :content="unreadNotificationsCount" :model-value="unreadNotificationsCount > 0" color="error"
+        offset-x="8" offset-y="8" class="home-banner-notif-btn">
+        <v-btn :icon="mdiBellOutline" variant="text" color="white"
+          @click="router.push({ name: 'Notifications' })" aria-label="Notifications" />
+      </v-badge>
       <div class="home-banner-sparkles" aria-hidden="true">
         <span class="sparkle sparkle-1"></span>
         <span class="sparkle sparkle-2"></span>
@@ -307,6 +319,13 @@ const epworthScoreLabel = computed(() => {
   justify-content: center;
   overflow: hidden;
   margin-bottom: 24px;
+}
+
+.home-banner-notif-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
 }
 
 .home-banner-logo {

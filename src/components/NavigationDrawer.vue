@@ -2,8 +2,10 @@
 import logoInitials from "@/assets/img/logo-initials.svg"
 import logo from "@/assets/img/logo.svg"
 import { useNavigationItems } from "@/composables/useNavigationItems"
+import { useReadState } from "@/composables/useReadState.js"
+import messagesData from "@/data/messages.json"
 import { useSelfStore } from "@/stores/self"
-import { mdiAccount, mdiAccountOutline, mdiChevronLeft, mdiChevronRight, mdiCircle } from "@mdi/js"
+import { mdiAccount, mdiAccountOutline, mdiChevronLeft, mdiChevronRight } from "@mdi/js"
 import { computed, defineAsyncComponent, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 
@@ -16,6 +18,7 @@ const MINI_STORAGE_KEY = "mini"
 const selfStore = useSelfStore()
 const mini = ref(localStorage.getItem(MINI_STORAGE_KEY) === "true")
 const { items, profileRoute } = useNavigationItems()
+const { isThreadRead } = useReadState()
 const route = useRoute()
 
 const active = computed(() => items.value.length > 0)
@@ -38,12 +41,12 @@ const needsName = computed(() => {
   return !!id && (!firstName?.trim() || !lastName?.trim())
 })
 
-const hasUnreadMessages = computed(() => {
-  const { lastMessageAt, messagesViewedAt } = selfStore.item
-  if (!lastMessageAt) return false
-  if (!messagesViewedAt) return true
-  return lastMessageAt.toMillis() > messagesViewedAt.toMillis()
-})
+const unreadMessagesCount = computed(
+  () => messagesData.reduce(
+    (sum, t) => sum + (isThreadRead(t) ? 0 : (t.unreadCount || 0)),
+    0,
+  ),
+)
 
 watch(mini, (val) => {
   localStorage.setItem(MINI_STORAGE_KEY, val)
@@ -54,13 +57,13 @@ watch(mini, (val) => {
   <WelcomeNameDialog v-if="needsName" />
 
   <!-- Mobile: Floating Bottom Navigation -->
-  <div v-if="$vuetify.display.mobile && active" class="bottom-nav-wrap">
+  <div v-if="$vuetify.display.mobile && active && activeRouteName !== 'Conversation'" class="bottom-nav-wrap">
     <nav class="bottom-nav">
       <button v-for="(item, index) in items" :key="index" class="nav-item"
         :class="{ active: activeRouteName === item.to.name }" :aria-label="item.text" @click="$router.push(item.to)">
         <span class="nav-pill">
-          <v-badge dot color="primary" location="top right" offset-x="2" offset-y="2"
-            :model-value="item.id === 'messages' && hasUnreadMessages">
+          <v-badge :content="unreadMessagesCount" color="error" location="top right" offset-x="2" offset-y="2"
+            :model-value="item.id === 'messages' && unreadMessagesCount > 0">
             <v-img :src="item.img" width="24" height="24" transition="fade-transition"
               :class="{ 'rounded-circle': item.rounded }" :cover="item.cover">
               <template v-slot:placeholder>
@@ -82,8 +85,8 @@ watch(mini, (val) => {
   </div>
 
   <!-- Desktop: Navigation Drawer -->
-  <v-navigation-drawer v-else permanent class="card-shadow" :rail="mini" :rail-width="mini ? 64 : 100"
-    style="border-right:0px">
+  <v-navigation-drawer v-else-if="!$vuetify.display.mobile && active" permanent class="card-shadow" :rail="mini"
+    :rail-width="mini ? 64 : 100" style="border-right:0px">
     <v-row justify="center" class="mt-6 mb-4 px-2 cursor-pointer"
       @click="$router.push(items[0]?.to || { name: 'Accueil' })">
       <v-img alt="Logo" class="shrink rounded-xs" :src="mini ? logoInitials : logo" transition="scale-transition"
@@ -95,8 +98,8 @@ watch(mini, (val) => {
         <v-list-item :value="item.to.name" color="primary" :to="item.to" :title="!mini ? item.text : ''"
           class="rounded-15">
           <template v-slot:prepend>
-            <v-badge dot location="top right" color="primary" offset-x="0" offset-y="4"
-              :model-value="item.id === 'messages' && hasUnreadMessages && mini">
+            <v-badge :content="unreadMessagesCount" location="top right" color="error" offset-x="0" offset-y="4"
+              :model-value="item.id === 'messages' && unreadMessagesCount > 0 && mini">
               <v-img :src="item.img" :width="mini ? 33 : 45" :height="mini ? 33 : 45" class="my-1 "
                 transition="fade-transition">
                 <template v-slot:placeholder>
@@ -107,8 +110,8 @@ watch(mini, (val) => {
               </v-img>
             </v-badge>
           </template>
-          <template v-slot:append v-if="item.id === 'messages' && hasUnreadMessages && !mini">
-            <v-icon :icon="mdiCircle" size="12" class="mr-2" color="primary"></v-icon>
+          <template v-slot:append v-if="item.id === 'messages' && unreadMessagesCount > 0 && !mini">
+            <v-chip color="error" size="x-small" class="font-weight-bold">{{ unreadMessagesCount }}</v-chip>
           </template>
           <v-tooltip activator="parent" location="start" :disabled="!mini">{{ item.text }}</v-tooltip>
         </v-list-item>
