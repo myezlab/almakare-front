@@ -2,6 +2,7 @@
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useMessagesStore } from '@/stores/messages'
 import { useOrganisationStore } from '@/stores/organisation'
+import { usePatientActesStore } from '@/stores/patientActes'
 import { useSelfStore } from '@/stores/self'
 import { useTeamStore } from '@/stores/team'
 import {
@@ -12,6 +13,7 @@ import {
   mdiCalendarClockOutline,
   mdiCalendarPlusOutline,
   mdiHistory,
+  mdiProgressClock,
   mdiCashMultiple,
   mdiChevronLeft,
   mdiChevronRight,
@@ -32,12 +34,15 @@ import {
   mdiTimerSandComplete,
 } from '@mdi/js'
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const teamStore = useTeamStore()
 const appointmentsStore = useAppointmentsStore()
 const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
 const organisationStore = useOrganisationStore()
+const patientActesStore = usePatientActesStore()
 
 const establishments = computed(() => organisationStore.item.establishments || [])
 const actes = computed(() => organisationStore.item.actes || [])
@@ -566,9 +571,27 @@ const pastAppointments = computed(() =>
 
 const appointmentsTab = ref('upcoming')
 
-const visibleAppointments = computed(() =>
-  appointmentsTab.value === 'past' ? pastAppointments.value : upcomingAppointments.value,
-)
+const visibleAppointments = computed(() => {
+  if (appointmentsTab.value === 'past') return pastAppointments.value
+  if (appointmentsTab.value === 'upcoming') return upcomingAppointments.value
+  return []
+})
+
+const ongoingActes = computed(() => {
+  const p = patient.value
+  return patientActesStore.ongoingActesForPatient(p.id).map((a) => {
+    const doc = teamStore.items.find((m) => m.id === a.doctorId)
+    return { ...a, doctor: doc }
+  })
+})
+
+function openAppointment(a) {
+  router.push({ name: 'Appointment', params: { id: a.id } })
+}
+
+function openActe(a) {
+  router.push({ name: 'Acte', params: { id: a.id } })
+}
 
 function initials(person) {
   return `${person?.firstName?.[0] ?? ''}${person?.lastName?.[0] ?? ''}`.toUpperCase()
@@ -608,7 +631,7 @@ function centreInitials(centre) {
         </v-row>
 
         <!-- =================== MY APPOINTMENTS (search step only) =================== -->
-        <v-card v-if="step === 'search' && (upcomingAppointments.length > 0 || pastAppointments.length > 0)"
+        <v-card v-if="step === 'search' && (upcomingAppointments.length > 0 || pastAppointments.length > 0 || ongoingActes.length > 0)"
           class="card-shadow pa-6 mb-4" :class="{ 'rounded-15': !$vuetify.display.mobile }">
           <div class="appt-tabs mb-4">
             <button class="appt-tab"
@@ -618,6 +641,15 @@ function centreInitials(centre) {
               À venir
               <span v-if="upcomingAppointments.length" class="appt-tab-count">
                 {{ upcomingAppointments.length }}
+              </span>
+            </button>
+            <button class="appt-tab"
+              :class="{ 'appt-tab-active': appointmentsTab === 'ongoing' }"
+              @click="appointmentsTab = 'ongoing'">
+              <v-icon :icon="mdiProgressClock" size="16" class="mr-1" />
+              En cours
+              <span v-if="ongoingActes.length" class="appt-tab-count">
+                {{ ongoingActes.length }}
               </span>
             </button>
             <button class="appt-tab"
@@ -631,7 +663,45 @@ function centreInitials(centre) {
             </button>
           </div>
 
-          <div v-if="visibleAppointments.length === 0"
+          <!-- ============ EN COURS LIST ============ -->
+          <template v-if="appointmentsTab === 'ongoing'">
+            <div v-if="ongoingActes.length === 0"
+              class="text-body-small text-medium-emphasis text-center pa-4">
+              Aucun parcours en cours.
+            </div>
+            <div v-for="(a, i) in ongoingActes" :key="a.id"
+              class="appt-row appt-row-clickable"
+              :class="{ 'appt-row-divided': i < ongoingActes.length - 1 }"
+              role="button"
+              tabindex="0"
+              @click="openActe(a)"
+              @keydown.enter="openActe(a)">
+              <div class="appt-row-icon">
+                <v-icon :icon="mdiHospitalBuilding" size="22" color="primary" />
+              </div>
+              <div class="appt-row-main">
+                <div class="appt-row-title">{{ a.label }}</div>
+                <div class="appt-row-sub">
+                  Étape {{ a.currentStep }} sur {{ a.steps?.length || 0 }}
+                  <span v-if="a.doctor" class="ml-1">· Dr {{ a.doctor.firstName }} {{ a.doctor.lastName }}</span>
+                </div>
+                <div v-if="a.locationAddress || a.locationName" class="appt-row-establishment">
+                  <v-icon :icon="mdiMapMarkerOutline" size="12" class="appt-row-establishment-icon mr-1" />
+                  <span v-if="a.locationName" class="appt-row-establishment-name font-weight-medium">{{ a.locationName }}</span>
+                  <span v-if="a.locationAddress" class="appt-row-establishment-address"
+                    :class="{ 'text-medium-emphasis': a.locationName }">
+                    <span v-if="a.locationName" class="appt-row-establishment-sep">· </span>{{ a.locationAddress }}
+                  </span>
+                </div>
+                <v-progress-linear v-if="a.steps?.length"
+                  :model-value="Math.round((a.currentStep / a.steps.length) * 100)"
+                  color="primary" height="6" rounded class="mt-2" />
+              </div>
+              <v-icon :icon="mdiChevronRight" size="20" color="medium-emphasis" />
+            </div>
+          </template>
+
+          <div v-if="appointmentsTab !== 'ongoing' && visibleAppointments.length === 0"
             class="text-body-small text-medium-emphasis text-center pa-4">
             <template v-if="appointmentsTab === 'upcoming'">
               Aucun rendez-vous à venir pour le moment.
@@ -642,11 +712,15 @@ function centreInitials(centre) {
           </div>
 
           <div v-for="(a, i) in visibleAppointments" :key="a.id"
-            class="appt-row"
+            class="appt-row appt-row-clickable"
             :class="{
               'appt-row-divided': i < visibleAppointments.length - 1,
               'appt-row-past': appointmentsTab === 'past',
-            }">
+            }"
+            role="button"
+            tabindex="0"
+            @click="openAppointment(a)"
+            @keydown.enter="openAppointment(a)">
             <div class="appt-row-icon" :class="{ 'appt-row-icon-past': appointmentsTab === 'past' }">
               <v-icon :icon="appointmentsTab === 'past' ? mdiHistory : mdiCalendarCheckOutline"
                 size="22" :color="appointmentsTab === 'past' ? 'medium-emphasis' : 'primary'" />
@@ -673,7 +747,7 @@ function centreInitials(centre) {
               <v-menu v-if="$vuetify.display.mobile" location="bottom end">
                 <template #activator="{ props }">
                   <v-btn :icon="mdiDotsVertical" variant="text" size="small" v-bind="props"
-                    aria-label="Actions du rendez-vous" />
+                    aria-label="Actions du rendez-vous" @click.stop />
                 </template>
                 <v-list density="compact" class="rounded-15">
                   <v-list-subheader class="text-body-small">Ajouter à mon calendrier</v-list-subheader>
@@ -705,7 +779,7 @@ function centreInitials(centre) {
                 <v-menu location="bottom end">
                   <template #activator="{ props }">
                     <v-btn variant="text" color="primary" size="small" rounded="lg" class="text-none"
-                      :prepend-icon="mdiCalendarPlusOutline" v-bind="props">
+                      :prepend-icon="mdiCalendarPlusOutline" v-bind="props" @click.stop>
                       Ajouter à mon calendrier
                     </v-btn>
                   </template>
@@ -731,7 +805,7 @@ function centreInitials(centre) {
                   </v-list>
                 </v-menu>
                 <v-btn variant="text" color="error" size="small" rounded="lg" class="text-none"
-                  :prepend-icon="mdiCloseCircleOutline" @click="askCancel(a)">
+                  :prepend-icon="mdiCloseCircleOutline" @click.stop="askCancel(a)">
                   Annuler
                 </v-btn>
               </template>
@@ -1906,6 +1980,21 @@ function centreInitials(centre) {
   align-items: center;
   gap: 12px;
   padding: 12px 4px;
+}
+
+.appt-row-clickable {
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background-color 0.15s ease;
+}
+
+.appt-row-clickable:hover {
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+
+.appt-row-clickable:focus-visible {
+  outline: 2px solid rgba(var(--v-theme-primary), 0.4);
+  outline-offset: 2px;
 }
 
 .appt-row-past .appt-row-title,

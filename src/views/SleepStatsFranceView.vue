@@ -202,7 +202,7 @@ const sources = {
                 </div>
                 <v-row>
                   <v-col cols="12" sm="4" class="text-center py-3">
-                    <div class="text-h4 font-weight-bold text-primary mb-2">3 millions+</div>
+                    <div class="text-h4 font-weight-bold text-primary mb-2">2,5 millions</div>
                     <div class="text-body-small text-medium-emphasis">de Français concernés par l'apnée du sommeil</div>
                   </v-col>
                   <v-col cols="12" sm="4" class="text-center py-3">
@@ -265,7 +265,7 @@ const sources = {
           <v-col cols="12">
             <v-card class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
               <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
-                <span class="text-headline-small font-weight-bold">Mon parcours de soin</span>
+                <span class="text-headline-small font-weight-bold">Exemple de parcours de soin</span>
               </v-card-title>
               <v-card-text class="px-4 pt-3">
                 <div class="text-body-small text-medium-emphasis mb-4">Les 4 étapes concrètes, de A à Z</div>

@@ -1,116 +1,152 @@
 [
   {
     "id": "thread-001",
-    "participantFullName": "Dr Antoine Bernard",
-    "participantRole": "Neurologue du sommeil",
-    "participantAvatarUrl": "https://randomuser.me/api/portraits/men/32.jpg",
-    "lastMessageText": "Merci de téléverser votre dernière polysomnographie avant notre prochain rendez-vous.",
-    "lastMessageAt": "2026-05-20T17:45:00Z",
+    "participantFullName": "Dr Camille Rousseau",
+    "participantRole": "Pneumologue · médecin référent",
+    "participantAvatarUrl": "https://randomuser.me/api/portraits/women/44.jpg",
+    "lastMessageText": "Le rapport technique de votre nuit d'enregistrement est en cours. Je vous transmets mon interprétation dès qu'il est disponible.",
+    "lastMessageAt": "2026-05-21T08:15:00Z",
     "unreadCount": 2,
     "messages": [
       {
         "id": "m-001-1",
         "from": "doctor",
-        "text": "Bonjour, j'ai bien reçu votre dossier. Pouvez-vous me transmettre votre dernière polysomnographie ?",
-        "createdAt": "2026-05-20T17:30:00Z"
+        "text": "Bonjour, votre hospitalisation s'est bien déroulée. Le technicien finalise l'analyse des données cette semaine.",
+        "createdAt": "2026-05-18T17:30:00Z"
       },
       {
         "id": "m-001-2",
+        "from": "patient",
+        "text": "Merci docteur. Sait-on déjà quand j'aurai les résultats ?",
+        "createdAt": "2026-05-19T09:10:00Z"
+      },
+      {
+        "id": "m-001-3",
         "from": "doctor",
-        "text": "Merci de téléverser votre dernière polysomnographie avant notre prochain rendez-vous.",
-        "createdAt": "2026-05-20T17:45:00Z"
+        "text": "Je vous propose une consultation de restitution la semaine prochaine. Mon secrétariat vous propose plusieurs créneaux.",
+        "createdAt": "2026-05-20T11:00:00Z"
+      },
+      {
+        "id": "m-001-4",
+        "from": "doctor",
+        "text": "Le rapport technique de votre nuit d'enregistrement est en cours. Je vous transmets mon interprétation dès qu'il est disponible.",
+        "createdAt": "2026-05-21T08:15:00Z"
       }
     ]
   },
   {
     "id": "thread-002",
-    "participantFullName": "Dr Camille Rousseau",
-    "participantRole": "Pneumologue",
-    "participantAvatarUrl": "https://randomuser.me/api/portraits/women/44.jpg",
-    "lastMessageText": "Pensez à apporter vos ordonnances et bilans récents lors de votre consultation du 28 mai.",
-    "lastMessageAt": "2026-05-19T11:20:00Z",
+    "participantFullName": "Léa Moreau",
+    "participantRole": "Infirmière coordinatrice — hospitalisation",
+    "participantAvatarUrl": "https://randomuser.me/api/portraits/women/68.jpg",
+    "lastMessageText": "Vos données ont bien été remontées ce matin. Vous pouvez rentrer chez vous, je reste joignable si besoin.",
+    "lastMessageAt": "2026-05-17T08:05:00Z",
     "unreadCount": 1,
     "messages": [
       {
         "id": "m-002-1",
         "from": "doctor",
-        "text": "Bonjour, je confirme notre rendez-vous du 28 mai à 10h30 au cabinet.",
-        "createdAt": "2026-05-19T11:15:00Z"
+        "text": "Bonjour, je suis Léa, votre coordinatrice pour votre hospitalisation au centre du sommeil.",
+        "createdAt": "2026-05-11T10:00:00Z"
       },
       {
         "id": "m-002-2",
         "from": "doctor",
-        "text": "Pensez à apporter vos ordonnances et bilans récents lors de votre consultation du 28 mai.",
-        "createdAt": "2026-05-19T11:20:00Z"
+        "text": "Voici la procédure à suivre la veille de la pose des capteurs : douche, pas de gel coiffant, repas léger.",
+        "createdAt": "2026-05-15T14:00:00Z"
+      },
+      {
+        "id": "m-002-3",
+        "from": "patient",
+        "text": "Bien noté, merci. À demain soir.",
+        "createdAt": "2026-05-15T18:20:00Z"
+      },
+      {
+        "id": "m-002-4",
+        "from": "doctor",
+        "text": "Vos données ont bien été remontées ce matin. Vous pouvez rentrer chez vous, je reste joignable si besoin.",
+        "createdAt": "2026-05-17T08:05:00Z"
       }
     ]
   },
   {
     "id": "thread-003",
     "participantFullName": "Service administratif",
-    "participantRole": "Secrétariat",
+    "participantRole": "Secrétariat — Centre du sommeil",
     "participantAvatarUrl": null,
-    "lastMessageText": "Votre carte vitale a bien été enregistrée, merci.",
-    "lastMessageAt": "2026-05-15T09:10:00Z",
+    "lastMessageText": "Votre consentement éclairé pour l'hospitalisation a bien été enregistré, merci.",
+    "lastMessageAt": "2026-05-11T11:20:00Z",
     "unreadCount": 0,
     "messages": [
       {
         "id": "m-003-1",
-        "from": "patient",
-        "text": "Bonjour, je vous transmets une copie de ma carte vitale.",
-        "createdAt": "2026-05-14T16:40:00Z"
+        "from": "doctor",
+        "text": "Bonjour, merci de signer le consentement éclairé avant votre hospitalisation prévue le 16 mai.",
+        "createdAt": "2026-05-09T09:00:00Z"
       },
       {
         "id": "m-003-2",
+        "from": "patient",
+        "text": "Document signé et transmis, merci.",
+        "createdAt": "2026-05-11T10:45:00Z"
+      },
+      {
+        "id": "m-003-3",
         "from": "doctor",
-        "text": "Votre carte vitale a bien été enregistrée, merci.",
-        "createdAt": "2026-05-15T09:10:00Z"
+        "text": "Votre consentement éclairé pour l'hospitalisation a bien été enregistré, merci.",
+        "createdAt": "2026-05-11T11:20:00Z"
       }
     ]
   },
   {
     "id": "thread-004",
-    "participantFullName": "Léa Moreau",
-    "participantRole": "Infirmière coordinatrice",
-    "participantAvatarUrl": "https://randomuser.me/api/portraits/women/68.jpg",
-    "lastMessageText": "Voici la procédure à suivre la veille de votre polysomnographie.",
-    "lastMessageAt": "2026-05-10T14:00:00Z",
+    "participantFullName": "Dr Antoine Bernard",
+    "participantRole": "Neurologue du sommeil",
+    "participantAvatarUrl": "https://randomuser.me/api/portraits/men/32.jpg",
+    "lastMessageText": "Je rejoins l'avis du Dr Rousseau : l'hospitalisation est indiquée pour préciser le diagnostic. Bon courage.",
+    "lastMessageAt": "2026-03-19T17:45:00Z",
     "unreadCount": 0,
     "messages": [
       {
         "id": "m-004-1",
         "from": "doctor",
-        "text": "Bonjour, je suis Léa, votre infirmière coordinatrice pour le bilan du sommeil.",
-        "createdAt": "2026-05-10T13:55:00Z"
+        "text": "Bonjour, suite à notre consultation du 18 mars, je vous adresse le compte rendu et mes recommandations.",
+        "createdAt": "2026-03-19T09:30:00Z"
       },
       {
         "id": "m-004-2",
+        "from": "patient",
+        "text": "Merci docteur. Confirmez-vous l'indication d'une polysomnographie ?",
+        "createdAt": "2026-03-19T15:10:00Z"
+      },
+      {
+        "id": "m-004-3",
         "from": "doctor",
-        "text": "Voici la procédure à suivre la veille de votre polysomnographie.",
-        "createdAt": "2026-05-10T14:00:00Z"
+        "text": "Je rejoins l'avis du Dr Rousseau : l'hospitalisation est indiquée pour préciser le diagnostic. Bon courage.",
+        "createdAt": "2026-03-19T17:45:00Z"
       }
     ]
   },
   {
     "id": "thread-005",
-    "participantFullName": "Dr Élodie Garnier",
-    "participantRole": "ORL",
-    "participantAvatarUrl": "https://randomuser.me/api/portraits/women/12.jpg",
-    "lastMessageText": "Au plaisir de vous revoir pour le contrôle dans 6 mois.",
-    "lastMessageAt": "2026-04-22T10:30:00Z",
+    "participantFullName": "Dr Camille Rousseau",
+    "participantRole": "Pneumologue",
+    "participantAvatarUrl": "https://randomuser.me/api/portraits/women/44.jpg",
+    "lastMessageText": "Suite à notre consultation de suivi du 4 décembre, je vous oriente vers le Dr Bernard pour un second avis neurologique.",
+    "lastMessageAt": "2025-12-05T10:30:00Z",
     "unreadCount": 0,
     "messages": [
       {
         "id": "m-005-1",
         "from": "doctor",
-        "text": "Le compte-rendu de votre consultation est disponible dans vos documents.",
-        "createdAt": "2026-04-22T10:25:00Z"
+        "text": "Bonjour, le compte rendu de notre consultation de suivi du 4 décembre est dans vos documents.",
+        "createdAt": "2025-12-05T10:25:00Z"
       },
       {
         "id": "m-005-2",
         "from": "doctor",
-        "text": "Au plaisir de vous revoir pour le contrôle dans 6 mois.",
-        "createdAt": "2026-04-22T10:30:00Z"
+        "text": "Suite à notre consultation de suivi du 4 décembre, je vous oriente vers le Dr Bernard pour un second avis neurologique.",
+        "createdAt": "2025-12-05T10:30:00Z"
       }
     ]
   }

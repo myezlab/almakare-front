@@ -50,6 +50,18 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/rendez-vous/:id',
+      name: 'Appointment',
+      component: () => import('./views/AppointmentView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/acte/:id',
+      name: 'Acte',
+      component: () => import('./views/ActeView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/profil',
       name: 'Profile',
       component: () => import('./views/ProfileView.vue'),
