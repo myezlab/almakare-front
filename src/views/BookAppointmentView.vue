@@ -153,7 +153,7 @@ const headerSubtitle = computed(() => {
   if (step.value === 'calendar' && selectedDoctor.value && selectedActe.value) {
     return `Dr ${selectedDoctor.value.firstName} ${selectedDoctor.value.lastName} · ${selectedActe.value.label}`
   }
-  return 'Consultez vos rendez-vous ou prenez-en un nouveau'
+  return 'Consultez vos rendez-vous et actes'
 })
 
 // =================== SEARCH RESULTS ===================
@@ -693,7 +693,7 @@ function centreInitials(centre) {
                 <div v-if="a.locationAddress || a.locationName" class="appt-row-establishment">
                   <v-icon :icon="mdiMapMarkerOutline" size="12" class="appt-row-establishment-icon mr-1" />
                   <span v-if="a.locationName" class="appt-row-establishment-name font-weight-medium">{{ a.locationName
-                    }}</span>
+                  }}</span>
                   <span v-if="a.locationAddress" class="appt-row-establishment-address"
                     :class="{ 'text-medium-emphasis': a.locationName }">
                     <span v-if="a.locationName" class="appt-row-establishment-sep">· </span>{{ a.locationAddress }}
@@ -725,7 +725,7 @@ function centreInitials(centre) {
                 <div v-if="a.locationAddress || a.locationName" class="appt-row-establishment">
                   <v-icon :icon="mdiMapMarkerOutline" size="12" class="appt-row-establishment-icon mr-1" />
                   <span v-if="a.locationName" class="appt-row-establishment-name font-weight-medium">{{ a.locationName
-                    }}</span>
+                  }}</span>
                   <span v-if="a.locationAddress" class="appt-row-establishment-address"
                     :class="{ 'text-medium-emphasis': a.locationName }">
                     <span v-if="a.locationName" class="appt-row-establishment-sep">· </span>{{ a.locationAddress }}
@@ -767,7 +767,7 @@ function centreInitials(centre) {
               <div v-if="a.locationAddress || a.locationName" class="appt-row-establishment">
                 <v-icon :icon="mdiMapMarkerOutline" size="12" class="appt-row-establishment-icon mr-1" />
                 <span v-if="a.locationName" class="appt-row-establishment-name font-weight-medium">{{ a.locationName
-                  }}</span>
+                }}</span>
                 <span v-if="a.locationAddress" class="appt-row-establishment-address"
                   :class="{ 'text-medium-emphasis': a.locationName }">
                   <span v-if="a.locationName" class="appt-row-establishment-sep">· </span>{{ a.locationAddress }}

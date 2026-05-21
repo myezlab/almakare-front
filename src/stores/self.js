@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 
 const STORAGE_KEY = 'almakare.self'
 const PICTURE_KEYS = ['avatarUrl']
+const DEFAULT_AVATAR_URL = 'https://randomuser.me/api/portraits/men/61.jpg'
 
 function loadFromStorage() {
   try {
@@ -21,7 +22,8 @@ function stripPictures(obj) {
 
 export const useSelfStore = defineStore('self', () => {
 
-  const item = ref(loadFromStorage() || { id: '123456' })
+  const stored = loadFromStorage()
+  const item = ref({ avatarUrl: DEFAULT_AVATAR_URL, ...(stored || { id: '123456' }) })
 
   watch(
     item,
