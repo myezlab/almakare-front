@@ -1,0 +1,131 @@
+<script setup>
+import logoInitials from '@/assets/img/logo-initials-white.svg'
+import { useRules } from '@/composables/useRules'
+import { useMessagesStore } from '@/stores/messages'
+import { useSelfStore } from '@/stores/self'
+import { mdiAccountOutline, mdiClose, mdiHelpCircleOutline, mdiLogout } from '@mdi/js'
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const selfStore = useSelfStore()
+const messagesStore = useMessagesStore()
+const { emailValidation, required } = useRules()
+
+const supportDialog = ref(false)
+const supportFormRef = ref(null)
+const supportSubmitting = ref(false)
+const supportForm = ref({
+  firstName: '',
+  lastName: '',
+  email: '',
+  subject: '',
+  message: '',
+})
+
+watch(supportDialog, (open) => {
+  if (!open) return
+  supportForm.value = {
+    firstName: selfStore.item?.firstName || '',
+    lastName: selfStore.item?.lastName || '',
+    email: selfStore.item?.email || '',
+    subject: '',
+    message: '',
+  }
+})
+
+function goToAccount() {
+  router.push({ name: 'MonDossier' })
+}
+
+function logout() {
+  selfStore.item = {}
+  router.push({ name: 'Login' })
+}
+
+async function submitSupport() {
+  const { valid } = await supportFormRef.value.validate()
+  if (!valid) return
+  supportSubmitting.value = true
+  try {
+    messagesStore.add({ type: 'success', text: "Demande d'assistance envoyée" })
+    supportDialog.value = false
+  } finally {
+    supportSubmitting.value = false
+  }
+}
+
+const accountLabel = computed(() => {
+  const first = selfStore.item?.firstName?.trim() || ''
+  const last = selfStore.item?.lastName?.trim() || ''
+  const full = `${first} ${last}`.trim()
+  return full || 'Utilisateur'
+})
+</script>
+
+<template>
+  <v-toolbar flat color="primary" density="comfortable">
+    <v-btn v-if="$vuetify.display.mobile" icon variant="text" color="white" aria-label="Almakare">
+      <v-img :src="logoInitials" width="28" height="28" contain />
+    </v-btn>
+    <v-spacer />
+    <v-btn variant="text" color="white" aria-label="Aide" rounded="lg" min-width="0" class="px-3" width="40"
+      hidden="40" @click="supportDialog = true">
+      <v-icon :icon="mdiHelpCircleOutline" />
+    </v-btn>
+    <v-menu offset="8">
+      <template v-slot:activator="{ props }">
+        <v-btn v-bind="props" :prepend-icon="mdiAccountOutline" variant="text" color="white" class="text-none">
+          {{ accountLabel }}
+        </v-btn>
+      </template>
+      <v-list density="compact" rounded="lg">
+        <v-list-item :prepend-icon="mdiAccountOutline" title="Mon compte" @click="goToAccount" />
+        <v-list-item :prepend-icon="mdiLogout" title="Déconnexion" @click="logout" />
+      </v-list>
+    </v-menu>
+  </v-toolbar>
+
+  <!-- Support dialog -->
+  <v-dialog v-model="supportDialog" max-width="560" :fullscreen="$vuetify.display.mobile" scrollable>
+    <v-card :rounded="$vuetify.display.mobile ? 0 : 'lg'">
+      <v-card-title class="d-flex align-center ga-2 pa-4 support-dialog-title">
+        <span class="text-headline-small font-weight-bold flex-grow-1">Envoyer une demande d'assistance</span>
+        <v-btn :icon="mdiClose" variant="text" size="small" aria-label="Fermer" @click="supportDialog = false" />
+      </v-card-title>
+      <v-divider />
+      <v-card-text class="pa-4">
+        <v-form ref="supportFormRef" @submit.prevent="submitSupport">
+          <v-text-field v-model.trim="supportForm.firstName" label="Prénom*" variant="outlined" rounded="lg"
+            :rules="[required]" />
+          <v-text-field v-model.trim="supportForm.lastName" label="Nom*" variant="outlined" rounded="lg"
+            :rules="[required]" />
+          <v-text-field v-model.trim="supportForm.email" label="Email*" type="email" variant="outlined" rounded="lg"
+            :rules="[required, emailValidation]" />
+          <v-text-field v-model.trim="supportForm.subject" label="Objet*" variant="outlined" rounded="lg"
+            :rules="[required]" />
+          <v-textarea v-model.trim="supportForm.message" label="Problème rencontré*" variant="outlined" rounded="lg"
+            rows="4" auto-grow :rules="[required]" />
+        </v-form>
+      </v-card-text>
+      <v-divider />
+      <v-card-actions class="pa-4">
+        <v-spacer />
+        <v-btn variant="text" rounded="lg" class="text-none" @click="supportDialog = false">Annuler</v-btn>
+        <v-btn color="primary" variant="flat" rounded="lg" class="text-none" :loading="supportSubmitting"
+          @click="submitSupport">Envoyer</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</template>
+
+<style scoped>
+.support-dialog-title :deep(span),
+.support-dialog-title span {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.25;
+  min-width: 0;
+}
+</style>

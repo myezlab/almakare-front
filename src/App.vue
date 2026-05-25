@@ -11,6 +11,9 @@ import Snackbar from "./components/Snackbar.vue"
 const Navigation = defineAsyncComponent(() =>
   import("@/components/NavigationDrawer.vue")
 )
+const AppToolbar = defineAsyncComponent(() =>
+  import("@/components/AppToolbar.vue")
+)
 
 const selfStore = useSelfStore()
 const router = useRouter()
@@ -42,6 +45,7 @@ launch()
     <v-main class="background-image">
       <template v-if="selfStore.item.id && !['Login'].includes($route.name)">
         <Navigation />
+        <AppToolbar />
       </template>
       <template v-if="isReady">
         <router-view v-slot="{ Component }">

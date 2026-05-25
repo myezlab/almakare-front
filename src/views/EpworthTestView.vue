@@ -84,7 +84,7 @@ async function selectAnswer(questionIndex, value) {
 
         <v-card flat color="transparent" class="mb-4 pa-5">
           <v-btn :prepend-icon="mdiArrowLeft" variant="text" color="medium-emphasis" rounded="lg" size="small"
-            class="text-none mb-4 ml-n2" @click="router.push({ path: '/donnees-patient', query: { tab: 'questionnaires' } })">
+            class="text-none mb-4 ml-n2" @click="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires' } })">
             Retour
           </v-btn>
           <div class="text-headline-medium font-weight-bold mb-2">Test d'Epworth</div>
@@ -133,7 +133,7 @@ async function selectAnswer(questionIndex, value) {
 
           <div class="text-center mt-6">
             <v-btn color="primary" variant="flat" rounded="pill" size="large" class="text-none"
-              @click="router.push({ path: '/donnees-patient', query: { tab: 'questionnaires' } })">
+              @click="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires' } })">
               Terminer
             </v-btn>
           </div>

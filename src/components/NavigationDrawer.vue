@@ -2,23 +2,19 @@
 import logoInitials from "@/assets/img/logo-initials.svg"
 import logo from "@/assets/img/logo.svg"
 import { useNavigationItems } from "@/composables/useNavigationItems"
-import { useSelfStore } from "@/stores/self"
-import { mdiAccount, mdiAccountOutline, mdiChevronLeft, mdiChevronRight } from "@mdi/js"
+import { mdiChevronLeft, mdiChevronRight } from "@mdi/js"
 import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 
 const MINI_STORAGE_KEY = "mini"
 
-const selfStore = useSelfStore()
 const mini = ref(localStorage.getItem(MINI_STORAGE_KEY) === "true")
-const { items, profileRoute } = useNavigationItems()
+const { items } = useNavigationItems()
 const route = useRoute()
 
 const active = computed(() => items.value.length > 0)
 
 const activeRouteName = computed(() => route.name)
-
-const isProfileActive = computed(() => activeRouteName.value === 'DonneesPatient')
 
 watch(mini, (val) => {
   localStorage.setItem(MINI_STORAGE_KEY, val)
@@ -35,17 +31,11 @@ watch(mini, (val) => {
           <v-img :src="item.img" width="24" height="24" transition="fade-transition"
             :class="{ 'rounded-circle': item.rounded }" :cover="item.cover">
             <template v-slot:placeholder>
-              <v-icon size="22">{{ activeRouteName === item.to.name ? (item.iconActive || item.icon) : item.icon }}</v-icon>
+              <v-icon size="22">{{ activeRouteName === item.to.name ? (item.iconActive || item.icon) : item.icon
+              }}</v-icon>
             </template>
           </v-img>
           <span class="nav-label">{{ item.text }}</span>
-        </span>
-      </button>
-      <button class="nav-item" :class="{ active: isProfileActive }" aria-label="Données patient"
-        @click="$router.push(profileRoute)">
-        <span class="nav-pill">
-          <v-icon size="22" :icon="isProfileActive ? mdiAccount : mdiAccountOutline"></v-icon>
-          <span class="nav-label">Données patient</span>
         </span>
       </button>
     </nav>
@@ -69,7 +59,9 @@ watch(mini, (val) => {
               transition="fade-transition">
               <template v-slot:placeholder>
                 <v-row class="fill-height ma-0" align="center" justify="center">
-                  <v-icon>{{ activeRouteName === item.to.name ? (item.iconActive || item.icon) : item.icon }}</v-icon>
+                  <v-icon>{{ activeRouteName === item.to.name ? (item.iconActive || item.icon) :
+                    item.icon
+                  }}</v-icon>
                 </v-row>
               </template>
             </v-img>
@@ -77,23 +69,6 @@ watch(mini, (val) => {
           <v-tooltip activator="parent" location="start" :disabled="!mini">{{ item.text }}</v-tooltip>
         </v-list-item>
       </template>
-    </v-list>
-
-    <v-list density="compact" nav :selected="[activeRouteName]" style="position: absolute; bottom: 70px; width: 100%">
-      <v-list-item :value="profileRoute.name" color="primary" :to="profileRoute" class="rounded-15">
-        <template v-slot:title v-if="!mini">
-          {{ selfStore.item.fullName }}
-        </template>
-        <template v-slot:subtitle v-if="!mini">
-          {{ selfStore.item.email }}
-        </template>
-        <template v-slot:prepend>
-          <v-avatar :size="mini ? 33 : 50" color="grey-lighten-3" class="my-1 mr-3">
-            <v-icon color="#7a7a7a" :icon="mdiAccountOutline"></v-icon>
-            <v-tooltip activator="parent" location="start" :disabled="!mini">Données patient</v-tooltip>
-          </v-avatar>
-        </template>
-      </v-list-item>
     </v-list>
 
     <v-row justify="center" @click="mini = !mini" style="position: absolute; bottom: 20px; left: 8px">

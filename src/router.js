@@ -36,15 +36,9 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/donnees-patient',
-      name: 'DonneesPatient',
-      component: () => import('./views/ProfileView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/parametres',
-      name: 'Settings',
-      component: () => import('./views/SettingsView.vue'),
+      path: '/mon-dossier',
+      name: 'MonDossier',
+      component: () => import('./views/MonDossierView.vue'),
       meta: { requiresAuth: true },
     },
     {
