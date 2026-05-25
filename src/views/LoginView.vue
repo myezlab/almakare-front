@@ -18,7 +18,7 @@ const messagesStore = useMessagesStore()
 const selfStore = useSelfStore()
 const { required, emailValidation, passwordValidation } = useRules()
 
-// sign-in | sign-up | reset-password | loading | success
+// sign-in | sign-up | reset-password | loading
 const status = ref(route.query.mode === "signup" ? "sign-up" : "sign-in")
 const pendingEmail = ref(false)
 
@@ -46,8 +46,7 @@ const signUpPasswordsMatch = computed(() => {
 })
 
 function redirectToApp() {
-  status.value = "success"
-  setTimeout(() => router.push({ name: "Dashboard" }), 1000)
+  router.push({ name: "Dashboard" })
 }
 
 async function handleSignIn() {
@@ -56,7 +55,7 @@ async function handleSignIn() {
   try {
     selfStore.item.id = "123456"
     selfStore.item.email = signInEmail.value
-    messagesStore.add({ id: "welcome", type: "success", text: 'Connexion réussie' })
+    if (!selfStore.item.createdAt) selfStore.item.createdAt = new Date().toISOString()
     redirectToApp()
   } catch (error) {
     console.error("Sign-in error:", error)
@@ -72,7 +71,7 @@ async function handleSignUp() {
   try {
     selfStore.item.id = "123456"
     selfStore.item.email = signUpEmail.value
-    messagesStore.add({ id: "welcome", type: "success", text: 'Connexion réussie' })
+    selfStore.item.createdAt = new Date().toISOString()
     redirectToApp()
   } catch (error) {
     console.error("Sign-up error:", error)
@@ -220,13 +219,6 @@ async function handlePasswordReset() {
             Retour à la connexion
           </v-btn>
         </div>
-      </template>
-
-      <!-- Success -->
-      <template v-if="status === 'success'">
-        <v-icon :icon="mdiCheckCircleOutline" size="64" color="success" class="mb-4" />
-        <div class="text-headline-small font-weight-bold mb-2">Connexion réussie</div>
-        <div class="text-body-medium text-medium-emphasis">Redirection en cours...</div>
       </template>
 
     </v-card>

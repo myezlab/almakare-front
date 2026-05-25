@@ -482,7 +482,7 @@ function confirmTimePicker() {
           </v-bottom-sheet>
 
           <v-dialog v-else v-model="timePicker.show" max-width="340">
-            <v-card rounded="xl" class="pa-4">
+            <v-card rounded="xl" class="pa-4 card-shadow">
               <div class="text-center text-title-medium font-weight-bold mb-2">
                 Heure
               </div>
@@ -502,7 +502,7 @@ function confirmTimePicker() {
 
           <!-- Delete confirm dialog -->
           <v-dialog v-model="showDelete" max-width="360">
-            <v-card rounded="xl" class="pa-2">
+            <v-card rounded="xl" class="pa-2 card-shadow">
               <v-card-title class="pa-6 pb-2">Supprimer l'entrée</v-card-title>
               <v-card-text class="px-6">Êtes-vous sûr de vouloir supprimer cette entrée ?</v-card-text>
               <v-card-actions class="pa-6 pt-2">

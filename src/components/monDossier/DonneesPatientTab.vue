@@ -2,10 +2,11 @@
 import { ISOToShortenedDate } from "@/composables/useDates"
 
 import { useRules } from "@/composables/useRules"
+import { DOCTORS_SEED } from "@/data/doctors"
 import gendersEnum from "@/enums/genders.json"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
-import { mdiCalendar, mdiPencil } from "@mdi/js"
+import { mdiCalendar, mdiClipboardTextOutline, mdiDoctor, mdiMagnify, mdiPencil, mdiTruckOutline } from "@mdi/js"
 import { computed, ref, watch } from "vue"
 
 const GENDER_LABELS = { male: 'Homme', female: 'Femme', other: 'Autre' }
@@ -207,6 +208,50 @@ function cancelClinical(cancel) {
   cancel()
   editingClinical.value = false
 }
+
+const MEDECIN_TARGETS = {
+  medecinTraitant: { field: 'medecinTraitant', panel: 'medecinTraitant', successText: 'Médecin traitant mis à jour' },
+  medecinAdresseur: { field: 'medecinAdresseur', panel: 'medecinAdresseur', successText: 'Médecin adresseur mis à jour' },
+}
+
+const medecinDialogOpen = ref(false)
+const medecinDialogTarget = ref(null)
+const medecinSearchRpps = ref('')
+const medecinSearchLastName = ref('')
+const medecinSearchResults = ref([])
+const medecinSearchPerformed = ref(false)
+
+const medecinTraitant = computed(() => currentUser.value?.medecinTraitant || null)
+const medecinAdresseur = computed(() => currentUser.value?.medecinAdresseur || null)
+
+function openMedecinDialog(targetKey) {
+  medecinDialogTarget.value = MEDECIN_TARGETS[targetKey] || null
+  medecinSearchRpps.value = ''
+  medecinSearchLastName.value = ''
+  medecinSearchResults.value = []
+  medecinSearchPerformed.value = false
+  medecinDialogOpen.value = true
+}
+
+function searchMedecins() {
+  const rpps = medecinSearchRpps.value.trim()
+  const name = medecinSearchLastName.value.trim().toLowerCase()
+  medecinSearchResults.value = DOCTORS_SEED.filter(d => {
+    const matchRpps = rpps ? d.rpps.includes(rpps) : true
+    const matchName = name ? d.lastName.toLowerCase().includes(name) : true
+    return matchRpps && matchName
+  })
+  medecinSearchPerformed.value = true
+}
+
+function selectMedecin(doctor) {
+  const target = medecinDialogTarget.value
+  if (!target) return
+  selfStore.item[target.field] = { ...doctor }
+  medecinDialogOpen.value = false
+  ensureOpen(target.panel)
+  messagesStore.add({ type: 'success', text: target.successText })
+}
 </script>
 
 <template>
@@ -219,7 +264,7 @@ function cancelClinical(cancel) {
         <v-expansion-panel value="general">
           <v-expansion-panel-title>
             <div class="d-flex align-center flex-grow-1">
-              <span class="text-h6 font-weight-bold text-truncate">Données générales</span>
+              <span class="panel-title">Données générales</span>
               <v-spacer />
               <v-btn v-if="showGeneralView" :icon="mdiPencil" variant="text" size="small" density="comfortable"
                 class="mr-2" @click.stop="startEditGeneral" />
@@ -263,7 +308,7 @@ function cancelClinical(cancel) {
                 </v-col>
                 <v-col cols="12" md="6">
                   <div class="field-label">Régime alimentaire</div>
-                  <div class="field-value field-value-multiline">
+                  <div class="field-value whitespace-pre-line">
                     {{ currentUser.hasDietaryRestrictions === false
                       ? 'Aucun'
                       : (currentUser.dietaryRestrictions || EMPTY) }}
@@ -271,7 +316,7 @@ function cancelClinical(cancel) {
                 </v-col>
                 <v-col cols="12" md="6">
                   <div class="field-label">Antécédents médicaux</div>
-                  <div class="field-value field-value-multiline">
+                  <div class="field-value whitespace-pre-line">
                     {{ currentUser.hasMedicalHistory === false
                       ? 'Aucun'
                       : (currentUser.medicalHistory || EMPTY) }}
@@ -286,11 +331,12 @@ function cancelClinical(cancel) {
                   <div class="field-value">{{ currentUser.carteVitaleIssueDate || EMPTY }}</div>
                 </v-col>
                 <v-col v-if="currentUser.carteVitaleNir" cols="12">
-                  <div class="cv-wrapper">
+                  <div class="d-flex justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" class="cv-svg" role="img"
                       aria-label="Carte Vitale">
                       <defs>
-                        <linearGradient id="cardGreen" x1="180" y1="80" x2="900" y2="540" gradientUnits="userSpaceOnUse">
+                        <linearGradient id="cardGreen" x1="180" y1="80" x2="900" y2="540"
+                          gradientUnits="userSpaceOnUse">
                           <stop offset="0%" stop-color="#2F9E44" />
                           <stop offset="100%" stop-color="#138A36" />
                         </linearGradient>
@@ -411,7 +457,7 @@ function cancelClinical(cancel) {
                         :rules="[v => !!v || 'Veuillez préciser ou répondre Non']" />
                     </v-col>
 
-                    <v-col cols="12" md="6">
+                    <v-col cols="12">
                       <div class="field-label mb-2">Avez-vous des antécédents médicaux&nbsp;?</div>
                       <v-btn-toggle v-model="proxyModel.value.hasMedicalHistory" mandatory="force" color="primary"
                         rounded="lg" density="comfortable" variant="outlined" class="mb-3">
@@ -425,9 +471,9 @@ function cancelClinical(cancel) {
                     </v-col>
 
                     <v-col cols="12" md="6">
-                      <v-text-field v-model.trim="proxyModel.value.carteVitaleNir"
-                        label="Numéro de sécurité sociale" variant="outlined" rounded="lg" inputmode="numeric"
-                        :rules="nirRules" hint="15 chiffres sans espaces" persistent-hint />
+                      <v-text-field v-model.trim="proxyModel.value.carteVitaleNir" label="Numéro de sécurité sociale"
+                        variant="outlined" rounded="lg" inputmode="numeric" :rules="nirRules"
+                        hint="15 chiffres sans espaces" persistent-hint />
                     </v-col>
                     <v-col cols="12" md="6">
                       <v-text-field v-model.trim="proxyModel.value.carteVitaleIssueDate"
@@ -455,7 +501,7 @@ function cancelClinical(cancel) {
         <v-expansion-panel value="clinical">
           <v-expansion-panel-title>
             <div class="d-flex align-center flex-grow-1">
-              <span class="text-h6 font-weight-bold text-truncate">Données cliniques</span>
+              <span class="panel-title">Données cliniques</span>
               <v-spacer />
               <v-btn v-if="showClinicalView" :icon="mdiPencil" variant="text" size="small" density="comfortable"
                 class="mr-2" @click.stop="startEditClinical" />
@@ -529,65 +575,230 @@ function cancelClinical(cancel) {
         <!-- Conclusion de la dernière consultation -->
         <v-expansion-panel value="lastConsultation">
           <v-expansion-panel-title>
-            <span class="text-h6 font-weight-bold text-truncate">Conclusion de la dernière consultation</span>
+            <span class="panel-title">Conclusion de la dernière consultation</span>
           </v-expansion-panel-title>
-          <v-expansion-panel-text />
+          <v-expansion-panel-text>
+            <div class="d-flex flex-column align-center text-center pa-6 empty-state">
+              <div class="empty-state-icon mb-3">
+                <v-icon :icon="mdiClipboardTextOutline" size="32" />
+              </div>
+              <div class="text-title-medium font-weight-bold mb-1">Aucune consultation</div>
+              <div class="text-body-small text-medium-emphasis">
+                La conclusion de votre dernière consultation apparaîtra ici.
+              </div>
+            </div>
+          </v-expansion-panel-text>
         </v-expansion-panel>
 
         <!-- Médecin Traitant -->
         <v-expansion-panel value="medecinTraitant">
           <v-expansion-panel-title>
-            <span class="text-h6 font-weight-bold text-truncate">Médecin Traitant</span>
+            <div class="d-flex align-center flex-grow-1">
+              <span class="panel-title">Médecin Traitant</span>
+              <v-spacer />
+              <v-btn :icon="mdiPencil" variant="text" size="small" density="comfortable" class="mr-2"
+                @click.stop="openMedecinDialog('medecinTraitant')" />
+            </div>
           </v-expansion-panel-title>
-          <v-expansion-panel-text />
+          <v-expansion-panel-text>
+            <template v-if="medecinTraitant">
+              <v-row>
+                <v-col cols="12" md="6">
+                  <div class="field-label">Prénom / Nom</div>
+                  <div class="field-value">
+                    {{ [medecinTraitant.firstName, medecinTraitant.lastName].filter(Boolean).join(' ') || EMPTY }}
+                  </div>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <div class="field-label">Téléphone</div>
+                  <div class="field-value">{{ medecinTraitant.phone || EMPTY }}</div>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <div class="field-label">Email</div>
+                  <div class="field-value">{{ medecinTraitant.email || EMPTY }}</div>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <div class="field-label">Numéro Adeli</div>
+                  <div class="field-value">{{ medecinTraitant.adeli || EMPTY }}</div>
+                </v-col>
+              </v-row>
+            </template>
+            <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
+              <div class="empty-state-icon mb-3">
+                <v-icon :icon="mdiDoctor" size="32" />
+              </div>
+              <div class="text-title-medium font-weight-bold mb-1">Aucun médecin traitant</div>
+              <div class="text-body-small text-medium-emphasis mb-4">
+                Renseignez votre médecin traitant pour faciliter votre suivi.
+              </div>
+              <v-btn color="primary" variant="flat" rounded="lg" class="text-none" :prepend-icon="mdiMagnify"
+                @click="openMedecinDialog('medecinTraitant')">
+                Rechercher un médecin
+              </v-btn>
+            </div>
+          </v-expansion-panel-text>
         </v-expansion-panel>
 
         <!-- Médecin Adresseur -->
         <v-expansion-panel value="medecinAdresseur">
           <v-expansion-panel-title>
-            <span class="text-h6 font-weight-bold text-truncate">Médecin Adresseur (si différent du médecin traitant)</span>
+            <div class="d-flex align-center flex-grow-1">
+              <span class="panel-title">Médecin Adresseur (si différent du médecin traitant)</span>
+              <v-spacer />
+              <v-btn :icon="mdiPencil" variant="text" size="small" density="comfortable" class="mr-2"
+                @click.stop="openMedecinDialog('medecinAdresseur')" />
+            </div>
           </v-expansion-panel-title>
-          <v-expansion-panel-text />
+          <v-expansion-panel-text>
+            <template v-if="medecinAdresseur">
+              <v-row>
+                <v-col cols="12" md="6">
+                  <div class="field-label">Prénom / Nom</div>
+                  <div class="field-value">
+                    {{ [medecinAdresseur.firstName, medecinAdresseur.lastName].filter(Boolean).join(' ') || EMPTY }}
+                  </div>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <div class="field-label">Téléphone</div>
+                  <div class="field-value">{{ medecinAdresseur.phone || EMPTY }}</div>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <div class="field-label">Email</div>
+                  <div class="field-value">{{ medecinAdresseur.email || EMPTY }}</div>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <div class="field-label">Numéro Adeli</div>
+                  <div class="field-value">{{ medecinAdresseur.adeli || EMPTY }}</div>
+                </v-col>
+              </v-row>
+            </template>
+            <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
+              <div class="empty-state-icon mb-3">
+                <v-icon :icon="mdiDoctor" size="32" />
+              </div>
+              <div class="text-title-medium font-weight-bold mb-1">Aucun médecin adresseur</div>
+              <div class="text-body-small text-medium-emphasis mb-4">
+                Renseignez le médecin qui vous a adressé, s'il diffère du médecin traitant.
+              </div>
+              <v-btn color="primary" variant="flat" rounded="lg" class="text-none" :prepend-icon="mdiMagnify"
+                @click="openMedecinDialog('medecinAdresseur')">
+                Rechercher un médecin
+              </v-btn>
+            </div>
+          </v-expansion-panel-text>
         </v-expansion-panel>
 
         <!-- Prestataire -->
         <v-expansion-panel value="prestataire">
           <v-expansion-panel-title>
-            <span class="text-h6 font-weight-bold text-truncate">Prestataire</span>
+            <span class="panel-title">Prestataire</span>
           </v-expansion-panel-title>
-          <v-expansion-panel-text />
+          <v-expansion-panel-text>
+            <div class="d-flex flex-column align-center text-center pa-6 empty-state">
+              <div class="empty-state-icon mb-3">
+                <v-icon :icon="mdiTruckOutline" size="32" />
+              </div>
+              <div class="text-title-medium font-weight-bold mb-1">Aucun prestataire</div>
+              <div class="text-body-small text-medium-emphasis">
+                Votre prestataire de santé apparaîtra ici une fois renseigné.
+              </div>
+            </div>
+          </v-expansion-panel-text>
         </v-expansion-panel>
 
       </v-expansion-panels>
     </v-col>
+
+    <!-- =================== MÉDECIN TRAITANT DIALOG =================== -->
+    <v-dialog v-model="medecinDialogOpen" max-width="700" :fullscreen="$vuetify.display.mobile" scrollable>
+      <v-card class="pa-2 card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+        <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
+          <span class="text-headline-small font-weight-bold">Médecin</span>
+        </v-card-title>
+        <v-card-text class="px-4 pt-4">
+          <v-form @submit.prevent="searchMedecins">
+            <v-row density="comfortable">
+              <v-col cols="12" md>
+                <v-text-field v-model.trim="medecinSearchRpps" label="RPPS" variant="outlined" rounded="lg"
+                  inputmode="numeric" hide-details />
+              </v-col>
+              <v-col cols="12" md>
+                <v-text-field v-model.trim="medecinSearchLastName" label="Nom" variant="outlined" rounded="lg"
+                  hide-details />
+              </v-col>
+              <v-col cols="12" md="auto" class="d-flex align-center">
+                <v-btn color="primary" variant="flat" rounded="lg" class="text-none" height="56" block
+                  :prepend-icon="mdiMagnify" @click="searchMedecins">
+                  Rechercher
+                </v-btn>
+              </v-col>
+            </v-row>
+          </v-form>
+
+          <template v-if="medecinSearchResults.length">
+            <v-table v-if="!$vuetify.display.mobile" class="mt-4 medecin-table" density="comfortable">
+              <thead>
+                <tr>
+                  <th class="text-left">RPPS</th>
+                  <th class="text-left">Nom</th>
+                  <th class="text-left">Prénom</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="d in medecinSearchResults" :key="d.rpps" class="medecin-row" @click="selectMedecin(d)">
+                  <td>{{ d.rpps }}</td>
+                  <td>{{ d.lastName }}</td>
+                  <td>{{ d.firstName }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+
+            <div v-else class="mt-4 d-flex flex-column ga-2">
+              <v-card v-for="d in medecinSearchResults" :key="d.rpps" flat variant="outlined" rounded="lg"
+                class="medecin-card pa-3" @click="selectMedecin(d)">
+                <div class="field-label">RPPS</div>
+                <div class="field-value mb-2">{{ d.rpps }}</div>
+                <div class="field-label">Nom / Prénom</div>
+                <div class="field-value">{{ d.lastName }} {{ d.firstName }}</div>
+              </v-card>
+            </div>
+          </template>
+
+          <div v-else-if="medecinSearchPerformed" class="text-body-small text-medium-emphasis mt-4 text-center">
+            Aucun médecin trouvé.
+          </div>
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4">
+          <v-spacer />
+          <v-btn variant="text" rounded="lg" class="text-none" @click="medecinDialogOpen = false">
+            Fermer
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-row>
 </template>
 
 <style scoped>
-.field-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: rgba(0, 0, 0, 0.55);
-  margin-bottom: 4px;
+.medecin-table :deep(thead th) {
+  font-weight: 700 !important;
 }
 
-.field-value {
-  font-size: 1rem;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.87);
-  line-height: 1.4;
-  word-break: break-word;
+.medecin-table :deep(.medecin-row) {
+  cursor: pointer;
 }
 
-.field-value-multiline {
-  white-space: pre-wrap;
+.medecin-table :deep(.medecin-row:hover) {
+  background: rgba(var(--v-theme-primary), 0.06);
 }
 
-.cv-wrapper {
-  display: flex;
-  justify-content: center;
+.medecin-card {
+  cursor: pointer;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.medecin-card:hover {
+  background: rgba(var(--v-theme-primary), 0.06);
 }
 
 .cv-svg {
@@ -599,7 +810,14 @@ function cancelClinical(cancel) {
 }
 
 @keyframes cv-fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

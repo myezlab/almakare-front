@@ -42,6 +42,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/mon-compte',
+      name: 'MonCompte',
+      component: () => import('./views/MonCompteView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/test-epworth',
       name: 'EpworthTest',
       component: () => import('./views/EpworthTestView.vue'),

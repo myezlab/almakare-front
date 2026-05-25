@@ -5,7 +5,6 @@ import PlaceholderTab from "@/components/monDossier/PlaceholderTab.vue"
 import QuestionnairesTab from "@/components/monDossier/QuestionnairesTab.vue"
 import TraitementsTab from "@/components/monDossier/TraitementsTab.vue"
 import { ISOToShortenedDate } from "@/composables/useDates"
-import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
 import {
   mdiAccountOutline,
@@ -19,7 +18,6 @@ import { useRoute, useRouter } from "vue-router"
 
 const GENDER_LABELS = { male: 'Homme', female: 'Femme', other: 'Autre' }
 
-const messagesStore = useMessagesStore()
 const selfStore = useSelfStore()
 const router = useRouter()
 const route = useRoute()
@@ -74,14 +72,6 @@ const fullName = computed(() => {
   return `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Mon profil'
 })
 
-async function logOut() {
-  try {
-    selfStore.item = {}
-    router.push({ name: "Login" })
-  } catch (error) {
-    messagesStore.add({ type: 'error', text: 'Erreur lors de la déconnexion' })
-  }
-}
 </script>
 
 <template>
@@ -122,13 +112,6 @@ async function logOut() {
         <DocumentsTab v-else-if="activeTab === 'documents'" />
         <PlaceholderTab v-else-if="tabPlaceholders[activeTab]" :title="tabPlaceholders[activeTab].title"
           :subtitle="tabPlaceholders[activeTab].subtitle" :icon="tabPlaceholders[activeTab].icon" />
-
-        <!-- Log Out -->
-        <v-row justify="center">
-          <v-btn color="error" variant="outlined" class="text-none mt-6 mb-16" @click="logOut" rounded="lg">
-            Se déconnecter
-          </v-btn>
-        </v-row>
 
       </v-col>
     </v-row>
@@ -183,7 +166,7 @@ async function logOut() {
 .profile-chips :deep(.v-slide-group__content) {
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: 2px;
   white-space: normal;
 }
 </style>

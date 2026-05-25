@@ -35,7 +35,7 @@ watch(supportDialog, (open) => {
 })
 
 function goToAccount() {
-  router.push({ name: 'MonDossier' })
+  router.push({ name: 'MonCompte' })
 }
 
 function logout() {
@@ -69,8 +69,8 @@ const accountLabel = computed(() => {
       <v-img :src="logoInitials" width="28" height="28" contain />
     </v-btn>
     <v-spacer />
-    <v-btn variant="text" color="white" aria-label="Aide" rounded="lg" min-width="0" class="px-3" width="40"
-      hidden="40" @click="supportDialog = true">
+    <v-btn variant="text" color="white" aria-label="Aide" rounded="lg" min-width="0" class="px-3" width="40" hidden="40"
+      @click="supportDialog = true">
       <v-icon :icon="mdiHelpCircleOutline" />
     </v-btn>
     <v-menu offset="8">
@@ -79,7 +79,7 @@ const accountLabel = computed(() => {
           {{ accountLabel }}
         </v-btn>
       </template>
-      <v-list density="compact" rounded="lg">
+      <v-list density="compact" rounded="lg" class="card-shadow">
         <v-list-item :prepend-icon="mdiAccountOutline" title="Mon compte" @click="goToAccount" />
         <v-list-item :prepend-icon="mdiLogout" title="Déconnexion" @click="logout" />
       </v-list>
@@ -88,7 +88,7 @@ const accountLabel = computed(() => {
 
   <!-- Support dialog -->
   <v-dialog v-model="supportDialog" max-width="560" :fullscreen="$vuetify.display.mobile" scrollable>
-    <v-card :rounded="$vuetify.display.mobile ? 0 : 'lg'">
+    <v-card :rounded="$vuetify.display.mobile ? 0 : 'lg'" class="card-shadow">
       <v-card-title class="d-flex align-center ga-2 pa-4 support-dialog-title">
         <span class="text-headline-small font-weight-bold flex-grow-1">Envoyer une demande d'assistance</span>
         <v-btn :icon="mdiClose" variant="text" size="small" aria-label="Fermer" @click="supportDialog = false" />
