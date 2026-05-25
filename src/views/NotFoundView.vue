@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 function goHome() {
-  router.push({ name: 'Accueil' })
+  router.push({ name: 'Dashboard' })
 }
 </script>
 
@@ -20,7 +20,7 @@ function goHome() {
           La page que vous cherchez n'existe pas ou a été déplacée.
         </div>
         <v-btn color="primary" size="large" rounded="pill" class="text-none" @click="goHome">
-          Retour à l'accueil
+          Retour au dashboard
         </v-btn>
       </v-col>
     </v-row>

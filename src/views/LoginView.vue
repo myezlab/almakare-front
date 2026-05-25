@@ -1,16 +1,14 @@
 <script setup>
-import patientIllustration from "@/assets/illustrations/patient.svg"
+import backgroundLight from "@/assets/img/background-light.svg"
+import logoText from "@/assets/img/logo-text.svg"
 import { useRules } from "@/composables/useRules"
-import personalDataAuthorizationContent from "@/data/personalDataAuthorization.json"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
 import {
   mdiCheckCircleOutline,
   mdiEye,
   mdiEyeOff,
-  mdiGoogle,
 } from "@mdi/js"
-import { marked } from "marked"
 import { computed, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 
@@ -23,7 +21,6 @@ const { required, emailValidation, passwordValidation } = useRules()
 // sign-in | sign-up | reset-password | loading | success
 const status = ref(route.query.mode === "signup" ? "sign-up" : "sign-in")
 const pendingEmail = ref(false)
-const pendingGoogle = ref(false)
 
 // Sign-in
 const signInEmail = ref("test@test.fr")
@@ -38,10 +35,6 @@ const signUpConfirmPassword = ref("testtest")
 const showSignUpPassword = ref(false)
 const showSignUpConfirmPassword = ref(false)
 const signUpForm = ref(null)
-const agreementChecked = ref(false)
-const showAgreementDialog = ref(false)
-
-const parsedAgreement = computed(() => marked(personalDataAuthorizationContent["fr-FR"] || ""))
 
 // Password reset
 const resetEmail = ref("")
@@ -54,7 +47,7 @@ const signUpPasswordsMatch = computed(() => {
 
 function redirectToApp() {
   status.value = "success"
-  setTimeout(() => router.push({ name: "Accueil" }), 1000)
+  setTimeout(() => router.push({ name: "Dashboard" }), 1000)
 }
 
 async function handleSignIn() {
@@ -79,8 +72,6 @@ async function handleSignUp() {
   try {
     selfStore.item.id = "123456"
     selfStore.item.email = signUpEmail.value
-    selfStore.item.agreementPersonal = true
-    selfStore.item.agreementPersonalDate = new Date().toISOString()
     messagesStore.add({ id: "welcome", type: "success", text: 'Connexion réussie' })
     redirectToApp()
   } catch (error) {
@@ -92,30 +83,6 @@ async function handleSignUp() {
     }
   } finally {
     pendingEmail.value = false
-  }
-}
-
-async function handleGoogleSignIn() {
-  if (status.value === "sign-up" && !agreementChecked.value) {
-    messagesStore.add({ type: "info", text: "Veuillez accepter les conditions de traitement de vos données personnelles" })
-    return
-  }
-  pendingGoogle.value = true
-  try {
-    selfStore.item.id = "123456"
-    if (status.value === "sign-up") {
-      selfStore.item.agreementPersonal = true
-      selfStore.item.agreementPersonalDate = new Date().toISOString()
-    }
-    messagesStore.add({ id: "welcome", type: "success", text: 'Connexion réussie' })
-    redirectToApp()
-  } catch (error) {
-    console.error("Google sign-in error:", error)
-    if (error.code !== "auth/popup-closed-by-user") {
-      messagesStore.add({ type: "error", text: 'Erreur de connexion' })
-    }
-  } finally {
-    pendingGoogle.value = false
   }
 }
 
@@ -138,15 +105,9 @@ async function handlePasswordReset() {
 </script>
 
 <template>
-  <div class="login-wrapper d-flex flex-column align-center justify-center min-h-screen">
+  <div class="login-wrapper d-flex flex-column align-center justify-center min-h-screen"
+    :style="{ backgroundImage: `url(${backgroundLight})` }">
     <v-card class="login-card pa-8 text-center rounded-15 card-shadow" :max-width="450" width="100%">
-
-      <div class="d-flex justify-start mb-4" v-if="!['success', 'loading'].includes(status)">
-        <v-btn variant="text" color="medium-emphasis" rounded="lg" size="small" class="text-none"
-          @click="router.push('/')">
-          Retour
-        </v-btn>
-      </div>
 
       <!-- Loading -->
       <template v-if="status === 'loading'">
@@ -157,7 +118,7 @@ async function handlePasswordReset() {
 
       <!-- Sign in -->
       <template v-if="status === 'sign-in'">
-        <img :src="patientIllustration" alt="" class="header-illustration mb-4" />
+        <img :src="logoText" alt="" class="header-illustration mb-4" />
         <div class="text-headline-small font-weight-bold mb-2">Bon retour parmi nous</div>
         <div class="text-body-medium text-medium-emphasis mb-6">Connectez-vous avec votre email et mot de passe</div>
 
@@ -177,22 +138,11 @@ async function handlePasswordReset() {
             </v-btn>
           </div>
 
-          <v-btn color="primary" rounded="lg" flat size="large" block :loading="pendingEmail" :disabled="pendingGoogle"
-            type="submit" class="text-none mb-4">
+          <v-btn color="primary" rounded="lg" flat size="large" block :loading="pendingEmail" type="submit"
+            class="text-none mb-4">
             Se connecter
           </v-btn>
         </v-form>
-
-        <div class="d-flex align-center my-2">
-          <v-divider />
-          <span class="text-body-small text-medium-emphasis mx-3">ou</span>
-          <v-divider />
-        </div>
-
-        <v-btn :prepend-icon="mdiGoogle" variant="outlined" rounded="lg" size="large" block :loading="pendingGoogle"
-          :disabled="pendingEmail" class="text-none mt-4" @click="handleGoogleSignIn">
-          Se connecter avec Google
-        </v-btn>
 
         <div class="mt-6 text-body-small text-medium-emphasis">
           Pas encore de compte ?
@@ -205,7 +155,7 @@ async function handlePasswordReset() {
 
       <!-- Sign up -->
       <template v-if="status === 'sign-up'">
-        <img :src="patientIllustration" alt="" class="header-illustration mb-4" />
+        <img :src="logoText" alt="" class="header-illustration mb-4" />
         <div class="text-headline-small font-weight-bold mb-2">Créer un compte</div>
         <div class="text-body-medium text-medium-emphasis mb-6">Rejoignez Almakare en créant votre compte</div>
 
@@ -224,33 +174,11 @@ async function handlePasswordReset() {
             :append-inner-icon="showSignUpConfirmPassword ? mdiEyeOff : mdiEye"
             @click:append-inner="showSignUpConfirmPassword = !showSignUpConfirmPassword" />
 
-          <v-checkbox v-model="agreementChecked" color="primary" density="comfortable" class="text-left mb-2"
-            :rules="[v => !!v || 'Vous devez accepter les conditions de traitement de vos données personnelles']">
-            <template #label>
-              <span class="text-body-small">
-                J'ai lu et j'accepte
-                <a class="agreement-link" @click.stop.prevent="showAgreementDialog = true">les conditions</a>
-                de traitement de mes données personnelles
-              </span>
-            </template>
-          </v-checkbox>
-
-          <v-btn color="primary" rounded="lg" flat size="large" block :loading="pendingEmail" :disabled="pendingGoogle"
-            type="submit" class="text-none mb-4">
+          <v-btn color="primary" rounded="lg" flat size="large" block :loading="pendingEmail" type="submit"
+            class="text-none mb-4">
             S'inscrire
           </v-btn>
         </v-form>
-
-        <div class="d-flex align-center my-2">
-          <v-divider />
-          <span class="text-body-small text-medium-emphasis mx-3">ou</span>
-          <v-divider />
-        </div>
-
-        <v-btn :prepend-icon="mdiGoogle" variant="outlined" rounded="lg" size="large" block :loading="pendingGoogle"
-          :disabled="pendingEmail" class="text-none mt-4" @click="handleGoogleSignIn">
-          Se connecter avec Google
-        </v-btn>
 
         <div class="mt-6 text-body-small text-medium-emphasis">
           Déjà un compte ?
@@ -263,7 +191,7 @@ async function handlePasswordReset() {
 
       <!-- Reset password -->
       <template v-if="status === 'reset-password'">
-        <img :src="patientIllustration" alt="" class="header-illustration mb-4" />
+        <img :src="logoText" alt="" class="header-illustration mb-4" />
         <div class="text-headline-small font-weight-bold mb-2">Réinitialiser le mot de passe</div>
         <div class="text-body-medium text-medium-emphasis mb-6">Entrez votre adresse email pour recevoir un lien de
           réinitialisation</div>
@@ -302,19 +230,6 @@ async function handlePasswordReset() {
       </template>
 
     </v-card>
-
-    <v-dialog v-model="showAgreementDialog" max-width="700" scrollable>
-      <v-card class="rounded-15">
-        <v-card-text class="pa-6">
-          <div class="markdown-content text-left" v-html="parsedAgreement" />
-        </v-card-text>
-        <v-card-actions class="px-6 pb-4 justify-end">
-          <v-btn color="primary" variant="text" rounded="lg" class="text-none" @click="showAgreementDialog = false">
-            Fermer
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
@@ -327,6 +242,9 @@ async function handlePasswordReset() {
   padding-left: 16px;
   padding-right: 16px;
   background-color: rgb(var(--v-theme-background));
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 @media (max-width: 600px) {
@@ -344,18 +262,12 @@ async function handlePasswordReset() {
 }
 
 .header-illustration {
-  height: 100px;
+  height: 60px;
   width: auto;
   max-width: 100%;
   object-fit: contain;
   display: block;
   margin-left: auto;
   margin-right: auto;
-}
-
-.agreement-link {
-  color: rgb(var(--v-theme-primary));
-  text-decoration: underline;
-  cursor: pointer;
 }
 </style>

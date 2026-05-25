@@ -1,12 +1,11 @@
 <script setup>
 import logoText from '@/assets/img/logo-text-white.svg'
-import notificationsData from '@/data/notifications.json'
-import { useProfileCompletion } from '@/composables/useProfileCompletion'
-import { useReadState } from '@/composables/useReadState.js'
+import { useRules } from '@/composables/useRules'
+import { useMessagesStore } from '@/stores/messages'
 import { useParamsStore } from '@/stores/params'
 import { useSelfStore } from '@/stores/self'
-import { mdiAccount, mdiBellOutline, mdiCalendarPlusOutline, mdiChartBar, mdiClipboardPulse, mdiMoonWaningCrescent } from '@mdi/js'
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { mdiAccountOutline, mdiClipboardPulse, mdiClose, mdiHelpCircleOutline, mdiMoonWaningCrescent } from '@mdi/js'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const InstallAppCard = defineAsyncComponent(() =>
@@ -16,18 +15,49 @@ const InstallAppCard = defineAsyncComponent(() =>
 const router = useRouter()
 const selfStore = useSelfStore()
 const paramsStore = useParamsStore()
-const { isNotificationRead } = useReadState()
+const messagesStore = useMessagesStore()
+const { emailValidation, required } = useRules()
 
-const loading = ref(true)
-const usersCount = ref(0)
-const projectsCount = ref(0)
+const supportDialog = ref(false)
+const supportFormRef = ref(null)
+const supportSubmitting = ref(false)
+const supportForm = ref({
+  firstName: '',
+  lastName: '',
+  email: '',
+  subject: '',
+  message: '',
+})
 
-const unreadNotificationsCount = computed(
-  () => notificationsData.filter(n => !isNotificationRead(n)).length,
-)
+watch(supportDialog, (open) => {
+  if (!open) return
+  supportForm.value = {
+    firstName: selfStore.item?.firstName || '',
+    lastName: selfStore.item?.lastName || '',
+    email: selfStore.item?.email || '',
+    subject: '',
+    message: '',
+  }
+})
 
-const currentUser = computed(() => selfStore.item || {})
-const { completionPercent } = useProfileCompletion(currentUser)
+async function submitSupport() {
+  const { valid } = await supportFormRef.value.validate()
+  if (!valid) return
+  supportSubmitting.value = true
+  try {
+    messagesStore.add({ type: 'success', text: "Demande d'assistance envoyée" })
+    supportDialog.value = false
+  } finally {
+    supportSubmitting.value = false
+  }
+}
+
+const accountLabel = computed(() => {
+  const first = selfStore.item?.firstName?.trim() || ''
+  const last = selfStore.item?.lastName?.trim() || ''
+  const full = `${first} ${last}`.trim()
+  return full || 'Utilisateur'
+})
 
 const epworthScoreColor = computed(() => {
   const score = selfStore.item?.epworthScore
@@ -50,11 +80,14 @@ const epworthScoreLabel = computed(() => {
 <template>
   <div>
     <div v-if="selfStore.item.id" class="home-banner">
-      <v-badge :content="unreadNotificationsCount" :model-value="unreadNotificationsCount > 0" color="error"
-        offset-x="8" offset-y="8" class="home-banner-notif-btn">
-        <v-btn :icon="mdiBellOutline" variant="text" color="white"
-          @click="router.push({ name: 'Notifications' })" aria-label="Notifications" />
-      </v-badge>
+      <div class="home-banner-actions">
+        <v-btn :icon="mdiHelpCircleOutline" variant="text" color="white" aria-label="Aide"
+          @click="supportDialog = true" />
+        <v-btn :prepend-icon="mdiAccountOutline" variant="text" color="white" class="text-none"
+          @click="router.push({ name: 'DonneesPatient' })">
+          {{ accountLabel }}
+        </v-btn>
+      </div>
       <div class="home-banner-sparkles" aria-hidden="true">
         <span class="sparkle sparkle-1"></span>
         <span class="sparkle sparkle-2"></span>
@@ -74,63 +107,11 @@ const epworthScoreLabel = computed(() => {
     <v-row v-if="selfStore.item.id" justify="center" class="mx-6 mb-16 pb-10">
       <v-col :cols="$vuetify.display.mobile ? 12 : 10">
 
-        <!-- Book appointment hero CTA -->
-        <v-card :class="{ 'mt-6': !$vuetify.display.mobile }" class="pa-6 rounded-15 cursor-pointer book-appt-hero" flat
-          @click="router.push({ name: 'Agenda' })">
-          <div class="book-appt-hero-glow" aria-hidden="true"></div>
-          <v-row align="center" class="position-relative">
-            <v-col>
-              <div class="text-title-medium text-uppercase font-weight-bold mb-1 book-appt-hero-eyebrow">
-                Rendez-vous
-              </div>
-              <div class="text-h6 font-weight-bold text-white mb-2 book-appt-hero-title">
-                Consultez un médecin du sommeil
-              </div>
-              <div class="text-body-medium book-appt-hero-subtitle mb-4">
-                Prenez rendez-vous en quelques clics
-              </div>
-              <v-btn :prepend-icon="mdiCalendarPlusOutline" color="white" rounded="lg" size="large"
-                @click.stop="router.push({ name: 'Agenda' })" class="text-none book-appt-hero-btn">
-                Prendre rendez-vous
-              </v-btn>
-            </v-col>
-            <v-col cols="auto" class="d-none d-sm-block">
-              <v-img src="@/assets/illustrations/medicine.svg" width="120" height="110" contain
-                transition="fade-transition" />
-            </v-col>
-          </v-row>
-        </v-card>
-
-        <!-- Two-column grid of secondary cards (desktop) / stacked (mobile) -->
-        <v-row class="mt-6">
+        <!-- Two-column grid of cards (desktop) / stacked (mobile) -->
+        <v-row :class="{ 'mt-6': !$vuetify.display.mobile }">
           <!-- Install app card -->
           <v-col v-if="paramsStore.beforeinstallprompt" cols="12" md="6">
             <InstallAppCard class="h-100" />
-          </v-col>
-
-          <!-- Complete your profile card -->
-          <v-col v-if="completionPercent < 100" cols="12" md="6">
-            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100" @click="router.push({ name: 'Profile', query: { tab: 'donnees-patient' } })">
-              <v-row align="center">
-                <v-col>
-                  <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-                    Complétez votre profil
-                  </div>
-                  <div class="text-body-medium text-medium-emphasis mb-4">
-                    Renseignez vos informations pour accéder à toutes les fonctionnalités
-                  </div>
-                  <v-btn :prepend-icon="mdiAccount" variant="tonal" color="primary" rounded="lg"
-                    @click.stop="router.push({ name: 'Profile', query: { tab: 'donnees-patient' } })" class="text-none">
-                    Profil
-                  </v-btn>
-                </v-col>
-                <v-col cols="auto">
-                  <v-progress-circular :model-value="completionPercent" color="primary" size="80" width="6">
-                    <span class="text-body-medium font-weight-bold">{{ completionPercent }}%</span>
-                  </v-progress-circular>
-                </v-col>
-              </v-row>
-            </v-card>
           </v-col>
 
           <!-- Sleep diary card -->
@@ -189,30 +170,6 @@ const epworthScoreLabel = computed(() => {
             </v-card>
           </v-col>
 
-          <!-- Sleep stats France card -->
-          <v-col cols="12" md="6">
-            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
-              @click="router.push({ name: 'SleepStatsFrance' })">
-              <v-row align="center">
-                <v-col>
-                  <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
-                    En savoir plus
-                  </div>
-                  <div class="text-body-medium text-medium-emphasis mb-4">
-                    Chiffres clés sur les troubles du sommeil en France
-                  </div>
-                  <v-btn :prepend-icon="mdiChartBar" variant="tonal" color="primary" rounded="lg"
-                    @click.stop="router.push({ name: 'SleepStatsFrance' })" class="text-none">
-                    Découvrir
-                  </v-btn>
-                </v-col>
-                <v-col cols="auto">
-                  <v-img src="@/assets/illustrations/information.svg" width="100" height="90" contain
-                    transition="fade-transition" />
-                </v-col>
-              </v-row>
-            </v-card>
-          </v-col>
         </v-row>
 
       </v-col>
@@ -221,20 +178,6 @@ const epworthScoreLabel = computed(() => {
       <v-col :cols="$vuetify.display.mobile ? 12 : 10">
 
         <v-skeleton-loader type="heading" class="mb-6" width="200" />
-
-        <!-- Profile completion card skeleton -->
-        <v-card class="mt-6 pa-6 card-shadow rounded-15">
-          <v-row align="center">
-            <v-col>
-              <v-skeleton-loader type="heading" class="mb-2" />
-              <v-skeleton-loader type="text" class="mb-4" />
-              <v-skeleton-loader type="button" />
-            </v-col>
-            <v-col cols="auto">
-              <v-skeleton-loader type="avatar" width="80" height="80" />
-            </v-col>
-          </v-row>
-        </v-card>
 
         <!-- Sleep diary card skeleton -->
         <v-card class="mt-4 pa-6 card-shadow rounded-15">
@@ -266,10 +209,51 @@ const epworthScoreLabel = computed(() => {
 
       </v-col>
     </v-row>
+
+    <!-- Support dialog -->
+    <v-dialog v-model="supportDialog" max-width="560" :fullscreen="$vuetify.display.mobile" scrollable>
+      <v-card :rounded="$vuetify.display.mobile ? 0 : 'lg'">
+        <v-card-title class="d-flex align-center ga-2 pa-4 support-dialog-title">
+          <span class="text-headline-small font-weight-bold flex-grow-1">Envoyer une demande d'assistance</span>
+          <v-btn :icon="mdiClose" variant="text" size="small" aria-label="Fermer" @click="supportDialog = false" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-4">
+          <v-form ref="supportFormRef" @submit.prevent="submitSupport">
+            <v-text-field v-model.trim="supportForm.firstName" label="Prénom*" variant="outlined" rounded="lg"
+              :rules="[required]" />
+            <v-text-field v-model.trim="supportForm.lastName" label="Nom*" variant="outlined" rounded="lg"
+              :rules="[required]" />
+            <v-text-field v-model.trim="supportForm.email" label="Email*" type="email" variant="outlined" rounded="lg"
+              :rules="[required, emailValidation]" />
+            <v-text-field v-model.trim="supportForm.subject" label="Objet*" variant="outlined" rounded="lg"
+              :rules="[required]" />
+            <v-textarea v-model.trim="supportForm.message" label="Problème rencontré*" variant="outlined" rounded="lg"
+              rows="4" auto-grow :rules="[required]" />
+          </v-form>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" rounded="lg" class="text-none" @click="supportDialog = false">Annuler</v-btn>
+          <v-btn color="primary" variant="flat" rounded="lg" class="text-none" :loading="supportSubmitting"
+            @click="submitSupport">Envoyer</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <style scoped>
+.support-dialog-title :deep(span),
+.support-dialog-title span {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.25;
+  min-width: 0;
+}
+
 .home-banner {
   position: relative;
   left: 0;
@@ -285,11 +269,14 @@ const epworthScoreLabel = computed(() => {
   margin-bottom: 24px;
 }
 
-.home-banner-notif-btn {
+.home-banner-actions {
   position: absolute;
   top: 12px;
   right: 12px;
   z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .home-banner-logo {
@@ -408,49 +395,5 @@ const epworthScoreLabel = computed(() => {
     opacity: 0.7;
     transform: scale(1);
   }
-}
-
-.book-appt-hero {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, #1c5089 0%, #1c5089 60%, #1c5089 100%);
-  box-shadow: 0 12px 32px rgba(28, 80, 137, 0.32), 0 2px 6px rgba(28, 80, 137, 0.18);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  color: #ffffff;
-}
-
-.book-appt-hero:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 40px rgba(28, 80, 137, 0.38), 0 4px 10px rgba(28, 80, 137, 0.2);
-}
-
-.book-appt-hero-glow {
-  position: absolute;
-  top: -40%;
-  right: -10%;
-  width: 320px;
-  height: 320px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 70%);
-  pointer-events: none;
-}
-
-.book-appt-hero-eyebrow {
-  color: rgba(255, 255, 255, 0.75);
-  letter-spacing: 0.08em;
-}
-
-.book-appt-hero-title {
-  color: #ffffff;
-  line-height: 1.25;
-}
-
-.book-appt-hero-subtitle {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.book-appt-hero-btn {
-  color: #1c5089;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 </style>

@@ -1,5 +1,4 @@
 <script setup>
-import Picture from "@/components/Picture.vue"
 import ProfileDocumentsTab from "@/components/profile/ProfileDocumentsTab.vue"
 import ProfileDonneesPatientTab from "@/components/profile/ProfileDonneesPatientTab.vue"
 import ProfilePlaceholderTab from "@/components/profile/ProfilePlaceholderTab.vue"
@@ -76,7 +75,7 @@ const fullName = computed(() => {
 async function logOut() {
   try {
     selfStore.item = {}
-    router.push({ name: "Home" })
+    router.push({ name: "Login" })
   } catch (error) {
     messagesStore.add({ type: 'error', text: 'Erreur lors de la déconnexion' })
   }
@@ -91,7 +90,7 @@ async function logOut() {
         <!-- =================== HEADER =================== -->
         <v-row class="mb-6" align="center" :class="{ 'mx-6': $vuetify.display.mobile }">
           <v-col align-self="center">
-            <div class="text-headline-medium font-weight-bold">Mon profil</div>
+            <div class="text-headline-medium font-weight-bold">Mon espace</div>
             <div class="text-body-medium text-medium-emphasis mt-1">
               <v-icon :icon="mdiAccountCircleOutline" size="18" class="mr-1" />
               Gérez vos informations personnelles et médicales
@@ -110,13 +109,10 @@ async function logOut() {
             <v-list density="comfortable" min-width="200" class="card-shadow rounded-lg">
               <v-list-item :prepend-icon="mdiCogOutline" title="Paramètres"
                 @click="router.push({ name: 'Settings' })" />
-              <v-list-item :prepend-icon="mdiLogoutVariant" title="Se déconnecter" base-color="error"
-                @click="logOut" />
+              <v-list-item :prepend-icon="mdiLogoutVariant" title="Se déconnecter" base-color="error" @click="logOut" />
             </v-list>
           </v-menu>
           <div class="d-flex flex-column align-center text-center">
-            <Picture :docPath="`users/${selfStore.item.id}`" :storagePath="`users/${selfStore.item.id}`"
-              v-model:source="selfStore.item.avatarUrl" pictureName="avatar" :size="96" for="avatar" :cover="true" />
             <div class="text-headline-small font-weight-bold mt-3">{{ fullName }}</div>
 
             <div class="d-flex flex-wrap justify-center ga-2 mt-4">
@@ -178,9 +174,6 @@ async function logOut() {
         <!-- General section skeleton -->
         <v-card class="mb-4 card-shadow pa-4" :class="{ 'rounded-15': !$vuetify.display.mobile }">
           <v-skeleton-loader type="heading" class="mb-4" />
-          <div class="d-flex justify-center mb-4">
-            <v-skeleton-loader type="avatar" />
-          </div>
           <v-row>
             <v-col cols="12" md="6"><v-skeleton-loader type="text" /></v-col>
             <v-col cols="12" md="6"><v-skeleton-loader type="text" /></v-col>

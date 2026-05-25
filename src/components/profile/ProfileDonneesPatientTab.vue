@@ -1,8 +1,6 @@
 <script setup>
 import CarteVitaleCard from "@/components/CarteVitaleCard.vue"
-import ProfileCompletion from "@/components/ProfileCompletion.vue"
 import { ISOToShortenedDate } from "@/composables/useDates"
-import { useProfileCompletion } from "@/composables/useProfileCompletion"
 
 import { useRules } from "@/composables/useRules"
 import gendersEnum from "@/enums/genders.json"
@@ -19,7 +17,6 @@ const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
 
 const currentUser = computed(() => selfStore.item || {})
-const { completionPercent, profileSections } = useProfileCompletion(currentUser)
 
 const addressSelected = ref(false)
 
@@ -27,25 +24,6 @@ const generalFormRef = ref(null)
 const medicalFormRef = ref(null)
 const clinicalFormRef = ref(null)
 
-const generalCardRef = ref(null)
-const medicalCardRef = ref(null)
-const carteVitaleCardRef = ref(null)
-const clinicalCardRef = ref(null)
-
-const SECTION_REFS = {
-  general: () => generalCardRef.value,
-  medical: () => medicalCardRef.value,
-  carteVitale: () => carteVitaleCardRef.value,
-  clinical: () => clinicalCardRef.value,
-}
-
-function scrollToSection(section) {
-  const target = SECTION_REFS[section?.key]?.()
-  if (!target) return
-  const el = target.$el || target
-  if (typeof el.scrollIntoView !== 'function') return
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
 const savingGeneral = ref(false)
 const savingMedical = ref(false)
 const savingClinical = ref(false)
@@ -246,17 +224,9 @@ function cancelClinical(cancel) {
 <template>
   <v-row>
     <v-col cols="12">
-      <ProfileCompletion :class="{ 'mx-6': $vuetify.display.mobile }" :completionPercent="completionPercent"
-        completionTitle="Complétez votre profil" completeTitle="Profil complet"
-        completionSubtitle="Renseignez vos informations pour accéder à toutes les fonctionnalités"
-        completeSubtitle="Toutes vos informations sont renseignées"
-        :sections="profileSections.filter(s => SECTION_REFS[s.key])" @section-click="scrollToSection" />
-    </v-col>
-
-    <v-col cols="12">
 
       <!-- Données Générales -->
-      <v-card ref="generalCardRef" class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+      <v-card class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
         <!-- VIEW MODE -->
         <template v-if="showGeneralView">
           <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
@@ -391,7 +361,7 @@ function cancelClinical(cancel) {
 
     <v-col cols="12">
       <!-- Données Médicales -->
-      <v-card ref="medicalCardRef" class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+      <v-card class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
         <!-- VIEW MODE -->
         <template v-if="showMedicalView">
           <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
@@ -485,14 +455,12 @@ function cancelClinical(cancel) {
     </v-col>
 
     <v-col cols="12">
-      <div ref="carteVitaleCardRef">
-        <CarteVitaleCard />
-      </div>
+      <CarteVitaleCard />
     </v-col>
 
     <v-col cols="12">
       <!-- Données Cliniques -->
-      <v-card ref="clinicalCardRef" class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+      <v-card class="card-shadow pa-2" :class="{ 'rounded-15': !$vuetify.display.mobile }">
         <!-- VIEW MODE -->
         <template v-if="showClinicalView">
           <v-card-title class="d-flex align-center px-4 pt-4 pb-0">

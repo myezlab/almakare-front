@@ -27,43 +27,17 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'Home',
-      component: () => import('./views/HomeView.vue'),
-      meta: { guest: true },
+      redirect: { name: 'Dashboard' },
     },
     {
-      path: '/notifications',
-      name: 'Notifications',
-      component: () => import('./views/NotificationsView.vue'),
+      path: '/dashboard',
+      name: 'Dashboard',
+      component: () => import('./views/DashboardView.vue'),
       meta: { requiresAuth: true },
     },
     {
-      path: '/accueil',
-      name: 'Accueil',
-      component: () => import('./views/AccueilView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/agenda',
-      name: 'Agenda',
-      component: () => import('./views/BookAppointmentView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/rendez-vous/:id',
-      name: 'Appointment',
-      component: () => import('./views/AppointmentView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/acte/:id',
-      name: 'Acte',
-      component: () => import('./views/ActeView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/profil',
-      name: 'Profile',
+      path: '/donnees-patient',
+      name: 'DonneesPatient',
       component: () => import('./views/ProfileView.vue'),
       meta: { requiresAuth: true },
     },
@@ -71,18 +45,6 @@ const router = createRouter({
       path: '/parametres',
       name: 'Settings',
       component: () => import('./views/SettingsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/messages',
-      name: 'Messages',
-      component: () => import('./views/MessagesView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/messages/:threadId',
-      name: 'Conversation',
-      component: () => import('./views/ConversationView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -95,18 +57,6 @@ const router = createRouter({
       path: '/agenda-sommeil',
       name: 'SleepDiary',
       component: () => import('./views/SleepDiaryView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/parcours-hospitalisation',
-      name: 'HospitalizationJourney',
-      component: () => import('./views/HospitalizationJourneyView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/troubles-du-sommeil',
-      name: 'SleepStatsFrance',
-      component: () => import('./views/SleepStatsFranceView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -133,16 +83,6 @@ const LAST_ROUTE_KEY = 'almakare:lastRoute'
 router.beforeEach(async (to, from, next) => {
   const selfStore = useSelfStore()
   const authenticated = isAuthenticated(selfStore)
-
-  if (to.name === 'Home' && authenticated) {
-    const saved = localStorage.getItem(LAST_ROUTE_KEY)
-    if (saved && saved !== to.fullPath) {
-      next(saved)
-      return
-    }
-    next({ name: 'Accueil' })
-    return
-  }
 
   if (to.meta?.requiresAuth && !authenticated) {
     next({ name: 'Login' })

@@ -118,7 +118,7 @@ Defined in [src/router.js](src/router.js):
 | -------------------------- | -------------------------- | ------------ |
 | `/`                        | HomeView (landing)         | guest        |
 | `/login`                   | LoginView                  | guest        |
-| `/accueil`                 | AccueilView                | requiresAuth |
+| `/dashboard`               | DashboardView              | requiresAuth |
 | `/profil`                  | ProfileView                | requiresAuth |
 | `/messages`                | MessagesView               | requiresAuth |
 | `/notifications`           | NotificationsView          | requiresAuth |
@@ -131,7 +131,7 @@ Defined in [src/router.js](src/router.js):
 Navigation behavior ([src/router.js:103-123](src/router.js#L103-L123)):
 
 - `requiresAuth` routes redirect to `/login` when the user is not authenticated (i.e. `selfStore.item.id` is falsy).
-- Authenticated visits to `/` are redirected to the last visited protected route (stored in `localStorage` under `almakare:lastRoute`), falling back to `/accueil`.
+- Authenticated visits to `/` are redirected to the last visited protected route (stored in `localStorage` under `almakare:lastRoute`), falling back to `/dashboard`.
 
 ---
 
