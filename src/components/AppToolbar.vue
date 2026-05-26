@@ -38,6 +38,10 @@ function goToAccount() {
   router.push({ name: 'MonCompte' })
 }
 
+function goToDashboard() {
+  router.push({ name: 'Dashboard' })
+}
+
 function logout() {
   selfStore.item = {}
   router.push({ name: 'Login' })
@@ -65,7 +69,8 @@ const accountLabel = computed(() => {
 
 <template>
   <v-toolbar flat color="primary" density="comfortable">
-    <v-btn v-if="$vuetify.display.mobile" icon variant="text" color="white" aria-label="Almakare">
+    <v-btn v-if="$vuetify.display.mobile" icon variant="text" color="white" aria-label="Almakare"
+      @click="goToDashboard">
       <v-img :src="logoInitials" width="28" height="28" contain />
     </v-btn>
     <v-spacer />

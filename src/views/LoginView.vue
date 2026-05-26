@@ -57,6 +57,7 @@ async function handleSignIn() {
     selfStore.item.email = signInEmail.value
     if (!selfStore.item.createdAt) selfStore.item.createdAt = new Date().toISOString()
     redirectToApp()
+    messagesStore.add({ type: "success", text: "Bienvenue" })
   } catch (error) {
     console.error("Sign-in error:", error)
     messagesStore.add({ type: "error", text: 'Email ou mot de passe incorrect' })
@@ -250,6 +251,9 @@ async function handlePasswordReset() {
     min-height: 100vh;
     border-radius: 0 !important;
     box-shadow: none !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 }
 

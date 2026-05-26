@@ -72,7 +72,7 @@ const epworthScoreLabel = computed(() => {
           <!-- Epworth test card -->
           <v-col v-if="selfStore.item?.epworthScore == null" cols="12" md="6">
             <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
-              @click="router.push({ name: 'EpworthTest' })">
+              @click="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires' } })">
               <v-row align="center">
                 <v-col>
                   <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
@@ -87,7 +87,9 @@ const epworthScoreLabel = computed(() => {
                       {{ epworthScoreLabel }}
                     </v-chip>
                     <v-btn v-if="selfStore.item?.epworthScore == null" :prepend-icon="mdiClipboardPulse" variant="tonal"
-                      color="primary" rounded="lg" @click.stop="router.push({ name: 'EpworthTest' })" class="text-none">
+                      color="primary" rounded="lg"
+                      @click.stop="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires' } })"
+                      class="text-none">
                       Passer le test
                     </v-btn>
                   </div>

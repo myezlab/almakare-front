@@ -2,6 +2,7 @@
 import { ISOToShortenedDate } from "@/composables/useDates"
 
 import { useRules } from "@/composables/useRules"
+import { useUrlPanels } from "@/composables/useUrlPanels"
 import { DOCTORS_SEED } from "@/data/doctors"
 import gendersEnum from "@/enums/genders.json"
 import { useMessagesStore } from "@/stores/messages"
@@ -18,7 +19,7 @@ const messagesStore = useMessagesStore()
 
 const currentUser = computed(() => selfStore.item || {})
 
-const openPanels = ref([])
+const openPanels = useUrlPanels("dpPanels")
 const addressSelected = ref(false)
 
 const generalFormRef = ref(null)
@@ -257,456 +258,461 @@ function selectMedecin(doctor) {
 <template>
   <v-row>
     <v-col cols="12">
-      <v-expansion-panels v-model="openPanels" flat multiple variant="accordion" class="card-shadow"
-        :class="{ 'rounded-15': !$vuetify.display.mobile }">
+      <v-card class="card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+        <v-expansion-panels v-model="openPanels" flat multiple variant="accordion" class="card-shadow pa-2"
+          :class="{ 'rounded-15': !$vuetify.display.mobile }">
 
-        <!-- Données Générales -->
-        <v-expansion-panel value="general">
-          <v-expansion-panel-title>
-            <div class="d-flex align-center flex-grow-1">
-              <span class="panel-title">Données générales</span>
-              <v-spacer />
-              <v-btn v-if="showGeneralView" :icon="mdiPencil" variant="text" size="small" density="comfortable"
-                class="mr-2" @click.stop="startEditGeneral" />
-            </div>
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <!-- VIEW MODE -->
-            <template v-if="showGeneralView">
-              <v-row>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Prénom</div>
-                  <div class="field-value">{{ currentUser.firstName || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Nom</div>
-                  <div class="field-value">{{ currentUser.lastName || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Email</div>
-                  <div class="field-value">{{ currentUser.email || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Nom de naissance</div>
-                  <div class="field-value">{{ currentUser.birthName || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Genre</div>
-                  <div class="field-value">{{ genderLabel || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Date de naissance</div>
-                  <div class="field-value">{{ dobDisplay || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Téléphone</div>
-                  <div class="field-value">{{ currentUser.phoneNumber || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Adresse</div>
-                  <div class="field-value">{{ fullAddress || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Régime alimentaire</div>
-                  <div class="field-value whitespace-pre-line">
-                    {{ currentUser.hasDietaryRestrictions === false
-                      ? 'Aucun'
-                      : (currentUser.dietaryRestrictions || EMPTY) }}
-                  </div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Antécédents médicaux</div>
-                  <div class="field-value whitespace-pre-line">
-                    {{ currentUser.hasMedicalHistory === false
-                      ? 'Aucun'
-                      : (currentUser.medicalHistory || EMPTY) }}
-                  </div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Numéro de sécurité sociale</div>
-                  <div class="field-value">{{ formatNir(currentUser.carteVitaleNir) || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Date d'émission carte vitale</div>
-                  <div class="field-value">{{ currentUser.carteVitaleIssueDate || EMPTY }}</div>
-                </v-col>
-                <v-col v-if="currentUser.carteVitaleNir" cols="12">
-                  <div class="d-flex justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" class="cv-svg" role="img"
-                      aria-label="Carte Vitale">
-                      <defs>
-                        <linearGradient id="cardGreen" x1="180" y1="80" x2="900" y2="540"
-                          gradientUnits="userSpaceOnUse">
-                          <stop offset="0%" stop-color="#2F9E44" />
-                          <stop offset="100%" stop-color="#138A36" />
-                        </linearGradient>
-                        <linearGradient id="leftBand" x1="0" y1="0" x2="260" y2="620" gradientUnits="userSpaceOnUse">
-                          <stop offset="0%" stop-color="#E5A11D" />
-                          <stop offset="100%" stop-color="#D89212" />
-                        </linearGradient>
-                        <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feGaussianBlur stdDeviation="10" result="blur" />
-                          <feMerge>
-                            <feMergeNode in="blur" />
-                            <feMergeNode in="SourceGraphic" />
-                          </feMerge>
-                        </filter>
-                        <clipPath id="cardClip">
-                          <rect width="1000" height="620" rx="36" />
-                        </clipPath>
-                      </defs>
-                      <rect width="1000" height="620" rx="36" fill="url(#cardGreen)" />
-                      <path d="M0 0H20L250 620H0V0Z" fill="url(#leftBand)" clip-path="url(#cardClip)" />
-                      <g transform="translate(120 210)">
-                        <rect x="0" y="0" width="110" height="78" rx="14" fill="#C99963" stroke="#7A5737"
-                          stroke-width="2" />
-                        <path d="M0 26H110M0 52H110M37 0V78M73 0V78" stroke="#7A5737" stroke-width="2" />
-                        <path d="M0 13H37M73 13H110M0 65H37M73 65H110" stroke="#7A5737" stroke-width="2" />
-                      </g>
-                      <rect x="690" y="95" width="190" height="240" rx="8" fill="white" filter="url(#softGlow)" />
-                      <text x="120" y="145" font-family="Arial, Helvetica, sans-serif" font-size="110" font-weight="700"
-                        fill="#F3B32A">Vitale</text>
-                      <text x="260" y="190" font-family="Georgia, serif" font-size="28" font-weight="600"
-                        fill="#F4F1E8">carte d'assurance maladie</text>
-                      <text x="280" y="310" font-family="Arial, Helvetica, sans-serif" font-size="34" fill="#111111">
-                        émise le {{ currentUser.carteVitaleIssueDate || '--/--/----' }}</text>
-                      <text x="260" y="420" font-family="Arial, Helvetica, sans-serif" font-size="34" fill="#111111">{{
-                        currentUser.firstName?.toUpperCase() || '— — —' }}</text>
-                      <text x="260" y="465" font-family="Arial, Helvetica, sans-serif" font-size="34" fill="#111111">{{
-                        currentUser.lastName?.toUpperCase() || '— — —' }}</text>
-                      <text x="260" y="540" font-family="Arial, Helvetica, sans-serif" font-size="32" fill="#111111"
-                        letter-spacing="1">{{ formatNir(currentUser.carteVitaleNir) || '_ __ __ __ ___ ___ __' }}</text>
-                      <g fill="#C98C1A" opacity="0.9">
-                        <circle cx="118" cy="470" r="7" />
-                        <circle cx="118" cy="497" r="7" />
-                        <circle cx="118" cy="524" r="7" />
-                        <circle cx="145" cy="538" r="7" />
-                      </g>
-                      <path d="M52 558L92 538V550L64 565L92 582V594L52 572V553Z" fill="white" opacity="0.9" />
-                    </svg>
-                  </div>
-                </v-col>
-              </v-row>
-            </template>
-
-            <!-- EDIT MODE -->
-            <v-confirm-edit v-else v-model="generalModel" hide-actions>
-              <template #default="{ model: proxyModel, save: confirmSave, cancel, isPristine }">
-                <v-form ref="generalFormRef">
-                  <v-row>
-                    <v-col cols="12" md="6">
-                      <v-text-field v-model.trim="proxyModel.value.firstName" label="Prénom" variant="outlined"
-                        rounded="lg" :rules="[v => !!v || 'Ce champ est requis']" />
-                    </v-col>
-
-                    <v-col cols="12" md="6">
-                      <v-text-field v-model.trim="proxyModel.value.lastName" label="Nom" variant="outlined" rounded="lg"
-                        :rules="[v => !!v || 'Ce champ est requis']" />
-                    </v-col>
-
-                    <v-col cols="12" md="6">
-                      <v-text-field :model-value="currentUser.email" label="Email" variant="outlined" rounded="lg"
-                        disabled />
-                    </v-col>
-
-                    <v-col cols="12" md="6">
-                      <v-text-field v-model.trim="proxyModel.value.birthName" label="Nom de naissance"
-                        variant="outlined" rounded="lg" />
-                    </v-col>
-
-                    <v-col cols="12" md="6">
-                      <v-select v-model="proxyModel.value.gender" label="Genre" :items="genderOptions"
-                        variant="outlined" rounded="lg" />
-                    </v-col>
-
-                    <v-col cols="12" md="6">
-                      <v-date-input v-model="proxyModel.value.dob" input-format="dd/MM/yyyy" label="Date de naissance"
-                        variant="outlined" rounded="lg" :prepend-inner-icon="mdiCalendar" prepend-icon="" />
-                    </v-col>
-
-                    <v-col cols="12" md="6">
-                      <v-text-field v-model.trim="proxyModel.value.phoneNumber" label="Téléphone" variant="outlined"
-                        rounded="lg" inputmode="tel" :rules="[phoneNumberValidation]" />
-                    </v-col>
-
-                    <v-col cols="12">
-                      <v-text-field v-model.trim="proxyModel.value.postalAddress" label="Adresse" variant="outlined"
-                        rounded="lg" @update:model-value="addressSelected = !!$event" />
-                    </v-col>
-
-                    <v-col v-if="addressSelected" cols="12" md="6">
-                      <v-text-field v-model.trim="proxyModel.value.city" label="Ville" variant="outlined"
-                        rounded="lg" />
-                    </v-col>
-
-                    <v-col v-if="addressSelected" cols="12" md="6">
-                      <v-text-field v-model.trim="proxyModel.value.postalCode" label="Code postal" variant="outlined"
-                        rounded="lg" inputmode="numeric" />
-                    </v-col>
-
-                    <v-col cols="12">
-                      <div class="field-label mb-2">Suivez-vous un régime alimentaire&nbsp;?</div>
-                      <v-btn-toggle v-model="proxyModel.value.hasDietaryRestrictions" mandatory="force" color="primary"
-                        rounded="lg" density="comfortable" variant="outlined" class="mb-3">
-                        <v-btn :value="true" class="text-none">Oui</v-btn>
-                        <v-btn :value="false" class="text-none">Non</v-btn>
-                      </v-btn-toggle>
-                      <v-textarea v-if="proxyModel.value.hasDietaryRestrictions === true"
-                        v-model.trim="proxyModel.value.dietaryRestrictions" label="Précisez votre régime"
-                        variant="outlined" rounded="lg" rows="2" auto-grow
-                        :rules="[v => !!v || 'Veuillez préciser ou répondre Non']" />
-                    </v-col>
-
-                    <v-col cols="12">
-                      <div class="field-label mb-2">Avez-vous des antécédents médicaux&nbsp;?</div>
-                      <v-btn-toggle v-model="proxyModel.value.hasMedicalHistory" mandatory="force" color="primary"
-                        rounded="lg" density="comfortable" variant="outlined" class="mb-3">
-                        <v-btn :value="true" class="text-none">Oui</v-btn>
-                        <v-btn :value="false" class="text-none">Non</v-btn>
-                      </v-btn-toggle>
-                      <v-textarea v-if="proxyModel.value.hasMedicalHistory === true"
-                        v-model.trim="proxyModel.value.medicalHistory" label="Précisez vos antécédents"
-                        variant="outlined" rounded="lg" rows="2" auto-grow
-                        :rules="[v => !!v || 'Veuillez préciser ou répondre Non']" />
-                    </v-col>
-
-                    <v-col cols="12" md="6">
-                      <v-text-field v-model.trim="proxyModel.value.carteVitaleNir" label="Numéro de sécurité sociale"
-                        variant="outlined" rounded="lg" inputmode="numeric" :rules="nirRules"
-                        hint="15 chiffres sans espaces" persistent-hint />
-                    </v-col>
-                    <v-col cols="12" md="6">
-                      <v-text-field v-model.trim="proxyModel.value.carteVitaleIssueDate"
-                        label="Date d'émission carte vitale" variant="outlined" rounded="lg" placeholder="JJ/MM/AAAA"
-                        :rules="issueDateRules" />
-                    </v-col>
-                  </v-row>
-
-                  <div class="d-flex justify-end">
-                    <v-btn variant="text" rounded="lg" size="small" @click="cancelGeneral(cancel)" class="text-none">
-                      Annuler
-                    </v-btn>
-                    <v-btn v-if="!isPristine" color="primary" rounded="lg" size="small" :loading="savingGeneral"
-                      @click="handleSaveGeneral(proxyModel, confirmSave)" flat>
-                      Enregistrer
-                    </v-btn>
-                  </div>
-                </v-form>
+          <!-- Données Générales -->
+          <v-expansion-panel value="general">
+            <v-expansion-panel-title>
+              <div class="d-flex align-center flex-grow-1">
+                <span class="panel-title">Données générales</span>
+                <v-spacer />
+                <v-btn v-if="showGeneralView" :icon="mdiPencil" color="primary" variant="text" size="small"
+                  density="comfortable" class="mr-2" @click.stop="startEditGeneral" />
+              </div>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <!-- VIEW MODE -->
+              <template v-if="showGeneralView">
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Prénom</div>
+                    <div class="field-value">{{ currentUser.firstName || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Nom</div>
+                    <div class="field-value">{{ currentUser.lastName || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Email</div>
+                    <div class="field-value">{{ currentUser.email || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Nom de naissance</div>
+                    <div class="field-value">{{ currentUser.birthName || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Genre</div>
+                    <div class="field-value">{{ genderLabel || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Date de naissance</div>
+                    <div class="field-value">{{ dobDisplay || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Téléphone</div>
+                    <div class="field-value">{{ currentUser.phoneNumber || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Adresse</div>
+                    <div class="field-value">{{ fullAddress || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Régime alimentaire</div>
+                    <div class="field-value whitespace-pre-line">
+                      {{ currentUser.hasDietaryRestrictions === false
+                        ? 'Aucun'
+                        : (currentUser.dietaryRestrictions || EMPTY) }}
+                    </div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Antécédents médicaux</div>
+                    <div class="field-value whitespace-pre-line">
+                      {{ currentUser.hasMedicalHistory === false
+                        ? 'Aucun'
+                        : (currentUser.medicalHistory || EMPTY) }}
+                    </div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Numéro de sécurité sociale</div>
+                    <div class="field-value">{{ formatNir(currentUser.carteVitaleNir) || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Date d'émission carte vitale</div>
+                    <div class="field-value">{{ currentUser.carteVitaleIssueDate || EMPTY }}</div>
+                  </v-col>
+                  <v-col v-if="currentUser.carteVitaleNir" cols="12">
+                    <div class="d-flex justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" class="cv-svg" role="img"
+                        aria-label="Carte Vitale">
+                        <defs>
+                          <linearGradient id="cardGreen" x1="180" y1="80" x2="900" y2="540"
+                            gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#2F9E44" />
+                            <stop offset="100%" stop-color="#138A36" />
+                          </linearGradient>
+                          <linearGradient id="leftBand" x1="0" y1="0" x2="260" y2="620" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#E5A11D" />
+                            <stop offset="100%" stop-color="#D89212" />
+                          </linearGradient>
+                          <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="10" result="blur" />
+                            <feMerge>
+                              <feMergeNode in="blur" />
+                              <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                          </filter>
+                          <clipPath id="cardClip">
+                            <rect width="1000" height="620" rx="36" />
+                          </clipPath>
+                        </defs>
+                        <rect width="1000" height="620" rx="36" fill="url(#cardGreen)" />
+                        <path d="M0 0H20L250 620H0V0Z" fill="url(#leftBand)" clip-path="url(#cardClip)" />
+                        <g transform="translate(120 210)">
+                          <rect x="0" y="0" width="110" height="78" rx="14" fill="#C99963" stroke="#7A5737"
+                            stroke-width="2" />
+                          <path d="M0 26H110M0 52H110M37 0V78M73 0V78" stroke="#7A5737" stroke-width="2" />
+                          <path d="M0 13H37M73 13H110M0 65H37M73 65H110" stroke="#7A5737" stroke-width="2" />
+                        </g>
+                        <rect x="690" y="95" width="190" height="240" rx="8" fill="white" filter="url(#softGlow)" />
+                        <text x="120" y="145" font-family="Arial, Helvetica, sans-serif" font-size="110"
+                          font-weight="700" fill="#F3B32A">Vitale</text>
+                        <text x="260" y="190" font-family="Georgia, serif" font-size="28" font-weight="600"
+                          fill="#F4F1E8">carte d'assurance maladie</text>
+                        <text x="280" y="310" font-family="Arial, Helvetica, sans-serif" font-size="34" fill="#111111">
+                          émise le {{ currentUser.carteVitaleIssueDate || '--/--/----' }}</text>
+                        <text x="260" y="420" font-family="Arial, Helvetica, sans-serif" font-size="34"
+                          fill="#111111">{{
+                            currentUser.firstName?.toUpperCase() || '— — —' }}</text>
+                        <text x="260" y="465" font-family="Arial, Helvetica, sans-serif" font-size="34"
+                          fill="#111111">{{
+                            currentUser.lastName?.toUpperCase() || '— — —' }}</text>
+                        <text x="260" y="540" font-family="Arial, Helvetica, sans-serif" font-size="32" fill="#111111"
+                          letter-spacing="1">{{ formatNir(currentUser.carteVitaleNir) || '_ __ __ __ ___ ___ __'
+                          }}</text>
+                        <g fill="#C98C1A" opacity="0.9">
+                          <circle cx="118" cy="470" r="7" />
+                          <circle cx="118" cy="497" r="7" />
+                          <circle cx="118" cy="524" r="7" />
+                          <circle cx="145" cy="538" r="7" />
+                        </g>
+                        <path d="M52 558L92 538V550L64 565L92 582V594L52 572V553Z" fill="white" opacity="0.9" />
+                      </svg>
+                    </div>
+                  </v-col>
+                </v-row>
               </template>
-            </v-confirm-edit>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
 
-        <!-- Données Cliniques -->
-        <v-expansion-panel value="clinical">
-          <v-expansion-panel-title>
-            <div class="d-flex align-center flex-grow-1">
-              <span class="panel-title">Données cliniques</span>
-              <v-spacer />
-              <v-btn v-if="showClinicalView" :icon="mdiPencil" variant="text" size="small" density="comfortable"
-                class="mr-2" @click.stop="startEditClinical" />
-            </div>
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <!-- VIEW MODE -->
-            <template v-if="showClinicalView">
-              <v-row>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Poids</div>
-                  <div class="field-value">{{ currentUser.weight != null ? `${currentUser.weight} kg` : EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Taille</div>
-                  <div class="field-value">{{ currentUser.height != null ? `${currentUser.height} m` : EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">IMC</div>
-                  <div class="field-value">{{ bmiDisplay != null ? bmiDisplay : EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">IAH</div>
-                  <div class="field-value">{{ currentUser.iah != null ? currentUser.iah : EMPTY }}</div>
-                </v-col>
-              </v-row>
-            </template>
+              <!-- EDIT MODE -->
+              <v-confirm-edit v-else v-model="generalModel" hide-actions>
+                <template #default="{ model: proxyModel, save: confirmSave, cancel, isPristine }">
+                  <v-form ref="generalFormRef">
+                    <v-row>
+                      <v-col cols="12" md="6">
+                        <v-text-field v-model.trim="proxyModel.value.firstName" label="Prénom" variant="outlined"
+                          rounded="lg" :rules="[v => !!v || 'Ce champ est requis']" />
+                      </v-col>
 
-            <!-- EDIT MODE -->
-            <v-confirm-edit v-else v-model="clinicalModel" hide-actions>
-              <template #default="{ model: proxyModel, save: confirmSave, cancel, isPristine }">
-                <v-form ref="clinicalFormRef">
-                  <v-row>
-                    <v-col cols="12" md="6">
-                      <v-text-field v-model.number="proxyModel.value.weight" label="Poids (kg)" variant="outlined"
-                        rounded="lg" inputmode="decimal" type="number" step="0.1" />
-                    </v-col>
+                      <v-col cols="12" md="6">
+                        <v-text-field v-model.trim="proxyModel.value.lastName" label="Nom" variant="outlined"
+                          rounded="lg" :rules="[v => !!v || 'Ce champ est requis']" />
+                      </v-col>
 
-                    <v-col cols="12" md="6">
-                      <v-text-field v-model.number="proxyModel.value.height" label="Taille (m)" variant="outlined"
-                        rounded="lg" inputmode="decimal" type="number" step="0.01" />
-                    </v-col>
+                      <v-col cols="12" md="6">
+                        <v-text-field :model-value="currentUser.email" label="Email" variant="outlined" rounded="lg"
+                          disabled />
+                      </v-col>
 
-                    <v-col cols="12" md="6">
-                      <v-text-field
-                        :model-value="proxyModel.value.weight && proxyModel.value.height ? Math.round(proxyModel.value.weight / (proxyModel.value.height * proxyModel.value.height) * 10) / 10 : ''"
-                        label="IMC (calculé)" variant="outlined" rounded="lg" readonly />
-                    </v-col>
+                      <v-col cols="12" md="6">
+                        <v-text-field v-model.trim="proxyModel.value.birthName" label="Nom de naissance"
+                          variant="outlined" rounded="lg" />
+                      </v-col>
 
-                    <v-col cols="12" md="6">
-                      <v-text-field v-model.number="proxyModel.value.iah" label="IAH" variant="outlined" rounded="lg"
-                        inputmode="decimal" type="number" step="0.1" />
-                    </v-col>
-                  </v-row>
+                      <v-col cols="12" md="6">
+                        <v-select v-model="proxyModel.value.gender" label="Genre" :items="genderOptions"
+                          variant="outlined" rounded="lg" />
+                      </v-col>
 
-                  <div class="d-flex justify-end">
-                    <v-btn variant="text" rounded="lg" size="small" @click="cancelClinical(cancel)" class="text-none">
-                      Annuler
-                    </v-btn>
-                    <v-btn v-if="!isPristine" color="primary" rounded="lg" size="small" :loading="savingClinical"
-                      @click="handleSaveClinical(proxyModel, confirmSave)" flat>
-                      Enregistrer
-                    </v-btn>
-                  </div>
-                </v-form>
+                      <v-col cols="12" md="6">
+                        <v-date-input v-model="proxyModel.value.dob" input-format="dd/MM/yyyy" label="Date de naissance"
+                          variant="outlined" rounded="lg" :prepend-inner-icon="mdiCalendar" prepend-icon="" />
+                      </v-col>
+
+                      <v-col cols="12" md="6">
+                        <v-text-field v-model.trim="proxyModel.value.phoneNumber" label="Téléphone" variant="outlined"
+                          rounded="lg" inputmode="tel" :rules="[phoneNumberValidation]" />
+                      </v-col>
+
+                      <v-col cols="12">
+                        <v-text-field v-model.trim="proxyModel.value.postalAddress" label="Adresse" variant="outlined"
+                          rounded="lg" @update:model-value="addressSelected = !!$event" />
+                      </v-col>
+
+                      <v-col v-if="addressSelected" cols="12" md="6">
+                        <v-text-field v-model.trim="proxyModel.value.city" label="Ville" variant="outlined"
+                          rounded="lg" />
+                      </v-col>
+
+                      <v-col v-if="addressSelected" cols="12" md="6">
+                        <v-text-field v-model.trim="proxyModel.value.postalCode" label="Code postal" variant="outlined"
+                          rounded="lg" inputmode="numeric" />
+                      </v-col>
+
+                      <v-col cols="12">
+                        <div class="field-label mb-2">Suivez-vous un régime alimentaire&nbsp;?</div>
+                        <v-btn-toggle v-model="proxyModel.value.hasDietaryRestrictions" mandatory="force"
+                          color="primary" rounded="lg" density="comfortable" variant="outlined" class="mb-3">
+                          <v-btn :value="true" class="text-none">Oui</v-btn>
+                          <v-btn :value="false" class="text-none">Non</v-btn>
+                        </v-btn-toggle>
+                        <v-textarea v-if="proxyModel.value.hasDietaryRestrictions === true"
+                          v-model.trim="proxyModel.value.dietaryRestrictions" label="Précisez votre régime"
+                          variant="outlined" rounded="lg" rows="2" auto-grow
+                          :rules="[v => !!v || 'Veuillez préciser ou répondre Non']" />
+                      </v-col>
+
+                      <v-col cols="12">
+                        <div class="field-label mb-2">Avez-vous des antécédents médicaux&nbsp;?</div>
+                        <v-btn-toggle v-model="proxyModel.value.hasMedicalHistory" mandatory="force" color="primary"
+                          rounded="lg" density="comfortable" variant="outlined" class="mb-3">
+                          <v-btn :value="true" class="text-none">Oui</v-btn>
+                          <v-btn :value="false" class="text-none">Non</v-btn>
+                        </v-btn-toggle>
+                        <v-textarea v-if="proxyModel.value.hasMedicalHistory === true"
+                          v-model.trim="proxyModel.value.medicalHistory" label="Précisez vos antécédents"
+                          variant="outlined" rounded="lg" rows="2" auto-grow
+                          :rules="[v => !!v || 'Veuillez préciser ou répondre Non']" />
+                      </v-col>
+
+                      <v-col cols="12" md="6">
+                        <v-text-field v-model.trim="proxyModel.value.carteVitaleNir" label="Numéro de sécurité sociale"
+                          variant="outlined" rounded="lg" inputmode="numeric" :rules="nirRules"
+                          hint="15 chiffres sans espaces" persistent-hint />
+                      </v-col>
+                      <v-col cols="12" md="6">
+                        <v-text-field v-model.trim="proxyModel.value.carteVitaleIssueDate"
+                          label="Date d'émission carte vitale" variant="outlined" rounded="lg" placeholder="JJ/MM/AAAA"
+                          :rules="issueDateRules" />
+                      </v-col>
+                    </v-row>
+
+                    <div v-if="!isPristine" class="d-flex justify-end">
+                      <v-btn variant="text" rounded="lg" size="small" @click="cancelGeneral(cancel)" class="text-none">
+                        Annuler
+                      </v-btn>
+                      <v-btn color="primary" rounded="lg" size="small" :loading="savingGeneral"
+                        @click="handleSaveGeneral(proxyModel, confirmSave)" flat>
+                        Enregistrer
+                      </v-btn>
+                    </div>
+                  </v-form>
+                </template>
+              </v-confirm-edit>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+
+          <!-- Données Cliniques -->
+          <v-expansion-panel value="clinical">
+            <v-expansion-panel-title>
+              <div class="d-flex align-center flex-grow-1">
+                <span class="panel-title">Données cliniques</span>
+                <v-spacer />
+                <v-btn v-if="showClinicalView" :icon="mdiPencil" color="primary" variant="text" size="small"
+                  density="comfortable" class="mr-2" @click.stop="startEditClinical" />
+              </div>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <!-- VIEW MODE -->
+              <template v-if="showClinicalView">
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Poids</div>
+                    <div class="field-value">{{ currentUser.weight != null ? `${currentUser.weight} kg` : EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Taille</div>
+                    <div class="field-value">{{ currentUser.height != null ? `${currentUser.height} m` : EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">IMC</div>
+                    <div class="field-value">{{ bmiDisplay != null ? bmiDisplay : EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">IAH</div>
+                    <div class="field-value">{{ currentUser.iah != null ? currentUser.iah : EMPTY }}</div>
+                  </v-col>
+                </v-row>
               </template>
-            </v-confirm-edit>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
 
-        <!-- Conclusion de la dernière consultation -->
-        <v-expansion-panel value="lastConsultation">
-          <v-expansion-panel-title>
-            <span class="panel-title">Conclusion de la dernière consultation</span>
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <div class="d-flex flex-column align-center text-center pa-6 empty-state">
-              <div class="empty-state-icon mb-3">
-                <v-icon :icon="mdiClipboardTextOutline" size="32" />
-              </div>
-              <div class="text-title-medium font-weight-bold mb-1">Aucune consultation</div>
-              <div class="text-body-small text-medium-emphasis">
-                La conclusion de votre dernière consultation apparaîtra ici.
-              </div>
-            </div>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
+              <!-- EDIT MODE -->
+              <v-confirm-edit v-else v-model="clinicalModel" hide-actions>
+                <template #default="{ model: proxyModel, save: confirmSave, cancel, isPristine }">
+                  <v-form ref="clinicalFormRef">
+                    <v-row>
+                      <v-col cols="12" md="6">
+                        <v-text-field v-model.number="proxyModel.value.weight" label="Poids (kg)" variant="outlined"
+                          rounded="lg" inputmode="decimal" type="number" step="0.1" />
+                      </v-col>
 
-        <!-- Médecin Traitant -->
-        <v-expansion-panel value="medecinTraitant">
-          <v-expansion-panel-title>
-            <div class="d-flex align-center flex-grow-1">
-              <span class="panel-title">Médecin Traitant</span>
-              <v-spacer />
-              <v-btn :icon="mdiPencil" variant="text" size="small" density="comfortable" class="mr-2"
-                @click.stop="openMedecinDialog('medecinTraitant')" />
-            </div>
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <template v-if="medecinTraitant">
-              <v-row>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Prénom / Nom</div>
-                  <div class="field-value">
-                    {{ [medecinTraitant.firstName, medecinTraitant.lastName].filter(Boolean).join(' ') || EMPTY }}
-                  </div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Téléphone</div>
-                  <div class="field-value">{{ medecinTraitant.phone || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Email</div>
-                  <div class="field-value">{{ medecinTraitant.email || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Numéro Adeli</div>
-                  <div class="field-value">{{ medecinTraitant.adeli || EMPTY }}</div>
-                </v-col>
-              </v-row>
-            </template>
-            <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
-              <div class="empty-state-icon mb-3">
-                <v-icon :icon="mdiDoctor" size="32" />
-              </div>
-              <div class="text-title-medium font-weight-bold mb-1">Aucun médecin traitant</div>
-              <div class="text-body-small text-medium-emphasis mb-4">
-                Renseignez votre médecin traitant pour faciliter votre suivi.
-              </div>
-              <v-btn color="primary" variant="flat" rounded="lg" class="text-none" :prepend-icon="mdiMagnify"
-                @click="openMedecinDialog('medecinTraitant')">
-                Rechercher un médecin
-              </v-btn>
-            </div>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
+                      <v-col cols="12" md="6">
+                        <v-text-field v-model.number="proxyModel.value.height" label="Taille (m)" variant="outlined"
+                          rounded="lg" inputmode="decimal" type="number" step="0.01" />
+                      </v-col>
 
-        <!-- Médecin Adresseur -->
-        <v-expansion-panel value="medecinAdresseur">
-          <v-expansion-panel-title>
-            <div class="d-flex align-center flex-grow-1">
-              <span class="panel-title">Médecin Adresseur (si différent du médecin traitant)</span>
-              <v-spacer />
-              <v-btn :icon="mdiPencil" variant="text" size="small" density="comfortable" class="mr-2"
-                @click.stop="openMedecinDialog('medecinAdresseur')" />
-            </div>
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <template v-if="medecinAdresseur">
-              <v-row>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Prénom / Nom</div>
-                  <div class="field-value">
-                    {{ [medecinAdresseur.firstName, medecinAdresseur.lastName].filter(Boolean).join(' ') || EMPTY }}
-                  </div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Téléphone</div>
-                  <div class="field-value">{{ medecinAdresseur.phone || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Email</div>
-                  <div class="field-value">{{ medecinAdresseur.email || EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Numéro Adeli</div>
-                  <div class="field-value">{{ medecinAdresseur.adeli || EMPTY }}</div>
-                </v-col>
-              </v-row>
-            </template>
-            <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
-              <div class="empty-state-icon mb-3">
-                <v-icon :icon="mdiDoctor" size="32" />
-              </div>
-              <div class="text-title-medium font-weight-bold mb-1">Aucun médecin adresseur</div>
-              <div class="text-body-small text-medium-emphasis mb-4">
-                Renseignez le médecin qui vous a adressé, s'il diffère du médecin traitant.
-              </div>
-              <v-btn color="primary" variant="flat" rounded="lg" class="text-none" :prepend-icon="mdiMagnify"
-                @click="openMedecinDialog('medecinAdresseur')">
-                Rechercher un médecin
-              </v-btn>
-            </div>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
+                      <v-col cols="12" md="6">
+                        <v-text-field
+                          :model-value="proxyModel.value.weight && proxyModel.value.height ? Math.round(proxyModel.value.weight / (proxyModel.value.height * proxyModel.value.height) * 10) / 10 : ''"
+                          label="IMC (calculé)" variant="outlined" rounded="lg" readonly />
+                      </v-col>
 
-        <!-- Prestataire -->
-        <v-expansion-panel value="prestataire">
-          <v-expansion-panel-title>
-            <span class="panel-title">Prestataire</span>
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <div class="d-flex flex-column align-center text-center pa-6 empty-state">
-              <div class="empty-state-icon mb-3">
-                <v-icon :icon="mdiTruckOutline" size="32" />
-              </div>
-              <div class="text-title-medium font-weight-bold mb-1">Aucun prestataire</div>
-              <div class="text-body-small text-medium-emphasis">
-                Votre prestataire de santé apparaîtra ici une fois renseigné.
-              </div>
-            </div>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
+                      <v-col cols="12" md="6">
+                        <v-text-field v-model.number="proxyModel.value.iah" label="IAH" variant="outlined" rounded="lg"
+                          inputmode="decimal" type="number" step="0.1" />
+                      </v-col>
+                    </v-row>
 
-      </v-expansion-panels>
+                    <div v-if="!isPristine" class="d-flex justify-end">
+                      <v-btn variant="text" rounded="lg" size="small" @click="cancelClinical(cancel)" class="text-none">
+                        Annuler
+                      </v-btn>
+                      <v-btn color="primary" rounded="lg" size="small" :loading="savingClinical"
+                        @click="handleSaveClinical(proxyModel, confirmSave)" flat>
+                        Enregistrer
+                      </v-btn>
+                    </div>
+                  </v-form>
+                </template>
+              </v-confirm-edit>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+
+          <!-- Conclusion de la dernière consultation -->
+          <v-expansion-panel value="lastConsultation">
+            <v-expansion-panel-title>
+              <span class="panel-title">Conclusion de la dernière consultation</span>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <div class="d-flex flex-column align-center text-center pa-6 empty-state">
+                <div class="empty-state-icon mb-3">
+                  <v-icon :icon="mdiClipboardTextOutline" size="32" />
+                </div>
+                <div class="text-title-medium font-weight-bold mb-1">Aucune consultation</div>
+                <div class="text-body-small text-medium-emphasis">
+                  La conclusion de votre dernière consultation apparaîtra ici.
+                </div>
+              </div>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+
+          <!-- Médecin Traitant -->
+          <v-expansion-panel value="medecinTraitant">
+            <v-expansion-panel-title>
+              <div class="d-flex align-center flex-grow-1">
+                <span class="panel-title">Médecin Traitant</span>
+                <v-spacer />
+                <v-btn :icon="mdiPencil" color="primary" variant="text" size="small" density="comfortable" class="mr-2"
+                  @click.stop="openMedecinDialog('medecinTraitant')" />
+              </div>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <template v-if="medecinTraitant">
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Prénom / Nom</div>
+                    <div class="field-value">
+                      {{ [medecinTraitant.firstName, medecinTraitant.lastName].filter(Boolean).join(' ') || EMPTY }}
+                    </div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Téléphone</div>
+                    <div class="field-value">{{ medecinTraitant.phone || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Email</div>
+                    <div class="field-value">{{ medecinTraitant.email || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Numéro Adeli</div>
+                    <div class="field-value">{{ medecinTraitant.adeli || EMPTY }}</div>
+                  </v-col>
+                </v-row>
+              </template>
+              <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
+                <div class="empty-state-icon mb-3">
+                  <v-icon :icon="mdiDoctor" size="32" />
+                </div>
+                <div class="text-title-medium font-weight-bold mb-1">Aucun médecin traitant</div>
+                <div class="text-body-small text-medium-emphasis mb-4">
+                  Renseignez votre médecin traitant pour faciliter votre suivi.
+                </div>
+                <v-btn color="primary" variant="flat" rounded="lg" class="text-none" :prepend-icon="mdiMagnify"
+                  @click="openMedecinDialog('medecinTraitant')">
+                  Rechercher un médecin
+                </v-btn>
+              </div>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+
+          <!-- Médecin Adresseur -->
+          <v-expansion-panel value="medecinAdresseur">
+            <v-expansion-panel-title>
+              <div class="d-flex align-center flex-grow-1">
+                <span class="panel-title">Médecin Adresseur (si différent du médecin traitant)</span>
+                <v-spacer />
+                <v-btn :icon="mdiPencil" color="primary" variant="text" size="small" density="comfortable" class="mr-2"
+                  @click.stop="openMedecinDialog('medecinAdresseur')" />
+              </div>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <template v-if="medecinAdresseur">
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Prénom / Nom</div>
+                    <div class="field-value">
+                      {{ [medecinAdresseur.firstName, medecinAdresseur.lastName].filter(Boolean).join(' ') || EMPTY }}
+                    </div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Téléphone</div>
+                    <div class="field-value">{{ medecinAdresseur.phone || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Email</div>
+                    <div class="field-value">{{ medecinAdresseur.email || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Numéro Adeli</div>
+                    <div class="field-value">{{ medecinAdresseur.adeli || EMPTY }}</div>
+                  </v-col>
+                </v-row>
+              </template>
+              <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
+                <div class="empty-state-icon mb-3">
+                  <v-icon :icon="mdiDoctor" size="32" />
+                </div>
+                <div class="text-title-medium font-weight-bold mb-1">Aucun médecin adresseur</div>
+                <div class="text-body-small text-medium-emphasis mb-4">
+                  Renseignez le médecin qui vous a adressé, s'il diffère du médecin traitant.
+                </div>
+                <v-btn color="primary" variant="flat" rounded="lg" class="text-none" :prepend-icon="mdiMagnify"
+                  @click="openMedecinDialog('medecinAdresseur')">
+                  Rechercher un médecin
+                </v-btn>
+              </div>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+
+          <!-- Prestataire -->
+          <v-expansion-panel value="prestataire">
+            <v-expansion-panel-title>
+              <span class="panel-title">Prestataire</span>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <div class="d-flex flex-column align-center text-center pa-6 empty-state">
+                <div class="empty-state-icon mb-3">
+                  <v-icon :icon="mdiTruckOutline" size="32" />
+                </div>
+                <div class="text-title-medium font-weight-bold mb-1">Aucun prestataire</div>
+                <div class="text-body-small text-medium-emphasis">
+                  Votre prestataire de santé apparaîtra ici une fois renseigné.
+                </div>
+              </div>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+
+        </v-expansion-panels>
+      </v-card>
     </v-col>
 
     <!-- =================== MÉDECIN TRAITANT DIALOG =================== -->

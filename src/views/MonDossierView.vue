@@ -1,4 +1,5 @@
 <script setup>
+import ActivitesTab from "@/components/monDossier/ActivitesTab.vue"
 import DocumentsTab from "@/components/monDossier/DocumentsTab.vue"
 import DonneesPatientTab from "@/components/monDossier/DonneesPatientTab.vue"
 import PlaceholderTab from "@/components/monDossier/PlaceholderTab.vue"
@@ -8,6 +9,7 @@ import { ISOToShortenedDate } from "@/composables/useDates"
 import { useSelfStore } from "@/stores/self"
 import {
   mdiAccountOutline,
+  mdiCalendarCheckOutline,
   mdiClipboardListOutline,
   mdiEmailOutline,
   mdiFileMultipleOutline,
@@ -26,6 +28,7 @@ const currentUser = computed(() => selfStore.item || {})
 
 const TABS = [
   { value: 'donnees-patient', label: 'Données patient', icon: mdiAccountOutline },
+  { value: 'activites', label: 'Activités', icon: mdiCalendarCheckOutline },
   { value: 'traitements', label: 'Traitements', icon: mdiPill },
   { value: 'documents', label: 'Documents', icon: mdiFileMultipleOutline },
   { value: 'questionnaires', label: 'Questionnaires', icon: mdiClipboardListOutline },
@@ -80,7 +83,8 @@ const fullName = computed(() => {
       <v-col :cols="$vuetify.display.mobile ? 12 : 10">
 
         <!-- =================== HEADER =================== -->
-        <v-row class="mb-6" align="center" :class="{ 'mx-6': $vuetify.display.mobile }">
+        <v-row class="mb-2" align="center"
+          :class="{ 'mx-6 ': $vuetify.display.mobile, 'mb-6': !$vuetify.display.mobile }">
           <v-col align-self="center">
             <div class="text-headline-medium font-weight-bold">Mon dossier</div>
             <div class="text-body-medium text-medium-emphasis mt-1">
@@ -90,7 +94,9 @@ const fullName = computed(() => {
         </v-row>
 
         <!-- =================== HERO / DETAILS CARD =================== -->
-        <v-card class="card-shadow mb-4 px-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+        <v-card class=" mb-4 px-6"
+          :class="{ 'rounded-15 card-shadow ': !$vuetify.display.mobile, 'bg-transparent': $vuetify.display.mobile }"
+          :flat="$vuetify.display.mobile">
           <v-tabs v-if="!$vuetify.display.mobile" v-model="activeTab" color="primary" :show-arrows="false">
             <v-tab v-for="t in TABS" :key="t.value" :value="t.value" :prepend-icon="t.icon" class="text-none">
               {{ t.label }}
@@ -107,6 +113,7 @@ const fullName = computed(() => {
 
         <!-- =================== TAB CONTENT =================== -->
         <DonneesPatientTab v-if="activeTab === 'donnees-patient'" />
+        <ActivitesTab v-else-if="activeTab === 'activites'" />
         <TraitementsTab v-else-if="activeTab === 'traitements'" />
         <QuestionnairesTab v-else-if="activeTab === 'questionnaires'" />
         <DocumentsTab v-else-if="activeTab === 'documents'" />
