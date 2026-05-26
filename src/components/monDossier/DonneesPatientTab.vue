@@ -1,13 +1,15 @@
 <script setup>
-import { ISOToShortenedDate } from "@/composables/useDates"
+import { ISOToDDMMYYYY, ISOToShortenedDate } from "@/composables/useDates"
 
 import { useRules } from "@/composables/useRules"
 import { useUrlPanels } from "@/composables/useUrlPanels"
+import ACTIVITIES_DATA from "@/data/activities.json"
 import { DOCTORS_SEED } from "@/data/doctors"
 import gendersEnum from "@/enums/genders.json"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
-import { mdiCalendar, mdiClipboardTextOutline, mdiDoctor, mdiMagnify, mdiPencil, mdiTruckOutline } from "@mdi/js"
+import { mdiCalendar, mdiClipboardTextOutline, mdiDoctor, mdiFileDocumentEditOutline, mdiMagnify, mdiPencil, mdiTruckOutline } from "@mdi/js"
+import dayjs from "dayjs"
 import { computed, ref, watch } from "vue"
 
 const GENDER_LABELS = { male: 'Homme', female: 'Femme', other: 'Autre' }
@@ -45,6 +47,13 @@ const bmiDisplay = computed(() => {
 })
 
 const genderLabel = computed(() => GENDER_LABELS[currentUser.value?.gender] || '')
+
+const lastConsultationReport = computed(() => {
+  const today = dayjs().startOf('day')
+  return [...ACTIVITIES_DATA]
+    .filter(a => !a.cancelled && a.report && !dayjs(a.date).isAfter(today))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))[0] || null
+})
 
 const fullAddress = computed(() => {
   const u = currentUser.value || {}
@@ -583,7 +592,14 @@ function selectMedecin(doctor) {
               <span class="panel-title">Conclusion de la dernière consultation</span>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
-              <div class="d-flex flex-column align-center text-center pa-6 empty-state">
+              <v-alert v-if="lastConsultationReport" type="warning" variant="tonal"
+                :icon="mdiFileDocumentEditOutline" density="comfortable" rounded="lg">
+                <div class="text-body-small font-weight-bold mb-1">
+                  Rapport médecin — {{ lastConsultationReport.doctor }} — {{ ISOToDDMMYYYY(lastConsultationReport.date) }}
+                </div>
+                <div class="text-body-medium">{{ lastConsultationReport.report }}</div>
+              </v-alert>
+              <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
                 <div class="empty-state-icon mb-3">
                   <v-icon :icon="mdiClipboardTextOutline" size="32" />
                 </div>

@@ -1,7 +1,7 @@
 <script setup>
 import { useParamsStore } from '@/stores/params'
 import { useSelfStore } from '@/stores/self'
-import { mdiClipboardPulse, mdiFolderOutline, mdiMoonWaningCrescent } from '@mdi/js'
+import { mdiClipboardPulse, mdiEmoticonSadOutline, mdiFolderOutline, mdiLungs, mdiMoonWaningCrescent } from '@mdi/js'
 import { computed, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -97,7 +97,7 @@ const epworthScoreLabel = computed(() => {
           <!-- Epworth test card -->
           <v-col v-if="selfStore.item?.epworthScore == null" cols="12" md="6">
             <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
-              @click="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires' } })">
+              @click="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'epworth' } })">
               <v-row align="center">
                 <v-col>
                   <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
@@ -113,11 +113,63 @@ const epworthScoreLabel = computed(() => {
                     </v-chip>
                     <v-btn v-if="selfStore.item?.epworthScore == null" :prepend-icon="mdiClipboardPulse" variant="tonal"
                       color="primary" rounded="lg"
-                      @click.stop="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires' } })"
+                      @click.stop="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'epworth' } })"
                       class="text-none">
                       Passer le test
                     </v-btn>
                   </div>
+                </v-col>
+                <v-col cols="auto">
+                  <v-img src="@/assets/illustrations/tasks.svg" width="100" height="90" contain
+                    transition="fade-transition" />
+                </v-col>
+              </v-row>
+            </v-card>
+          </v-col>
+
+          <!-- STOP-BANG test card -->
+          <v-col v-if="selfStore.item?.stopBangScore == null" cols="12" md="6">
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
+              @click="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'stopBang' } })">
+              <v-row align="center">
+                <v-col>
+                  <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
+                    Test STOP-BANG
+                  </div>
+                  <div class="text-body-medium text-medium-emphasis mb-4">
+                    Dépistez l'apnée du sommeil en répondant à 8 questions par Oui ou Non
+                  </div>
+                  <v-btn :prepend-icon="mdiLungs" variant="tonal" color="primary" rounded="lg"
+                    @click.stop="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'stopBang' } })"
+                    class="text-none">
+                    Passer le test
+                  </v-btn>
+                </v-col>
+                <v-col cols="auto">
+                  <v-img src="@/assets/illustrations/tasks.svg" width="100" height="90" contain
+                    transition="fade-transition" />
+                </v-col>
+              </v-row>
+            </v-card>
+          </v-col>
+
+          <!-- Hamilton test card -->
+          <v-col v-if="selfStore.item?.hamiltonScore == null" cols="12" md="6">
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
+              @click="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'hamilton' } })">
+              <v-row align="center">
+                <v-col>
+                  <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
+                    Échelle de Hamilton
+                  </div>
+                  <div class="text-body-medium text-medium-emphasis mb-4">
+                    Évaluez la sévérité d'un état dépressif sur 17 items
+                  </div>
+                  <v-btn :prepend-icon="mdiEmoticonSadOutline" variant="tonal" color="primary" rounded="lg"
+                    @click.stop="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'hamilton' } })"
+                    class="text-none">
+                    Passer le test
+                  </v-btn>
                 </v-col>
                 <v-col cols="auto">
                   <v-img src="@/assets/illustrations/tasks.svg" width="100" height="90" contain

@@ -7,7 +7,6 @@ import {
   mdiCheck,
   mdiClose,
   mdiCreditCardOutline,
-  mdiFileChartOutline,
   mdiFileDocumentCheckOutline,
   mdiFileDocumentOutline,
   mdiFileDocumentPlusOutline,
@@ -56,6 +55,16 @@ const REQUIRED_DOCS = [
     accept: 'image/*,application/pdf',
   },
   {
+    key: 'priseEnCharge',
+    title: 'Prise en charge',
+    subtitle: 'Notification organisme',
+    icon: mdiFileDocumentCheckOutline,
+    accept: 'image/*,application/pdf',
+  },
+]
+
+const ORDONNANCES_DOCS = [
+  {
     key: 'lettreAdressage',
     title: "Lettre d'adressage",
     subtitle: 'Médecin référent',
@@ -63,10 +72,10 @@ const REQUIRED_DOCS = [
     accept: 'image/*,application/pdf',
   },
   {
-    key: 'priseEnCharge',
-    title: 'Prise en charge',
-    subtitle: 'Notification organisme',
-    icon: mdiFileDocumentCheckOutline,
+    key: 'ordonnance',
+    title: 'Ordonnance',
+    subtitle: 'Prescription médicale',
+    icon: mdiFileSign,
     accept: 'image/*,application/pdf',
   },
 ]
@@ -254,33 +263,6 @@ function formatSize(bytes) {
             </v-expansion-panel-text>
           </v-expansion-panel>
 
-          <!-- =================== RAPPORTS =================== -->
-          <v-expansion-panel value="rapports">
-            <v-expansion-panel-title>
-              <span class="panel-title">Rapports</span>
-            </v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <v-row>
-                <v-col cols="12" sm="6" md="4">
-                  <div class="doc-card doc-card--missing">
-                    <div class="doc-card-badge doc-card-badge--todo">
-                      <v-icon :icon="mdiPlus" size="14" />
-                    </div>
-                    <div class="doc-card-icon doc-card-icon--todo">
-                      <v-icon :icon="mdiFileChartOutline" size="26" />
-                    </div>
-                    <div class="text-title-small font-weight-bold mt-3">Rapport médical</div>
-                    <div class="text-body-small text-medium-emphasis">Compte-rendu d'examen</div>
-                    <div class="doc-card-cta mt-3">
-                      <v-icon :icon="mdiUploadOutline" size="14" class="mr-1" />
-                      Ajouter
-                    </div>
-                  </div>
-                </v-col>
-              </v-row>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-
           <!-- =================== ORDONNANCES =================== -->
           <v-expansion-panel value="ordonnances">
             <v-expansion-panel-title>
@@ -288,17 +270,44 @@ function formatSize(bytes) {
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <v-row>
-                <v-col cols="12" sm="6" md="4">
-                  <div class="doc-card doc-card--missing">
-                    <div class="doc-card-badge doc-card-badge--todo">
-                      <v-icon :icon="mdiPlus" size="14" />
+                <v-col v-for="doc in ORDONNANCES_DOCS" :key="doc.key" cols="12" sm="6" md="4">
+                  <div class="doc-card"
+                    :class="{ 'doc-card--uploaded': documents[doc.key], 'doc-card--missing': !documents[doc.key] }"
+                    @click="!documents[doc.key] && pickFile(doc.key)">
+
+                    <input :ref="(el) => (fileInputs[doc.key] = el)" type="file" :accept="doc.accept"
+                      style="display: none" @change="(e) => handleUpload(doc.key, e)" />
+
+                    <div class="doc-card-badge"
+                      :class="documents[doc.key] ? 'doc-card-badge--ok' : 'doc-card-badge--todo'">
+                      <v-icon :icon="documents[doc.key] ? mdiCheck : mdiPlus" size="14" />
                     </div>
-                    <div class="doc-card-icon doc-card-icon--todo">
-                      <v-icon :icon="mdiFileSign" size="26" />
+
+                    <div class="doc-card-icon"
+                      :class="documents[doc.key] ? 'doc-card-icon--ok' : 'doc-card-icon--todo'">
+                      <v-icon :icon="doc.icon" size="26" />
                     </div>
-                    <div class="text-title-small font-weight-bold mt-3">Ordonnance</div>
-                    <div class="text-body-small text-medium-emphasis">Prescription médicale</div>
-                    <div class="doc-card-cta mt-3">
+
+                    <div class="text-title-small font-weight-bold mt-3">{{ doc.title }}</div>
+                    <div class="text-body-small text-medium-emphasis">{{ doc.subtitle }}</div>
+
+                    <template v-if="documents[doc.key]">
+                      <div class="doc-card-filename mt-2">
+                        <v-icon :icon="mdiPaperclip" size="13" class="mr-1" />
+                        <span class="text-truncate">{{ documents[doc.key].name }}</span>
+                      </div>
+
+                      <div class="d-flex ga-1 mt-3">
+                        <v-btn variant="text" size="x-small" color="primary" rounded="lg" class="text-none flex-grow-1"
+                          :prepend-icon="mdiUploadOutline" @click.stop="pickFile(doc.key)">
+                          Remplacer
+                        </v-btn>
+                        <v-btn :icon="mdiTrashCanOutline" variant="text" size="x-small" density="comfortable"
+                          color="error" @click.stop="removeDoc(doc.key)" />
+                      </div>
+                    </template>
+
+                    <div v-else class="doc-card-cta mt-3">
                       <v-icon :icon="mdiUploadOutline" size="14" class="mr-1" />
                       Ajouter
                     </div>
