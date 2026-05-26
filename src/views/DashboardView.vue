@@ -1,7 +1,7 @@
 <script setup>
 import { useParamsStore } from '@/stores/params'
 import { useSelfStore } from '@/stores/self'
-import { mdiClipboardPulse, mdiMoonWaningCrescent } from '@mdi/js'
+import { mdiClipboardPulse, mdiFolderOutline, mdiMoonWaningCrescent } from '@mdi/js'
 import { computed, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -42,6 +42,31 @@ const epworthScoreLabel = computed(() => {
           <!-- Install app card -->
           <v-col v-if="paramsStore.beforeinstallprompt" cols="12" md="6">
             <InstallAppCard class="h-100" />
+          </v-col>
+
+          <!-- Mon dossier card -->
+          <v-col cols="12">
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
+              @click="router.push({ name: 'MonDossier' })">
+              <v-row align="center">
+                <v-col>
+                  <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
+                    Mon dossier
+                  </div>
+                  <div class="text-body-medium text-medium-emphasis mb-4">
+                    Retrouvez vos informations, documents et questionnaires
+                  </div>
+                  <v-btn :prepend-icon="mdiFolderOutline" variant="tonal" color="primary" rounded="lg"
+                    @click.stop="router.push({ name: 'MonDossier' })" class="text-none">
+                    Ouvrir mon dossier
+                  </v-btn>
+                </v-col>
+                <v-col cols="auto">
+                  <v-img src="@/assets/illustrations/folder.svg" width="100" height="90" contain
+                    transition="fade-transition" />
+                </v-col>
+              </v-row>
+            </v-card>
           </v-col>
 
           <!-- Sleep diary card -->
@@ -109,10 +134,10 @@ const epworthScoreLabel = computed(() => {
     <v-row v-else justify="center" class="mt-8 mx-6 mb-16 pb-10">
       <v-col :cols="$vuetify.display.mobile ? 12 : 10">
 
-        <v-skeleton-loader type="heading" class="mb-6" width="200" />
+        <!-- <v-skeleton-loader type="heading" class="mb-6" width="200" /> -->
 
         <!-- Sleep diary card skeleton -->
-        <v-card class="mt-4 pa-6 card-shadow rounded-15">
+        <!-- <v-card class="mt-4 pa-6 card-shadow rounded-15">
           <v-row align="center">
             <v-col>
               <v-skeleton-loader type="heading" class="mb-2" />
@@ -123,10 +148,10 @@ const epworthScoreLabel = computed(() => {
               <v-skeleton-loader type="image" width="100" height="90" />
             </v-col>
           </v-row>
-        </v-card>
+        </v-card> -->
 
         <!-- Epworth test card skeleton -->
-        <v-card class="mt-4 pa-6 card-shadow rounded-15">
+        <!-- <v-card class="mt-4 pa-6 card-shadow rounded-15">
           <v-row align="center">
             <v-col>
               <v-skeleton-loader type="heading" class="mb-2" />
@@ -137,7 +162,7 @@ const epworthScoreLabel = computed(() => {
               <v-skeleton-loader type="image" width="100" height="90" />
             </v-col>
           </v-row>
-        </v-card>
+        </v-card> -->
 
       </v-col>
     </v-row>

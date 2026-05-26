@@ -308,11 +308,12 @@ function confirmTimePicker() {
 
           <!-- Entry form — bottom sheet on xs, dialog on larger screens -->
           <component :is="xs ? VBottomSheet : VDialog" v-model="showForm" :max-width="xs ? undefined : 580" scrollable>
-            <v-card :rounded="xs ? 't-xl' : 'xl'" class="pa-2">
-              <v-card-title class="pa-6 pb-2 text-title-large font-weight-bold">
+            <v-card :rounded="xs ? 't-xl' : 0" :class="[{ 'rounded-15': !xs }]">
+              <v-card-title class="pa-4 text-title-large font-weight-bold">
                 Entrée de l'agenda
               </v-card-title>
-              <v-card-text class="px-6 py-2">
+              <v-divider />
+              <v-card-text class="pa-4">
 
                 <!-- Date -->
                 <div class="mb-5">
@@ -448,7 +449,8 @@ function confirmTimePicker() {
                 </div>
 
               </v-card-text>
-              <v-card-actions class="pa-6 pt-4">
+              <v-divider />
+              <v-card-actions class="pa-4">
                 <v-btn variant="text" rounded="lg" size="large" class="text-none" @click="showForm = false">
                   Annuler
                 </v-btn>
@@ -482,7 +484,7 @@ function confirmTimePicker() {
           </v-bottom-sheet>
 
           <v-dialog v-else v-model="timePicker.show" max-width="340">
-            <v-card rounded="xl" class="pa-4 card-shadow">
+            <v-card class="pa-4 card-shadow rounded-15">
               <div class="text-center text-title-medium font-weight-bold mb-2">
                 Heure
               </div>
@@ -502,10 +504,12 @@ function confirmTimePicker() {
 
           <!-- Delete confirm dialog -->
           <v-dialog v-model="showDelete" max-width="360">
-            <v-card rounded="xl" class="pa-2 card-shadow">
-              <v-card-title class="pa-6 pb-2">Supprimer l'entrée</v-card-title>
-              <v-card-text class="px-6">Êtes-vous sûr de vouloir supprimer cette entrée ?</v-card-text>
-              <v-card-actions class="pa-6 pt-2">
+            <v-card class="card-shadow rounded-15">
+              <v-card-title class="pa-4">Supprimer l'entrée</v-card-title>
+              <v-divider />
+              <v-card-text class="pa-4">Êtes-vous sûr de vouloir supprimer cette entrée ?</v-card-text>
+              <v-divider />
+              <v-card-actions class="pa-4">
                 <v-btn variant="text" rounded="lg" size="large" class="text-none" @click="showDelete = false">
                   Annuler
                 </v-btn>

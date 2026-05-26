@@ -15,7 +15,8 @@
     "date": "2026-05-05",
     "time": "14:00",
     "locationName": "Cabinet Dr Robert — 12 rue de Strasbourg, 44000 Nantes",
-    "report": ""
+    "report": "",
+    "cancelled": true
   },
   {
     "id": "act-3",
@@ -52,5 +53,14 @@
     "time": "08:30",
     "locationName": "Cabinet Dr Robert — 12 rue de Strasbourg, 44000 Nantes",
     "report": "Revue à 6 semaines de la mise en place du traitement. Observance excellente (>6h/nuit). Diminution nette de la somnolence diurne. Prochain contrôle dans 6 mois."
+  },
+  {
+    "id": "act-7",
+    "type": "Consultation de contrôle",
+    "doctor": "Dr Lucas Robert",
+    "date": "2026-06-10",
+    "time": "09:00",
+    "locationName": "Cabinet Dr Robert — 12 rue de Strasbourg, 44000 Nantes",
+    "report": ""
   }
 ]

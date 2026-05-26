@@ -167,7 +167,7 @@ async function handleDeleteAccount() {
 
     <!-- =================== DELETE CONFIRM DIALOG =================== -->
     <v-dialog v-model="deleteDialog" max-width="500" :fullscreen="$vuetify.display.mobile">
-      <v-card :rounded="$vuetify.display.mobile ? 0 : 'lg'" class="card-shadow">
+      <v-card :class="['card-shadow', { 'rounded-15': !$vuetify.display.mobile }]">
         <v-card-title class="pa-4">
           <span class="text-headline-small font-weight-bold">Supprimer mon compte</span>
         </v-card-title>

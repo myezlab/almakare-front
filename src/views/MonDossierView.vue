@@ -10,6 +10,7 @@ import { useSelfStore } from "@/stores/self"
 import {
   mdiAccountOutline,
   mdiCalendarCheckOutline,
+  mdiCalendarPlusOutline,
   mdiClipboardListOutline,
   mdiEmailOutline,
   mdiFileMultipleOutline,
@@ -25,6 +26,16 @@ const router = useRouter()
 const route = useRoute()
 
 const currentUser = computed(() => selfStore.item || {})
+
+const medecinTraitant = computed(() => currentUser.value?.medecinTraitant || null)
+const medecinTraitantLabel = computed(() => {
+  const d = medecinTraitant.value
+  if (!d) return ''
+  const name = [d.firstName, d.lastName].filter(Boolean).join(' ').trim()
+  return name ? `Dr. ${name}` : ''
+})
+
+const medecinDialogOpen = ref(false)
 
 const TABS = [
   { value: 'donnees-patient', label: 'Données patient', icon: mdiAccountOutline },
@@ -86,8 +97,34 @@ const fullName = computed(() => {
         <v-row class="mb-2" align="center"
           :class="{ 'mx-6 ': $vuetify.display.mobile, 'mb-6': !$vuetify.display.mobile }">
           <v-col align-self="center">
-            <div class="text-headline-medium font-weight-bold">Mon dossier</div>
-            <div class="text-body-medium text-medium-emphasis mt-1">
+            <!-- Desktop layout: inline -->
+            <div v-if="!$vuetify.display.mobile"
+              class="text-headline-medium font-weight-bold d-flex flex-wrap align-center">
+              <span>Mon dossier</span>
+              <template v-if="medecinTraitantLabel">
+                <span class="mx-2 text-medium-emphasis">|</span>
+                <a class="medecin-link" @click="medecinDialogOpen = true">{{ medecinTraitantLabel }}</a>
+                <v-btn :prepend-icon="mdiCalendarPlusOutline" color="primary" variant="tonal" rounded="lg" size="small"
+                  class="text-none ml-3" @click="router.push({ name: 'PrendreRendezVous' })">
+                  Prendre rendez-vous
+                </v-btn>
+              </template>
+            </div>
+            <!-- Mobile layout: stacked -->
+            <div v-else>
+              <div class="text-headline-medium font-weight-bold">Mon dossier</div>
+              <template v-if="medecinTraitantLabel">
+                <div class="mt-1">
+                  <a class="medecin-link text-title-medium font-weight-medium" @click="medecinDialogOpen = true">{{
+                    medecinTraitantLabel }}</a>
+                </div>
+                <v-btn :prepend-icon="mdiCalendarPlusOutline" color="primary" variant="tonal" rounded="lg" size="small"
+                  class="text-none mt-2" @click="router.push({ name: 'PrendreRendezVous' })">
+                  Prendre rendez-vous
+                </v-btn>
+              </template>
+            </div>
+            <div v-if="!$vuetify.display.mobile" class="text-body-medium text-medium-emphasis mt-1">
               Gérez vos informations personnelles et médicales
             </div>
           </v-col>
@@ -160,11 +197,74 @@ const fullName = computed(() => {
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- =================== MÉDECIN TRAITANT DETAILS DIALOG =================== -->
+    <v-dialog v-model="medecinDialogOpen" max-width="560" :fullscreen="$vuetify.display.mobile" scrollable>
+      <v-card class="card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-headline-small font-weight-bold">
+            {{ medecinTraitant?.specialty ? ` ${medecinTraitant.specialty}` : '' }}
+          </span>
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-4">
+          <div class="text-title-medium font-weight-bold mb-3">Informations médecin partenaire</div>
+          <v-row>
+            <v-col cols="12" md="6">
+              <div class="field-label">Prénom / Nom</div>
+              <div class="field-value">
+                {{ [medecinTraitant?.firstName, medecinTraitant?.lastName].filter(Boolean).join(' ') || '-' }}
+              </div>
+            </v-col>
+            <v-col cols="12" md="6">
+              <div class="field-label">Téléphone</div>
+              <div class="field-value">{{ medecinTraitant?.phone || '-' }}</div>
+            </v-col>
+            <v-col cols="12" md="6">
+              <div class="field-label">Email</div>
+              <div class="field-value">{{ medecinTraitant?.email || '-' }}</div>
+            </v-col>
+            <v-col cols="12" md="6">
+              <div class="field-label">Numéro Adeli</div>
+              <div class="field-value">{{ medecinTraitant?.adeli || '-' }}</div>
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" rounded="lg" class="text-none" @click="medecinDialogOpen = false">
+            Fermer
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 
 <style scoped>
+.medecin-link {
+  color: rgb(var(--v-theme-primary));
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.medecin-link:hover {
+  text-decoration: underline;
+}
+
+.field-label {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 4px;
+}
+
+.field-value {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
 .profile-chips :deep(.v-slide-group__container) {
   overflow: visible;
   contain: none;

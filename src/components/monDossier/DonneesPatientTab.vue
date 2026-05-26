@@ -615,6 +615,10 @@ function selectMedecin(doctor) {
                     </div>
                   </v-col>
                   <v-col cols="12" md="6">
+                    <div class="field-label">Spécialité</div>
+                    <div class="field-value">{{ medecinTraitant.specialty || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
                     <div class="field-label">Téléphone</div>
                     <div class="field-value">{{ medecinTraitant.phone || EMPTY }}</div>
                   </v-col>
@@ -662,6 +666,10 @@ function selectMedecin(doctor) {
                     <div class="field-value">
                       {{ [medecinAdresseur.firstName, medecinAdresseur.lastName].filter(Boolean).join(' ') || EMPTY }}
                     </div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Spécialité</div>
+                    <div class="field-value">{{ medecinAdresseur.specialty || EMPTY }}</div>
                   </v-col>
                   <v-col cols="12" md="6">
                     <div class="field-label">Téléphone</div>
@@ -717,11 +725,12 @@ function selectMedecin(doctor) {
 
     <!-- =================== MÉDECIN TRAITANT DIALOG =================== -->
     <v-dialog v-model="medecinDialogOpen" max-width="700" :fullscreen="$vuetify.display.mobile" scrollable>
-      <v-card class="pa-2 card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
-        <v-card-title class="d-flex align-center px-4 pt-4 pb-0">
+      <v-card class="card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+        <v-card-title class="d-flex align-center pa-4">
           <span class="text-headline-small font-weight-bold">Médecin</span>
         </v-card-title>
-        <v-card-text class="px-4 pt-4">
+        <v-divider />
+        <v-card-text class="pa-4">
           <v-form @submit.prevent="searchMedecins">
             <v-row density="comfortable">
               <v-col cols="12" md>
@@ -774,7 +783,8 @@ function selectMedecin(doctor) {
             Aucun médecin trouvé.
           </div>
         </v-card-text>
-        <v-card-actions class="px-4 pb-4">
+        <v-divider />
+        <v-card-actions class="pa-4">
           <v-spacer />
           <v-btn variant="text" rounded="lg" class="text-none" @click="medecinDialogOpen = false">
             Fermer
