@@ -68,7 +68,7 @@ const accountLabel = computed(() => {
 </script>
 
 <template>
-  <v-toolbar flat color="primary" density="comfortable">
+  <v-toolbar flat color="primary" density="comfortable" class="app-toolbar-sticky">
     <v-btn v-if="$vuetify.display.mobile" icon variant="text" color="white" aria-label="Almakare"
       @click="goToDashboard">
       <v-img :src="logoInitials" width="28" height="28" contain />
@@ -125,6 +125,12 @@ const accountLabel = computed(() => {
 </template>
 
 <style scoped>
+.app-toolbar-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
 .support-dialog-title :deep(span),
 .support-dialog-title span {
   white-space: normal;

@@ -1,4 +1,5 @@
 <script setup>
+import DoctorDialog from "@/components/DoctorDialog.vue"
 import ActivitesTab from "@/components/monDossier/ActivitesTab.vue"
 import DocumentsTab from "@/components/monDossier/DocumentsTab.vue"
 import DonneesPatientTab from "@/components/monDossier/DonneesPatientTab.vue"
@@ -199,46 +200,7 @@ const fullName = computed(() => {
     </v-row>
 
     <!-- =================== MÉDECIN TRAITANT DETAILS DIALOG =================== -->
-    <v-dialog v-model="medecinDialogOpen" max-width="560" :fullscreen="$vuetify.display.mobile" scrollable>
-      <v-card class="card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
-        <v-card-title class="d-flex align-center pa-4">
-          <span class="text-headline-small font-weight-bold">
-            {{ medecinTraitant?.specialty ? ` ${medecinTraitant.specialty}` : '' }}
-          </span>
-        </v-card-title>
-        <v-divider />
-        <v-card-text class="pa-4">
-          <div class="text-title-medium font-weight-bold mb-3">Informations médecin partenaire</div>
-          <v-row>
-            <v-col cols="12" md="6">
-              <div class="field-label">Prénom / Nom</div>
-              <div class="field-value">
-                {{ [medecinTraitant?.firstName, medecinTraitant?.lastName].filter(Boolean).join(' ') || '-' }}
-              </div>
-            </v-col>
-            <v-col cols="12" md="6">
-              <div class="field-label">Téléphone</div>
-              <div class="field-value">{{ medecinTraitant?.phone || '-' }}</div>
-            </v-col>
-            <v-col cols="12" md="6">
-              <div class="field-label">Email</div>
-              <div class="field-value">{{ medecinTraitant?.email || '-' }}</div>
-            </v-col>
-            <v-col cols="12" md="6">
-              <div class="field-label">Numéro Adeli</div>
-              <div class="field-value">{{ medecinTraitant?.adeli || '-' }}</div>
-            </v-col>
-          </v-row>
-        </v-card-text>
-        <v-divider />
-        <v-card-actions class="pa-4">
-          <v-spacer />
-          <v-btn variant="text" rounded="lg" class="text-none" @click="medecinDialogOpen = false">
-            Fermer
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <DoctorDialog v-model="medecinDialogOpen" :doctor="medecinTraitant" :name="medecinTraitantLabel" />
   </div>
 </template>
 
@@ -252,17 +214,6 @@ const fullName = computed(() => {
 
 .medecin-link:hover {
   text-decoration: underline;
-}
-
-.field-label {
-  font-size: 0.75rem;
-  color: rgba(0, 0, 0, 0.6);
-  margin-bottom: 4px;
-}
-
-.field-value {
-  font-size: 0.95rem;
-  font-weight: 500;
 }
 
 .profile-chips :deep(.v-slide-group__container) {

@@ -1,17 +1,23 @@
 <script setup>
+import DoctorCard from "@/components/DoctorCard.vue"
+import LocationCard from "@/components/LocationCard.vue"
 import { ISOToDDMMYYYY } from "@/composables/useDates"
 import { useUrlPanels } from "@/composables/useUrlPanels"
 import ACTIVITIES_DATA from "@/data/activities.json"
+import { DOCTORS_SEED } from "@/data/doctors"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
 import {
+  mdiApple,
   mdiCalendarBlankOutline,
+  mdiCalendarPlusOutline,
   mdiCancel,
   mdiCheckCircleOutline,
   mdiClipboardPulseOutline,
   mdiClockOutline,
   mdiFileDocumentEditOutline,
-  mdiMapMarkerOutline,
+  mdiGoogle,
+  mdiMicrosoftOutlook,
   mdiMoonWaningCrescent
 } from "@mdi/js"
 import dayjs from "dayjs"
@@ -30,6 +36,20 @@ const activities = ref(
   [...ACTIVITIES_DATA].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 )
 
+// Resolve the activity's free-text doctor name ("Dr Lucas Robert") to a seeded
+// doctor record so we can show their profile picture, specialty, etc.
+function normalizeName(value) {
+  return (value || "").replace(/^Dr\.?\s+/i, "").trim().toLowerCase()
+}
+function getDoctor(activity) {
+  const name = normalizeName(activity.doctor)
+  return (
+    DOCTORS_SEED.find(
+      (d) => `${d.firstName} ${d.lastName}`.toLowerCase() === name
+    ) || null
+  )
+}
+
 const lastActivityId = computed(() => activities.value[0]?.id || null)
 const secondActivityId = computed(() => activities.value[1]?.id || null)
 
@@ -41,6 +61,25 @@ function isUpcoming(activity) {
   return dayjs(activity.date).isSame(today) || dayjs(activity.date).isAfter(today)
 }
 
+const sections = computed(() => {
+  const upcoming = []
+  const ongoing = []
+  const past = []
+  for (const activity of activities.value) {
+    const date = dayjs(activity.date).startOf('day')
+    if (date.isSame(today)) ongoing.push(activity)
+    else if (date.isAfter(today)) upcoming.push(activity)
+    else past.push(activity)
+  }
+  // soonest upcoming first; ongoing and past keep the most recent first
+  upcoming.reverse()
+  return [
+    { key: 'upcoming', title: 'À venir', items: upcoming },
+    { key: 'ongoing', title: 'En cours', items: ongoing },
+    { key: 'past', title: 'Passés', items: past }
+  ].filter((section) => section.items.length > 0)
+})
+
 const showCancelDialog = ref(false)
 const cancelTarget = ref(null)
 const cancelling = ref(false)
@@ -49,6 +88,21 @@ const cancelledIds = ref(new Set())
 
 function isCancelled(activity) {
   return activity.cancelled === true || cancelledIds.value.has(activity.id)
+}
+
+function isDone(activity) {
+  return !isUpcoming(activity) && !isCancelled(activity)
+}
+
+// Show the Annuler / Confirmer buttons in the collapsed header while the
+// consultation is upcoming and the patient hasn't confirmed yet.
+function showHeaderActions(activity) {
+  return (
+    isUpcoming(activity) &&
+    !isCancelled(activity) &&
+    !confirmedIds.value.has(activity.id) &&
+    !openPanels.value.includes(activity.id)
+  )
 }
 
 function confirmAttendance(activity) {
@@ -80,6 +134,76 @@ async function doCancel() {
   }
 }
 
+function getEventTimes(activity) {
+  const start = dayjs(`${activity.date}T${activity.time || '09:00'}`)
+  return { start, end: start.add(30, 'minute') }
+}
+
+// Long French date/time shown in the open panel, e.g. "Le mercredi 10 juin à 9h00".
+function fullDateTime(activity) {
+  const start = dayjs(`${activity.date}T${activity.time || '09:00'}`)
+  return `Le ${start.format('dddd D MMMM')} à ${start.format('H[h]mm')}`
+}
+
+function calendarTitle(activity) {
+  return `${activity.type} — ${activity.doctor}`
+}
+
+function escapeIcs(value) {
+  return (value || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n')
+}
+
+function addToGoogle(activity) {
+  const { start, end } = getEventTimes(activity)
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: calendarTitle(activity),
+    dates: `${start.format('YYYYMMDDTHHmmss')}/${end.format('YYYYMMDDTHHmmss')}`,
+    details: activity.report || '',
+    location: activity.locationName || ''
+  })
+  window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank')
+}
+
+function addToOutlook(activity) {
+  const { start, end } = getEventTimes(activity)
+  const params = new URLSearchParams({
+    path: '/calendar/action/compose',
+    rru: 'addevent',
+    subject: calendarTitle(activity),
+    startdt: start.toISOString(),
+    enddt: end.toISOString(),
+    body: activity.report || '',
+    location: activity.locationName || ''
+  })
+  window.open(`https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`, '_blank')
+}
+
+function downloadIcs(activity) {
+  const { start, end } = getEventTimes(activity)
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Almakare//Activites//FR',
+    'BEGIN:VEVENT',
+    `UID:${activity.id}@almakare`,
+    `DTSTART:${start.format('YYYYMMDDTHHmmss')}`,
+    `DTEND:${end.format('YYYYMMDDTHHmmss')}`,
+    `SUMMARY:${escapeIcs(calendarTitle(activity))}`,
+    `LOCATION:${escapeIcs(activity.locationName)}`,
+    `DESCRIPTION:${escapeIcs(activity.report)}`,
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n')
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${activity.type}.ics`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 function goToEpworth() {
   router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'epworth' } })
 }
@@ -90,84 +214,132 @@ function goToSleepDiary() {
 </script>
 
 <template>
-  <v-row>
-    <v-col cols="12">
+  <v-row class="mt-6">
+    <v-col v-for="section in sections" :key="section.key" cols="12">
+      <div class="section-header text-overline text-medium-emphasis px-1 pb-2"
+        :class="{ 'pl-4': $vuetify.display.mobile }">
+        {{ section.title }}
+      </div>
       <v-card class="card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
 
         <v-expansion-panels v-model="openPanels" flat multiple variant="accordion" class="card-shadow pa-2"
           :class="{ 'rounded-15': !$vuetify.display.mobile }">
 
-          <v-expansion-panel v-for="activity in activities" :key="activity.id" :value="activity.id">
+          <v-expansion-panel v-for="activity in section.items" :key="activity.id" :value="activity.id">
             <v-expansion-panel-title>
               <div v-if="mobile" class="d-flex flex-column flex-grow-1">
                 <div class="d-flex align-center ga-2">
-                  <span class="panel-title" :class="{ 'text-decoration-line-through text-medium-emphasis': isCancelled(activity) }">
+                  <span class="panel-title"
+                    :class="{ 'text-decoration-line-through text-medium-emphasis': isCancelled(activity) }">
                     {{ activity.type }}
                   </span>
                   <v-chip v-if="isCancelled(activity)" color="error" size="x-small" variant="tonal" label>
-                    Annulée
+                    Annulé
                   </v-chip>
-                  <v-chip v-else-if="!isUpcoming(activity)" color="primary" size="x-small" variant="tonal" label>
-                    Effectuée
-                  </v-chip>
-                  <v-chip v-else-if="confirmedIds.has(activity.id)" color="success" size="x-small" variant="tonal" label>
+                  <v-chip v-else-if="confirmedIds.has(activity.id)" color="success" size="x-small" variant="tonal"
+                    label>
                     Confirmée
                   </v-chip>
+                  <v-chip v-else-if="isDone(activity)" color="primary" size="x-small" variant="tonal" label>
+                    Effectué
+                  </v-chip>
                 </div>
-                <span class="text-body-small text-medium-emphasis mt-1">
-                  {{ activity.doctor }} - {{ ISOToDDMMYYYY(activity.date) }}
+                <span v-if="!openPanels.includes(activity.id)"
+                  class="d-flex align-center flex-wrap ga-1 text-body-small text-medium-emphasis mt-1">
+                  {{ activity.doctor }} •
+                  <v-icon :icon="mdiCalendarBlankOutline" size="14" />
+                  {{ ISOToDDMMYYYY(activity.date) }}
+                  <v-icon :icon="mdiClockOutline" size="14" />
+                  {{ activity.time }}
                 </span>
+                <v-row v-if="showHeaderActions(activity)" no-gutters class="mt-2" @click.stop>
+                  <v-col cols="6" class="pr-1">
+                    <v-btn block color="error" variant="tonal" rounded="lg" size="small" class="text-none"
+                      @click="askCancel(activity)">
+                      Annuler
+                    </v-btn>
+                  </v-col>
+                  <v-col cols="6" class="pl-1">
+                    <v-btn block color="success" variant="flat" rounded="lg" size="small" class="text-none"
+                      @click="confirmAttendance(activity)">
+                      Confirmer
+                    </v-btn>
+                  </v-col>
+                </v-row>
               </div>
               <div v-else class="d-flex align-center flex-wrap ga-2 flex-grow-1">
-                <span class="panel-title" :class="{ 'text-decoration-line-through text-medium-emphasis': isCancelled(activity) }">
+                <span class="panel-title"
+                  :class="{ 'text-decoration-line-through text-medium-emphasis': isCancelled(activity) }">
                   {{ activity.type }}
                 </span>
                 <v-chip v-if="isCancelled(activity)" color="error" size="x-small" variant="tonal" label>
-                  Annulée
-                </v-chip>
-                <v-chip v-else-if="!isUpcoming(activity)" color="primary" size="x-small" variant="tonal" label>
-                  Effectuée
+                  Annulé
                 </v-chip>
                 <v-chip v-else-if="confirmedIds.has(activity.id)" color="success" size="x-small" variant="tonal" label>
-                  Confirmée
+                  Confirmé
                 </v-chip>
-                <span class="text-medium-emphasis">•</span>
-                <span class="text-body-medium">{{ activity.doctor }}</span>
-                <span class="text-medium-emphasis">•</span>
-                <span class="text-body-medium text-medium-emphasis">{{ ISOToDDMMYYYY(activity.date) }}</span>
+                <v-chip v-else-if="isDone(activity)" color="primary" size="x-small" variant="tonal" label>
+                  Effectué
+                </v-chip>
+                <template v-if="!openPanels.includes(activity.id)">
+                  <span class="text-medium-emphasis">•</span>
+                  <span class="text-body-medium">{{ activity.doctor }}</span>
+                  <span class="text-medium-emphasis">•</span>
+                  <v-icon :icon="mdiCalendarBlankOutline" size="16" class="text-medium-emphasis" />
+                  <span class="text-body-medium text-medium-emphasis">{{ ISOToDDMMYYYY(activity.date) }}</span>
+                  <v-icon :icon="mdiClockOutline" size="16" class="text-medium-emphasis" />
+                  <span class="text-body-medium text-medium-emphasis">{{ activity.time }}</span>
+                </template>
+              </div>
+              <div v-if="!mobile && showHeaderActions(activity)" class="d-flex align-center ga-1 mr-2" @click.stop>
+                <v-btn color="error" variant="text" rounded="lg" size="small" class="text-none"
+                  @click="askCancel(activity)">
+                  Annuler
+                </v-btn>
+                <v-btn color="success" variant="flat" rounded="lg" size="small" class="text-none"
+                  @click="confirmAttendance(activity)">
+                  Confirmer
+                </v-btn>
               </div>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
 
-              <!-- =================== TYPE + DATE/TIME ROW =================== -->
+              <!-- =================== CALENDAR + DATE/TIME ROW =================== -->
               <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4">
-                <div class="d-flex align-center ga-2">
-                  <v-icon :icon="mdiCalendarBlankOutline" size="20" class="text-medium-emphasis" />
-                  <span class="text-title-medium font-weight-bold">{{ activity.type }}</span>
-                </div>
+                <v-menu v-if="isUpcoming(activity)" location="bottom start">
+                  <template #activator="{ props }">
+                    <v-btn v-bind="props" color="primary" variant="tonal" rounded="lg" size="small" class="text-none"
+                      :prepend-icon="mdiCalendarPlusOutline">
+                      Ajouter au calendrier
+                    </v-btn>
+                  </template>
+                  <v-list density="compact" rounded="lg" class="card-shadow">
+                    <v-list-item :prepend-icon="mdiGoogle" title="Google Agenda" @click="addToGoogle(activity)" />
+                    <v-list-item :prepend-icon="mdiMicrosoftOutlook" title="Outlook" @click="addToOutlook(activity)" />
+                    <v-list-item :prepend-icon="mdiApple" title="Apple / iCal" @click="downloadIcs(activity)" />
+                  </v-list>
+                </v-menu>
                 <div class="d-flex align-center ga-2 text-medium-emphasis">
-                  <span class="text-body-medium font-weight-medium">{{ ISOToDDMMYYYY(activity.date) }}</span>
-                  <v-icon :icon="mdiClockOutline" size="16" />
-                  <span class="text-body-medium font-weight-medium">{{ activity.time }}</span>
+                  <span class="text-body-medium font-weight-medium">{{ fullDateTime(activity) }}</span>
                 </div>
               </div>
 
-              <!-- =================== LOCATION =================== -->
-              <v-alert type="info" variant="tonal" :icon="mdiMapMarkerOutline" density="comfortable" class="mb-3"
-                rounded="lg">
-                <div class="text-body-medium font-weight-medium">{{ activity.locationName }}</div>
-                <div class="text-body-small text-medium-emphasis">Type consultation : Cabinet</div>
-              </v-alert>
+              <!-- =================== DOCTOR CARD =================== -->
+              <DoctorCard v-if="getDoctor(activity)" :doctor="getDoctor(activity)" :name="activity.doctor"
+                class="mb-3" />
 
-              <!-- =================== RAPPORT MÉDECIN =================== -->
-              <v-alert v-if="activity.report" type="warning" variant="tonal" :icon="mdiFileDocumentEditOutline"
-                density="comfortable" rounded="lg">
+              <!-- =================== LOCATION =================== -->
+              <LocationCard :location-name="activity.locationName" class="mb-3" />
+
+              <!-- =================== RAPPORT MÉDECIN (not shown while upcoming) =================== -->
+              <v-alert v-if="!isUpcoming(activity) && activity.report" type="warning" variant="tonal"
+                :icon="mdiFileDocumentEditOutline" density="comfortable" rounded="lg">
                 <div class="text-body-small font-weight-bold mb-1">Rapport médecin</div>
                 <div class="text-body-medium">{{ activity.report }}</div>
               </v-alert>
 
-              <v-alert v-else type="warning" variant="tonal" :icon="mdiFileDocumentEditOutline" density="comfortable"
-                rounded="lg">
+              <v-alert v-else-if="!isUpcoming(activity)" type="warning" variant="tonal"
+                :icon="mdiFileDocumentEditOutline" density="comfortable" rounded="lg">
                 <div class="text-body-medium font-weight-bold">Rapport médecin</div>
                 <div class="text-body-small text-medium-emphasis">Aucun rapport renseigné pour cette consultation.</div>
               </v-alert>
@@ -217,8 +389,8 @@ function goToSleepDiary() {
               </v-alert>
 
               <!-- =================== CANCELLED STATUS =================== -->
-              <v-alert v-if="isCancelled(activity)" type="error" variant="tonal" :icon="mdiCancel"
-                density="comfortable" rounded="lg" class="mt-3">
+              <v-alert v-if="isCancelled(activity)" type="error" variant="tonal" :icon="mdiCancel" density="comfortable"
+                rounded="lg" class="mt-3">
                 <div class="text-body-medium font-weight-bold">Consultation annulée</div>
                 <div class="text-body-small text-medium-emphasis">
                   Cette consultation a été annulée. Pensez à reprendre rendez-vous si nécessaire.
@@ -226,14 +398,15 @@ function goToSleepDiary() {
               </v-alert>
 
               <!-- =================== CANCEL / CONFIRM CONSULTATION =================== -->
-              <div v-if="isUpcoming(activity) && !isCancelled(activity)" class="d-flex justify-end align-center ga-2 mt-4">
+              <div v-if="isUpcoming(activity) && !isCancelled(activity)"
+                class="d-flex justify-center align-center ga-2 mt-4">
                 <v-btn color="error" variant="text" rounded="lg" size="small" class="text-none"
                   @click="askCancel(activity)">
                   Annuler la consultation
                 </v-btn>
-                <v-btn color="success" variant="flat" rounded="lg" size="small" class="text-none"
-                  :disabled="confirmedIds.has(activity.id)" @click="confirmAttendance(activity)">
-                  {{ confirmedIds.has(activity.id) ? 'Présence confirmée' : 'Je confirme ma présence' }}
+                <v-btn v-if="!confirmedIds.has(activity.id)" color="success" variant="flat" rounded="lg" size="small"
+                  class="text-none" @click="confirmAttendance(activity)">
+                  Je confirme ma présence
                 </v-btn>
               </div>
 

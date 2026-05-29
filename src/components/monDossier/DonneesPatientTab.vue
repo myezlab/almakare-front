@@ -1,4 +1,5 @@
 <script setup>
+import DoctorCard from "@/components/DoctorCard.vue"
 import { ISOToDDMMYYYY, ISOToShortenedDate } from "@/composables/useDates"
 
 import { useRules } from "@/composables/useRules"
@@ -233,6 +234,11 @@ const medecinSearchPerformed = ref(false)
 
 const medecinTraitant = computed(() => currentUser.value?.medecinTraitant || null)
 const medecinAdresseur = computed(() => currentUser.value?.medecinAdresseur || null)
+
+function medecinName(doctor) {
+  if (!doctor) return ''
+  return `Dr ${[doctor.firstName, doctor.lastName].filter(Boolean).join(' ')}`.trim()
+}
 
 function openMedecinDialog(targetKey) {
   medecinDialogTarget.value = MEDECIN_TARGETS[targetKey] || null
@@ -623,30 +629,7 @@ function selectMedecin(doctor) {
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <template v-if="medecinTraitant">
-                <v-row>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Prénom / Nom</div>
-                    <div class="field-value">
-                      {{ [medecinTraitant.firstName, medecinTraitant.lastName].filter(Boolean).join(' ') || EMPTY }}
-                    </div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Spécialité</div>
-                    <div class="field-value">{{ medecinTraitant.specialty || EMPTY }}</div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Téléphone</div>
-                    <div class="field-value">{{ medecinTraitant.phone || EMPTY }}</div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Email</div>
-                    <div class="field-value">{{ medecinTraitant.email || EMPTY }}</div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Numéro Adeli</div>
-                    <div class="field-value">{{ medecinTraitant.adeli || EMPTY }}</div>
-                  </v-col>
-                </v-row>
+                <DoctorCard :doctor="medecinTraitant" :name="medecinName(medecinTraitant)" />
               </template>
               <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
                 <div class="empty-state-icon mb-3">
@@ -676,30 +659,7 @@ function selectMedecin(doctor) {
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <template v-if="medecinAdresseur">
-                <v-row>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Prénom / Nom</div>
-                    <div class="field-value">
-                      {{ [medecinAdresseur.firstName, medecinAdresseur.lastName].filter(Boolean).join(' ') || EMPTY }}
-                    </div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Spécialité</div>
-                    <div class="field-value">{{ medecinAdresseur.specialty || EMPTY }}</div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Téléphone</div>
-                    <div class="field-value">{{ medecinAdresseur.phone || EMPTY }}</div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Email</div>
-                    <div class="field-value">{{ medecinAdresseur.email || EMPTY }}</div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Numéro Adeli</div>
-                    <div class="field-value">{{ medecinAdresseur.adeli || EMPTY }}</div>
-                  </v-col>
-                </v-row>
+                <DoctorCard :doctor="medecinAdresseur" :name="medecinName(medecinAdresseur)" />
               </template>
               <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
                 <div class="empty-state-icon mb-3">

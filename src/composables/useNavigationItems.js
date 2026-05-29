@@ -1,5 +1,5 @@
 import { useSelfStore } from "@/stores/self"
-import { mdiChartLine, mdiFolderOutline } from "@mdi/js"
+import { mdiBell, mdiBellOutline, mdiChartLine, mdiFolderOutline } from "@mdi/js"
 import { computed } from "vue"
 
 export function useNavigationItems() {
@@ -12,6 +12,7 @@ export function useNavigationItems() {
     return [
       { id: 'dashboard', text: 'Mon tableau de bord', icon: mdiChartLine, iconActive: mdiChartLine, to: { name: "Dashboard" } },
       { id: 'mon-dossier', text: 'Mon dossier', icon: mdiFolderOutline, iconActive: mdiFolderOutline, to: { name: "MonDossier" } },
+      { id: 'notifications', text: 'Notifications', icon: mdiBellOutline, iconActive: mdiBell, to: { name: "Notifications" } },
     ]
   })
 

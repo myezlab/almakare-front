@@ -1,4 +1,6 @@
 <script setup>
+import DoctorCard from "@/components/DoctorCard.vue"
+import LocationCard from "@/components/LocationCard.vue"
 import { ISOToDDMMYYYY } from "@/composables/useDates"
 import { getAvailability } from "@/data/doctorAvailability"
 import { useMessagesStore } from "@/stores/messages"
@@ -9,7 +11,6 @@ import {
   mdiCheckCircleOutline,
   mdiChevronLeft,
   mdiChevronRight,
-  mdiMapMarkerOutline,
   mdiStethoscope
 } from "@mdi/js"
 import { computed, ref } from "vue"
@@ -125,20 +126,8 @@ function goBack() {
           <!-- =================== DOCTOR CARD =================== -->
           <v-card class="mt-4 pa-5 card-shadow"
             :class="{ 'rounded-15': !$vuetify.display.mobile, 'mx-6': $vuetify.display.mobile }">
-            <div class="d-flex align-center ga-3 mb-2">
-              <v-icon :icon="mdiStethoscope" color="primary" size="24" />
-              <div>
-                <div class="text-title-medium font-weight-bold">{{ doctorName }}</div>
-                <div v-if="medecinTraitant?.specialty" class="text-body-small text-medium-emphasis">
-                  {{ medecinTraitant.specialty }}
-                </div>
-              </div>
-            </div>
-            <v-alert type="info" variant="tonal" :icon="mdiMapMarkerOutline" density="comfortable" rounded="lg"
-              class="mt-3">
-              <div class="text-body-medium font-weight-medium">{{ cabinetAddress }}</div>
-              <div class="text-body-small text-medium-emphasis">Type consultation : Cabinet</div>
-            </v-alert>
+            <DoctorCard :doctor="medecinTraitant" :name="doctorName" />
+            <LocationCard :location-name="cabinetAddress" class="mt-3" />
           </v-card>
 
           <!-- =================== AVAILABILITY =================== -->

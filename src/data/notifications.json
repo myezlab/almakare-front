@@ -1,0 +1,112 @@
+[
+  {
+    "id": "notif-001",
+    "type": "newMessage",
+    "userFullName": "Dr Camille Rousseau",
+    "userAvatarUrl": "https://randomuser.me/api/portraits/women/44.jpg",
+    "text": "Le rapport technique de votre nuit d'enregistrement est en cours de finalisation. Je vous transmettrai mon interprétation dès qu'il sera disponible.",
+    "createdAt": "2026-05-21T08:15:00Z",
+    "read": false,
+    "to": "/acte/pa-seed-hospitalization-001",
+    "projectId": null
+  },
+  {
+    "id": "notif-002",
+    "type": "newMessage",
+    "userFullName": "Espace patient",
+    "userAvatarUrl": null,
+    "text": "Étape 6 de votre hospitalisation : le technicien de prélecture analyse vos données.",
+    "createdAt": "2026-05-19T14:30:00Z",
+    "read": false,
+    "to": "/acte/pa-seed-hospitalization-001?tab=etapes",
+    "projectId": null
+  },
+  {
+    "id": "notif-003",
+    "type": "newMessage",
+    "userFullName": "Léa Moreau",
+    "userAvatarUrl": "https://randomuser.me/api/portraits/women/68.jpg",
+    "text": "Vos données nocturnes ont bien été remontées ce matin. Vous pouvez rentrer chez vous.",
+    "createdAt": "2026-05-17T08:00:00Z",
+    "read": true,
+    "to": "/acte/pa-seed-hospitalization-001",
+    "projectId": null
+  },
+  {
+    "id": "notif-004",
+    "type": "appointmentConfirmed",
+    "userFullName": "Centre du sommeil — Paris",
+    "userAvatarUrl": null,
+    "text": "Bienvenue au centre. La pose des capteurs pour votre nuit d'enregistrement va commencer.",
+    "createdAt": "2026-05-16T18:30:00Z",
+    "read": true,
+    "to": "/acte/pa-seed-hospitalization-001?tab=etapes",
+    "projectId": null
+  },
+  {
+    "id": "notif-005",
+    "type": "appointmentConfirmed",
+    "userFullName": "Service administratif",
+    "userAvatarUrl": null,
+    "text": "Rappel : pose des capteurs demain à 19h00 au Centre du sommeil — Paris. Pensez à votre pièce d'identité.",
+    "createdAt": "2026-05-15T09:00:00Z",
+    "read": true,
+    "to": "/acte/pa-seed-hospitalization-001",
+    "projectId": null
+  },
+  {
+    "id": "notif-006",
+    "type": "documentSigned",
+    "userFullName": "Service administratif",
+    "userAvatarUrl": null,
+    "text": "Votre consentement éclairé pour l'hospitalisation a bien été enregistré.",
+    "createdAt": "2026-05-11T11:20:00Z",
+    "read": true,
+    "to": "/acte/pa-seed-hospitalization-001",
+    "projectId": null
+  },
+  {
+    "id": "notif-007",
+    "type": "appointmentConfirmed",
+    "userFullName": "Dr Camille Rousseau",
+    "userAvatarUrl": "https://randomuser.me/api/portraits/women/44.jpg",
+    "text": "Votre hospitalisation pour évaluation du sommeil est planifiée. Étape suivante : pose des capteurs.",
+    "createdAt": "2026-05-08T10:00:00Z",
+    "read": true,
+    "to": "/acte/pa-seed-hospitalization-001?tab=etapes",
+    "projectId": null
+  },
+  {
+    "id": "notif-008",
+    "type": "newMessage",
+    "userFullName": "Dr Antoine Bernard",
+    "userAvatarUrl": "https://randomuser.me/api/portraits/men/32.jpg",
+    "text": "Compte rendu de votre consultation du 18 mars disponible dans vos documents.",
+    "createdAt": "2026-03-19T09:45:00Z",
+    "read": true,
+    "to": "/rendez-vous/appt-seed-003",
+    "projectId": null
+  },
+  {
+    "id": "notif-009",
+    "type": "newMessage",
+    "userFullName": "Dr Camille Rousseau",
+    "userAvatarUrl": "https://randomuser.me/api/portraits/women/44.jpg",
+    "text": "Suite à notre consultation de suivi du 4 décembre, vos résultats et nouvelle ordonnance sont disponibles.",
+    "createdAt": "2025-12-05T10:30:00Z",
+    "read": true,
+    "to": "/rendez-vous/appt-seed-002",
+    "projectId": null
+  },
+  {
+    "id": "notif-010",
+    "type": "newMessage",
+    "userFullName": "Dr Camille Rousseau",
+    "userAvatarUrl": "https://randomuser.me/api/portraits/women/44.jpg",
+    "text": "Merci pour votre première consultation. Le compte rendu et la prescription d'examens vous attendent.",
+    "createdAt": "2025-09-13T08:00:00Z",
+    "read": true,
+    "to": "/rendez-vous/appt-seed-001",
+    "projectId": null
+  }
+]
