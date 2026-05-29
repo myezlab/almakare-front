@@ -1,20 +1,16 @@
 <script setup>
 import { useUrlPanels } from "@/composables/useUrlPanels"
+import { ORDONNANCE_DOCUMENTS as ORDONNANCES_DOCS, REQUIRED_DOCUMENTS as REQUIRED_DOCS } from "@/data/documents"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
 import {
-  mdiCardAccountDetailsOutline,
   mdiCheck,
   mdiClose,
-  mdiCreditCardOutline,
-  mdiFileDocumentCheckOutline,
   mdiFileDocumentOutline,
   mdiFileDocumentPlusOutline,
-  mdiFileSign,
   mdiFolderOutline,
   mdiPaperclip,
   mdiPlus,
-  mdiShieldCheckOutline,
   mdiTrashCanOutline,
   mdiUploadOutline,
 } from "@mdi/js"
@@ -24,61 +20,6 @@ const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
 
 const openPanels = useUrlPanels("docPanels")
-
-const REQUIRED_DOCS = [
-  {
-    key: 'idFront',
-    title: "Carte d'identité",
-    subtitle: 'Recto',
-    icon: mdiCardAccountDetailsOutline,
-    accept: 'image/*,application/pdf',
-  },
-  {
-    key: 'idBack',
-    title: "Carte d'identité",
-    subtitle: 'Verso',
-    icon: mdiCardAccountDetailsOutline,
-    accept: 'image/*,application/pdf',
-  },
-  {
-    key: 'carteVitale',
-    title: 'Carte vitale',
-    subtitle: 'Attestation de droits',
-    icon: mdiCreditCardOutline,
-    accept: 'image/*,application/pdf',
-  },
-  {
-    key: 'mutuelle',
-    title: 'Carte de mutuelle',
-    subtitle: 'Complémentaire santé',
-    icon: mdiShieldCheckOutline,
-    accept: 'image/*,application/pdf',
-  },
-  {
-    key: 'priseEnCharge',
-    title: 'Prise en charge',
-    subtitle: 'Notification organisme',
-    icon: mdiFileDocumentCheckOutline,
-    accept: 'image/*,application/pdf',
-  },
-]
-
-const ORDONNANCES_DOCS = [
-  {
-    key: 'lettreAdressage',
-    title: "Lettre d'adressage",
-    subtitle: 'Médecin référent',
-    icon: mdiFileDocumentOutline,
-    accept: 'image/*,application/pdf',
-  },
-  {
-    key: 'ordonnance',
-    title: 'Ordonnance',
-    subtitle: 'Prescription médicale',
-    icon: mdiFileSign,
-    accept: 'image/*,application/pdf',
-  },
-]
 
 if (!selfStore.item.documents) selfStore.item.documents = {}
 if (!selfStore.item.documents.other) selfStore.item.documents.other = []

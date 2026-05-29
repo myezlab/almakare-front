@@ -1,10 +1,17 @@
 <script setup>
+import DocumentDialog from "@/components/DocumentDialog.vue"
 import DoctorCard from "@/components/DoctorCard.vue"
+import DoctorFormDialog from "@/components/DoctorFormDialog.vue"
+import FormGeneratorDialog from "@/components/FormGeneratorDialog.vue"
 import LocationCard from "@/components/LocationCard.vue"
+import TestDialog from "@/components/TestDialog.vue"
 import { ISOToDDMMYYYY } from "@/composables/useDates"
 import { useUrlPanels } from "@/composables/useUrlPanels"
 import ACTIVITIES_DATA from "@/data/activities.json"
 import { DOCTORS_SEED } from "@/data/doctors"
+import { DOCUMENTS_BY_KEY } from "@/data/documents"
+import { PATIENT_FIELDS, PATIENT_FIELDS_BY_KEY } from "@/data/patientFields"
+import { TESTS_BY_KEY } from "@/data/tests"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
 import {
@@ -12,21 +19,20 @@ import {
   mdiCalendarBlankOutline,
   mdiCalendarPlusOutline,
   mdiCancel,
+  mdiCardAccountDetailsOutline,
   mdiCheckCircleOutline,
-  mdiClipboardPulseOutline,
+  mdiClipboardCheckOutline,
+  mdiClipboardEditOutline,
   mdiClockOutline,
   mdiFileDocumentEditOutline,
   mdiGoogle,
-  mdiMicrosoftOutlook,
-  mdiMoonWaningCrescent
+  mdiMicrosoftOutlook
 } from "@mdi/js"
 import dayjs from "dayjs"
 import { computed, ref } from "vue"
-import { useRouter } from "vue-router"
 import { useDisplay } from "vuetify"
 
 const { mobile } = useDisplay()
-const router = useRouter()
 const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
 
@@ -50,15 +56,12 @@ function getDoctor(activity) {
   )
 }
 
-const lastActivityId = computed(() => activities.value[0]?.id || null)
-const secondActivityId = computed(() => activities.value[1]?.id || null)
-
-const epworthCompleted = computed(() => selfStore.item?.epworthScore != null)
-const sleepDiaryStarted = computed(() => (selfStore.item?.sleepDiaryEntries || []).length > 0)
-
 const today = dayjs().startOf('day')
 function isUpcoming(activity) {
   return dayjs(activity.date).isSame(today) || dayjs(activity.date).isAfter(today)
+}
+function isPast(activity) {
+  return dayjs(activity.date).startOf('day').isBefore(today)
 }
 
 const sections = computed(() => {
@@ -79,6 +82,132 @@ const sections = computed(() => {
     { key: 'past', title: 'Passés', items: past }
   ].filter((section) => section.items.length > 0)
 })
+
+// The soonest upcoming consultation carries the preparation tasks the patient
+// must complete beforehand (questionnaires, documents, fields…).
+const nextConsultation = computed(() => {
+  const upcoming = activities.value.filter(isUpcoming)
+  upcoming.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  return upcoming[0] || null
+})
+const nextConsultationId = computed(() => nextConsultation.value?.id || null)
+
+// A consultation requests three separate kinds of preparation, each its own
+// array on the activity:
+//   `requestedFields`    — patient-data field keys (see src/data/patientFields.js),
+//                          gathered into a single "Données patient" card.
+//   `requestedTests`     — test keys (see src/data/tests.js), one card each.
+//   `requestedDocuments` — document keys (see src/data/documents.js), one card each.
+const requestedFieldKeys = computed(() => nextConsultation.value?.requestedFields || [])
+const requestedTestKeys = computed(() => nextConsultation.value?.requestedTests || [])
+const requestedDocumentKeys = computed(() => nextConsultation.value?.requestedDocuments || [])
+
+// `requestedData` is an unstructured, doctor-authored form: the questions live
+// inline on the activity rather than referencing a catalog. We key the patient's
+// answers by activity id so each consultation keeps its own responses.
+const requestedDataQuestions = computed(() => nextConsultation.value?.requestedData || [])
+const hasRequestedData = computed(() => requestedDataQuestions.value.length > 0)
+
+function isDataAnswered(question, answer) {
+  if (question.type === "boolean") return answer === true || answer === false
+  if (typeof answer === "number") return true
+  return answer != null && String(answer).trim() !== ""
+}
+
+function savedDataAnswers(activityId) {
+  return selfStore.item?.requestedDataAnswers?.[activityId] || []
+}
+
+const requestedDataComplete = computed(() => {
+  const saved = savedDataAnswers(nextConsultationId.value)
+  return requestedDataQuestions.value.every(
+    (q, i) => q.optional || isDataAnswered(q, saved[i]),
+  )
+})
+
+// Requested fields that drive completion (the primary, non-conditional ones).
+const requestedPatientFields = computed(() =>
+  requestedFieldKeys.value.map((k) => PATIENT_FIELDS_BY_KEY[k]).filter((f) => f && f.complete)
+)
+const hasPatientDataRequest = computed(() => requestedPatientFields.value.length > 0)
+
+const patientDataComplete = computed(() => {
+  const item = selfStore.item || {}
+  return requestedPatientFields.value.every((f) => f.complete(item))
+})
+
+// Every field requested for this consultation, plus the conditional details of
+// each requested parent. The dialog shows them all (pre-filled with current
+// values) so a completed "Données patient" task can be reopened and edited.
+const patientDataFields = computed(() => {
+  const requestedKeySet = new Set(requestedPatientFields.value.map((f) => f.key))
+  return PATIENT_FIELDS.filter(
+    (f) => requestedKeySet.has(f.key) || (f.parentKey && requestedKeySet.has(f.parentKey))
+  )
+})
+
+// Preparation cards: the aggregate "Données patient" card (when any field is
+// requested), then one card per requested test, then one per requested document.
+const preparationTasks = computed(() => {
+  const item = selfStore.item || {}
+  const tasks = []
+  if (hasPatientDataRequest.value) {
+    tasks.push({
+      key: 'patientData',
+      title: 'Données patient',
+      icon: mdiCardAccountDetailsOutline,
+      todo: 'Renseignez vos informations administratives et cliniques.',
+      completed: patientDataComplete.value,
+      action: openPatientDataDialog
+    })
+  }
+  if (hasRequestedData.value) {
+    tasks.push({
+      key: 'requestedData',
+      title: 'Formulaire de votre médecin',
+      icon: mdiClipboardEditOutline,
+      todo: 'Répondez aux questions préparées par votre médecin pour cette consultation.',
+      completed: requestedDataComplete.value,
+      action: openRequestedDataDialog
+    })
+  }
+  for (const key of requestedTestKeys.value) {
+    const test = TESTS_BY_KEY[key]
+    if (!test) continue
+    tasks.push({
+      key: test.key,
+      title: test.title,
+      icon: test.icon,
+      todo: test.todo,
+      completed: item[test.scoreKey] != null,
+      action: () => openTestDialog(test)
+    })
+  }
+  for (const key of requestedDocumentKeys.value) {
+    const doc = DOCUMENTS_BY_KEY[key]
+    if (!doc) continue
+    tasks.push({
+      key: `doc-${doc.key}`,
+      title: doc.title,
+      icon: doc.icon,
+      todo: `Déposez votre document : ${doc.subtitle || doc.title}.`,
+      completed: !!item.documents?.[doc.key],
+      action: () => openDocumentDialog(doc)
+    })
+  }
+  return tasks
+})
+
+const completedTasks = computed(() =>
+  preparationTasks.value.filter((task) => task.completed)
+)
+const todoTasks = computed(() =>
+  preparationTasks.value.filter((task) => !task.completed)
+)
+const completedTasksCount = computed(() => completedTasks.value.length)
+const allTasksCompleted = computed(
+  () => completedTasksCount.value === preparationTasks.value.length
+)
 
 const showCancelDialog = ref(false)
 const cancelTarget = ref(null)
@@ -139,10 +268,11 @@ function getEventTimes(activity) {
   return { start, end: start.add(30, 'minute') }
 }
 
-// Long French date/time shown in the open panel, e.g. "Le mercredi 10 juin à 9h00".
+// Long French date/time shown in the open panel, e.g. "Mercredi 10 juin à 9h00".
 function fullDateTime(activity) {
   const start = dayjs(`${activity.date}T${activity.time || '09:00'}`)
-  return `Le ${start.format('dddd D MMMM')} à ${start.format('H[h]mm')}`
+  const text = `${start.format('dddd D MMMM')} à ${start.format('H[h]mm')}`
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
 function calendarTitle(activity) {
@@ -204,12 +334,132 @@ function downloadIcs(activity) {
   URL.revokeObjectURL(url)
 }
 
-function goToEpworth() {
-  router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'epworth' } })
+// =================== DONNÉES PATIENT FORM GENERATOR ===================
+const patientDialogOpen = ref(false)
+const patientDialogFields = ref([])
+const patientDialogInitial = ref({})
+const savingPatientData = ref(false)
+
+function openPatientDataDialog() {
+  const item = selfStore.item || {}
+  const fields = patientDataFields.value
+  patientDialogFields.value = fields
+  patientDialogInitial.value = fields.reduce((acc, f) => {
+    if (item[f.key] != null) acc[f.key] = item[f.key]
+    return acc
+  }, {})
+  patientDialogOpen.value = true
 }
 
-function goToSleepDiary() {
-  router.push({ name: 'SleepDiary' })
+function handlePatientDataSubmit(values) {
+  savingPatientData.value = true
+  try {
+    const update = { ...values }
+    if (typeof update.carteVitaleNir === 'string') {
+      update.carteVitaleNir = update.carteVitaleNir.replace(/\D/g, '')
+    }
+    Object.assign(selfStore.item, update)
+    patientDialogOpen.value = false
+    messagesStore.add({ type: 'success', text: 'Données patient mises à jour' })
+  } catch {
+    messagesStore.add({ type: 'error', text: 'Erreur lors de la mise à jour' })
+  } finally {
+    savingPatientData.value = false
+  }
+}
+
+// =================== DOCTOR FORM (requestedData) DIALOG ===================
+const requestedDataDialogOpen = ref(false)
+const requestedDataInitial = ref([])
+const savingRequestedData = ref(false)
+
+function openRequestedDataDialog() {
+  requestedDataInitial.value = savedDataAnswers(nextConsultationId.value)
+  requestedDataDialogOpen.value = true
+}
+
+function handleRequestedDataSubmit(answers) {
+  const activityId = nextConsultationId.value
+  if (!activityId) return
+  savingRequestedData.value = true
+  try {
+    selfStore.item.requestedDataAnswers = {
+      ...(selfStore.item.requestedDataAnswers || {}),
+      [activityId]: answers
+    }
+    requestedDataDialogOpen.value = false
+    messagesStore.add({ type: 'success', text: 'Formulaire enregistré' })
+  } catch {
+    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement du formulaire" })
+  } finally {
+    savingRequestedData.value = false
+  }
+}
+
+// =================== TEST (QUESTIONNAIRE) DIALOG ===================
+const testDialogOpen = ref(false)
+const activeTest = ref(null)
+const testDialogAnswers = ref([])
+const savingTest = ref(false)
+
+function openTestDialog(test) {
+  activeTest.value = test
+  testDialogAnswers.value = selfStore.item?.[test.answersKey] || []
+  testDialogOpen.value = true
+}
+
+function handleTestSubmit({ answers, score }) {
+  const test = activeTest.value
+  if (!test) return
+  savingTest.value = true
+  try {
+    selfStore.item[test.answersKey] = answers
+    selfStore.item[test.scoreKey] = score
+    testDialogOpen.value = false
+    messagesStore.add({ type: 'success', text: `${test.title} enregistré` })
+  } catch {
+    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement du test" })
+  } finally {
+    savingTest.value = false
+  }
+}
+
+// =================== DOCUMENT DIALOG ===================
+const documentDialogOpen = ref(false)
+const activeDocument = ref(null)
+const savingDocument = ref(false)
+
+const activeDocumentFile = computed(() =>
+  activeDocument.value ? selfStore.item?.documents?.[activeDocument.value.key] || null : null
+)
+
+function openDocumentDialog(doc) {
+  activeDocument.value = doc
+  documentDialogOpen.value = true
+}
+
+function handleDocumentSubmit(file) {
+  const doc = activeDocument.value
+  if (!doc) return
+  savingDocument.value = true
+  try {
+    selfStore.item.documents = { ...(selfStore.item.documents || {}), [doc.key]: file }
+    documentDialogOpen.value = false
+    messagesStore.add({ type: 'success', text: 'Document enregistré' })
+  } catch {
+    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement du document" })
+  } finally {
+    savingDocument.value = false
+  }
+}
+
+function handleDocumentRemove() {
+  const doc = activeDocument.value
+  if (!doc) return
+  const next = { ...(selfStore.item.documents || {}) }
+  delete next[doc.key]
+  selfStore.item.documents = next
+  messagesStore.add({ type: 'success', text: 'Document supprimé' })
 }
 </script>
 
@@ -319,7 +569,8 @@ function goToSleepDiary() {
                     <v-list-item :prepend-icon="mdiApple" title="Apple / iCal" @click="downloadIcs(activity)" />
                   </v-list>
                 </v-menu>
-                <div class="d-flex align-center ga-2 text-medium-emphasis">
+                <div class="d-flex align-center ga-2 text-medium-emphasis" :class="{ 'ml-auto': isPast(activity) }">
+                  <v-icon :icon="mdiCalendarBlankOutline" size="18" />
                   <span class="text-body-medium font-weight-medium">{{ fullDateTime(activity) }}</span>
                 </div>
               </div>
@@ -344,49 +595,53 @@ function goToSleepDiary() {
                 <div class="text-body-small text-medium-emphasis">Aucun rapport renseigné pour cette consultation.</div>
               </v-alert>
 
-              <!-- =================== EPWORTH PROMPT (last consultation only) =================== -->
-              <v-alert v-if="activity.id === lastActivityId && epworthCompleted" type="success" variant="tonal"
-                :icon="mdiCheckCircleOutline" density="comfortable" rounded="lg" class="mt-3 cursor-pointer"
-                @click="goToEpworth">
-                <div class="text-body-medium font-weight-bold">Test d'Epworth complété</div>
-                <div class="text-body-small text-medium-emphasis">
-                  Merci, vos réponses ont bien été transmises à votre médecin. Cliquez pour revoir vos réponses.
+              <!-- =================== TÂCHES À COMPLÉTER AVANT LA CONSULTATION =================== -->
+              <div v-if="activity.id === nextConsultationId" class="prep-tasks mt-6 mb-6">
+                <div class="d-flex align-center justify-space-between ga-2 mb-3">
+                  <div class="d-flex align-center ga-2">
+                    <v-icon :icon="mdiClipboardCheckOutline" :color="allTasksCompleted ? 'success' : 'primary'"
+                      size="20" />
+                    <span class="text-body-medium font-weight-bold">À compléter avant votre consultation</span>
+                  </div>
+                  <v-chip size="small" :color="allTasksCompleted ? 'success' : 'primary'" variant="tonal" label>
+                    {{ completedTasksCount }}/{{ preparationTasks.length }}
+                  </v-chip>
                 </div>
-              </v-alert>
 
-              <v-alert v-else-if="activity.id === lastActivityId" type="warning" variant="tonal"
-                :icon="mdiClipboardPulseOutline" density="comfortable" rounded="lg" class="mt-3">
-                <div class="text-body-medium font-weight-bold">Test d'Epworth à compléter</div>
-                <div class="text-body-small text-medium-emphasis mb-3">
-                  Votre médecin vous demande de remplir le test d'Epworth avant votre prochain rendez-vous.
-                </div>
-                <v-btn color="warning" variant="flat" rounded="lg" size="small" class="text-none"
-                  :prepend-icon="mdiClipboardPulseOutline" @click="goToEpworth">
-                  Passer le test
-                </v-btn>
-              </v-alert>
+                <p v-if="!allTasksCompleted" class="text-body-small text-medium-emphasis mb-3">
+                  Votre médecin vous demande de réaliser ces tâches avant le rendez-vous.
+                </p>
 
-              <!-- =================== SLEEP DIARY PROMPT (second consultation only) =================== -->
-              <v-alert v-if="activity.id === secondActivityId && sleepDiaryStarted" type="success" variant="tonal"
-                :icon="mdiCheckCircleOutline" density="comfortable" rounded="lg" class="mt-3 cursor-pointer"
-                @click="goToSleepDiary">
-                <div class="text-body-medium font-weight-bold">Agenda du sommeil renseigné</div>
-                <div class="text-body-small text-medium-emphasis">
-                  Vos entrées sont bien partagées avec votre médecin. Cliquez pour ouvrir l'agenda.
+                <!-- Completed tasks: compact inline chips -->
+                <div v-if="completedTasks.length" class="d-flex flex-wrap ga-2 mb-3">
+                  <v-chip v-for="task in completedTasks" :key="task.key" color="success" variant="tonal" size="small"
+                    label :prepend-icon="mdiCheckCircleOutline" @click="task.action()">
+                    {{ task.title }}
+                  </v-chip>
                 </div>
-              </v-alert>
 
-              <v-alert v-else-if="activity.id === secondActivityId" type="warning" variant="tonal"
-                :icon="mdiMoonWaningCrescent" density="comfortable" rounded="lg" class="mt-3">
-                <div class="text-body-medium font-weight-bold">Agenda du sommeil à compléter</div>
-                <div class="text-body-small text-medium-emphasis mb-3">
-                  Votre médecin vous demande de remplir votre agenda du sommeil avant votre prochain rendez-vous.
+                <!-- Remaining tasks: full cards -->
+                <div v-for="task in todoTasks" :key="task.key" class="task-row task-todo pa-3 mb-2" role="button"
+                  tabindex="0" @click="task.action()" @keydown.enter="task.action()">
+                  <div class="d-flex align-center ga-3">
+                    <v-avatar class="flex-shrink-0" color="primary" variant="tonal" size="40">
+                      <v-icon :icon="task.icon" size="22" />
+                    </v-avatar>
+                    <div class="task-text flex-grow-1">
+                      <div class="text-body-medium font-weight-bold">{{ task.title }}</div>
+                      <div class="text-body-small text-medium-emphasis">{{ task.todo }}</div>
+                    </div>
+                    <v-btn v-if="!mobile" color="primary" variant="flat" rounded="lg" size="small"
+                      class="flex-shrink-0 text-none" @click.stop="task.action()">
+                      Compléter
+                    </v-btn>
+                  </div>
+                  <v-btn v-if="mobile" block color="primary" variant="flat" rounded="lg" size="small"
+                    class="text-none mt-3" @click.stop="task.action()">
+                    Compléter
+                  </v-btn>
                 </div>
-                <v-btn color="warning" variant="flat" rounded="lg" size="small" class="text-none"
-                  :prepend-icon="mdiMoonWaningCrescent" @click="goToSleepDiary">
-                  Ouvrir l'agenda
-                </v-btn>
-              </v-alert>
+              </div>
 
               <!-- =================== CANCELLED STATUS =================== -->
               <v-alert v-if="isCancelled(activity)" type="error" variant="tonal" :icon="mdiCancel" density="comfortable"
@@ -426,7 +681,7 @@ function goToSleepDiary() {
           <template v-if="cancelTarget">
             Êtes-vous sûr de vouloir annuler la consultation
             <strong>{{ cancelTarget.type }}</strong>
-            du {{ ISOToDDMMYYYY(cancelTarget.date) }} à {{ cancelTarget.time }} ?
+            du {{ fullDateTime(cancelTarget).toLowerCase() }} ?
           </template>
         </v-card-text>
         <v-divider />
@@ -442,5 +697,59 @@ function goToSleepDiary() {
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Données patient form generator -->
+    <FormGeneratorDialog v-model="patientDialogOpen" title="Données patient"
+      subtitle="Complétez les informations demandées par votre médecin avant la consultation."
+      :fields="patientDialogFields" :initial-values="patientDialogInitial" :loading="savingPatientData"
+      @submit="handlePatientDataSubmit" />
+
+    <!-- Doctor-authored form (requestedData) dialog -->
+    <DoctorFormDialog v-model="requestedDataDialogOpen" title="Formulaire de votre médecin"
+      subtitle="Quelques questions préparées par votre médecin pour cette consultation."
+      :questions="requestedDataQuestions" :initial-answers="requestedDataInitial"
+      :loading="savingRequestedData" @submit="handleRequestedDataSubmit" />
+
+    <!-- Test (questionnaire) dialog -->
+    <TestDialog v-model="testDialogOpen" :test="activeTest" :initial-answers="testDialogAnswers"
+      :loading="savingTest" @submit="handleTestSubmit" />
+
+    <!-- Document upload dialog -->
+    <DocumentDialog v-model="documentDialogOpen" :document="activeDocument" :existing="activeDocumentFile"
+      :loading="savingDocument" @submit="handleDocumentSubmit" @remove="handleDocumentRemove" />
   </v-row>
 </template>
+
+<style scoped>
+/* Vuetify defaults to 24px horizontal padding on the title and content;
+   trim it down so the panel feels less cramped on the sides. */
+:deep(.v-expansion-panel-title) {
+  padding-inline: 12px;
+}
+
+:deep(.v-expansion-panel-text__wrapper) {
+  padding-inline: 12px;
+}
+
+.task-row {
+  border: 1px solid rgba(var(--v-border-color), 0.12);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.task-row:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.task-row.task-todo {
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  background-color: rgba(var(--v-theme-primary), 0.04);
+}
+
+/* Let the text column shrink below its content width so a long description
+   wraps inside the column instead of dropping under the icon. */
+.task-text {
+  min-width: 0;
+}
+</style>

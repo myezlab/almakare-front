@@ -61,6 +61,48 @@
     "date": "2026-06-10",
     "time": "09:00",
     "locationName": "Cabinet Dr Robert — 12 rue de Strasbourg, 44000 Nantes",
-    "report": ""
+    "report": "",
+    "requestedFields": ["carteVitaleNir", "carteVitaleIssueDate", "weight", "height", "iah", "hasMedicalHistory", "hasDietaryRestrictions"],
+    "requestedTests": ["epworth"],
+    "requestedDocuments": ["priseEnCharge"],
+    "requestedData": [
+      {
+        "label": "Depuis le dernier rendez-vous, comment évaluez-vous la qualité globale de votre sommeil ?",
+        "type": "choice",
+        "options": ["Très mauvaise", "Mauvaise", "Correcte", "Bonne", "Excellente"]
+      },
+      {
+        "label": "Combien d'heures dormez-vous en moyenne par nuit ?",
+        "type": "text",
+        "placeholder": "ex. 6h30"
+      },
+      {
+        "label": "À quelle fréquence utilisez-vous votre appareil de pression positive (PPC) ?",
+        "type": "choice",
+        "options": ["Toutes les nuits", "La plupart des nuits", "Quelques nuits par semaine", "Rarement", "Jamais"]
+      },
+      {
+        "label": "Rencontrez-vous des difficultés ou une gêne avec le masque ou l'appareil ?",
+        "type": "boolean"
+      },
+      {
+        "label": "Si oui, décrivez la gêne ressentie",
+        "type": "textarea",
+        "optional": true,
+        "placeholder": "Fuites, irritation, bruit, sécheresse…"
+      },
+      {
+        "label": "Sur une échelle de 0 à 10, quel est votre niveau de fatigue en journée ?",
+        "type": "scale",
+        "min": 0,
+        "max": 10,
+        "hint": "0 = aucune fatigue, 10 = fatigue extrême"
+      },
+      {
+        "label": "Souhaitez-vous aborder un point particulier avec le médecin ?",
+        "type": "textarea",
+        "optional": true
+      }
+    ]
   }
 ]
