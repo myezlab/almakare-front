@@ -10,7 +10,7 @@ export function useNavigationItems() {
   const items = computed(() => {
     if (!selfStore.item.id) return []
     return [
-      { id: 'dashboard', text: 'Mon tableau de bord', icon: mdiChartLine, iconActive: mdiChartLine, to: { name: "Dashboard" } },
+      { id: 'dashboard', text: 'Mon tableau de bord', shortText: 'Tableau de bord', icon: mdiChartLine, iconActive: mdiChartLine, to: { name: "Dashboard" } },
       { id: 'mon-dossier', text: 'Mon dossier', icon: mdiFolderOutline, iconActive: mdiFolder, to: { name: "MonDossier" } },
       { id: 'notifications', text: 'Notifications', icon: mdiBellOutline, iconActive: mdiBell, to: { name: "Notifications" } },
     ]

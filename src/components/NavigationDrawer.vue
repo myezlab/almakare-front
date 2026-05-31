@@ -35,7 +35,7 @@ watch(mini, (val) => {
               }}</v-icon>
             </template>
           </v-img>
-          <span class="nav-label">{{ item.text }}</span>
+          <span class="nav-label">{{ item.shortText || item.text }}</span>
         </span>
       </button>
     </nav>

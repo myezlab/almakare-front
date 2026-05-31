@@ -51,6 +51,29 @@ function ISOToTimeOrDay(date) {
 }
 
 /**
+ * Returns the time of day (HH:mm)
+ * @param {string|Date} date
+ * @returns {string} Time. Sample Output: "09:30"
+ * */
+function ISOToHHmm(date) {
+	if (date) {
+		return dayjs(date).format('HH:mm')
+	}
+	return ''
+}
+
+/**
+ * Returns a long, capitalized French weekday/date with time.
+ * @param {string|Date} date
+ * @returns {string} Sample Output: "Mercredi 10 juin à 9h00"
+ * */
+function ISOToLongDateTime(date) {
+	if (!date) return ''
+	const text = dayjs(date).format('dddd D MMMM [à] H[h]mm')
+	return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+/**
  * Returns a shortened date
  * @param {string} date
  * @returns {string} Shortened date. Sample Output: "16 Nov 2020"
@@ -161,7 +184,7 @@ function daysBetween(startDate, endDate) {
 }
 
 export {
-	AverageDurationBeetweenTwoDates, daysBetween, DurationBeetweenTwoDates, isAfter, ISOTimeToX, ISOToDateAndTime, ISOToDDMMYYYY, ISOToRelativeTime,
+	AverageDurationBeetweenTwoDates, daysBetween, DurationBeetweenTwoDates, isAfter, ISOTimeToX, ISOToDateAndTime, ISOToDDMMYYYY, ISOToHHmm, ISOToLongDateTime, ISOToRelativeTime,
 	ISOToShortenedDate, ISOToShortenedDateMMYY, ISOToTimeOrDay
 }
 

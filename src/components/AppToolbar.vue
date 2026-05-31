@@ -3,11 +3,21 @@ import logoInitials from '@/assets/img/logo-initials-white.svg'
 import { useRules } from '@/composables/useRules'
 import { useMessagesStore } from '@/stores/messages'
 import { useSelfStore } from '@/stores/self'
-import { mdiAccountOutline, mdiClose, mdiHelpCircleOutline, mdiLogout } from '@mdi/js'
+import { mdiAccountOutline, mdiArrowLeft, mdiClose, mdiHelpCircleOutline, mdiLogout } from '@mdi/js'
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
+
+// On Mon dossier (mobile), an open tab turns the logo into a back arrow that returns to the hub.
+const showBack = computed(() => route.name === 'MonDossier' && !!route.query.tab)
+
+function goBack() {
+  const query = { ...route.query }
+  delete query.tab
+  router.replace({ query })
+}
 const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
 const { emailValidation, required } = useRules()
@@ -69,7 +79,9 @@ const accountLabel = computed(() => {
 
 <template>
   <v-toolbar flat color="primary" density="comfortable" class="app-toolbar-sticky">
-    <v-btn v-if="$vuetify.display.mobile" icon variant="text" color="white" aria-label="Almakare"
+    <v-btn v-if="$vuetify.display.mobile && showBack" :icon="mdiArrowLeft" variant="text" color="white"
+      aria-label="Retour" @click="goBack" />
+    <v-btn v-else-if="$vuetify.display.mobile" icon variant="text" color="white" aria-label="Almakare"
       @click="goToDashboard">
       <v-img :src="logoInitials" width="28" height="28" contain />
     </v-btn>

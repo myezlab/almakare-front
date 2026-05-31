@@ -2,7 +2,7 @@
 import SleepDiaryStreak from '@/components/SleepDiaryStreak.vue'
 import { useParamsStore } from '@/stores/params'
 import { useSelfStore } from '@/stores/self'
-import { mdiClipboardPulse, mdiEmoticonSadOutline, mdiFolderOutline, mdiLungs, mdiMoonWaningCrescent } from '@mdi/js'
+import { mdiAccountQuestion, mdiClipboardPulse, mdiFolderOutline, mdiLungs, mdiMoonWaningCrescent } from '@mdi/js'
 import { computed, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -47,10 +47,10 @@ const epworthScoreLabel = computed(() => {
 
           <!-- Mon dossier card -->
           <v-col cols="12">
-            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100 d-flex flex-column"
               @click="router.push({ name: 'MonDossier' })">
-              <v-row align="center">
-                <v-col>
+              <v-row align="stretch" class="flex-grow-1">
+                <v-col class="d-flex flex-column">
                   <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
                     Mon dossier
                   </div>
@@ -58,11 +58,11 @@ const epworthScoreLabel = computed(() => {
                     Retrouvez vos informations, documents et questionnaires
                   </div>
                   <v-btn :prepend-icon="mdiFolderOutline" variant="tonal" color="primary" rounded="lg"
-                    @click.stop="router.push({ name: 'MonDossier' })" class="text-none">
+                    @click.stop="router.push({ name: 'MonDossier' })" class="text-none mt-auto align-self-start">
                     Ouvrir mon dossier
                   </v-btn>
                 </v-col>
-                <v-col cols="auto">
+                <v-col v-if="!$vuetify.display.mobile" cols="auto" class="d-flex align-center">
                   <v-img src="@/assets/illustrations/folder.svg" width="100" height="90" contain
                     transition="fade-transition" />
                 </v-col>
@@ -72,10 +72,10 @@ const epworthScoreLabel = computed(() => {
 
           <!-- Sleep diary card -->
           <v-col cols="12" md="6">
-            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100 d-flex flex-column"
               @click="router.push({ name: 'SleepDiary' })">
-              <v-row align="center">
-                <v-col>
+              <v-row align="stretch" class="flex-grow-1">
+                <v-col class="d-flex flex-column">
                   <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
                     Agenda du sommeil
                   </div>
@@ -84,7 +84,7 @@ const epworthScoreLabel = computed(() => {
                   </div>
                   <SleepDiaryStreak dense class="mb-4" @click.stop />
                   <v-btn :prepend-icon="mdiMoonWaningCrescent" variant="tonal" color="primary" rounded="lg"
-                    @click.stop="router.push({ name: 'SleepDiary' })" class="text-none">
+                    @click.stop="router.push({ name: 'SleepDiary' })" class="text-none mt-auto align-self-start">
                     Ouvrir l'agenda
                   </v-btn>
                 </v-col>
@@ -94,17 +94,17 @@ const epworthScoreLabel = computed(() => {
 
           <!-- Epworth test card -->
           <v-col v-if="selfStore.item?.epworthScore == null" cols="12" md="6">
-            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100 d-flex flex-column"
               @click="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'epworth' } })">
-              <v-row align="center">
-                <v-col>
+              <v-row align="stretch" class="flex-grow-1">
+                <v-col class="d-flex flex-column">
                   <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
                     Test d'Epworth
                   </div>
                   <div class="text-body-medium text-medium-emphasis mb-4">
                     Évaluez votre somnolence diurne en répondant à 8 questions
                   </div>
-                  <div class="d-flex flex-column align-start gap-2">
+                  <div class="d-flex flex-column align-start gap-2 mt-auto">
                     <v-chip v-if="selfStore.item?.epworthScore != null" class="mb-4" :color="epworthScoreColor"
                       variant="tonal" size="small">
                       {{ epworthScoreLabel }}
@@ -117,8 +117,8 @@ const epworthScoreLabel = computed(() => {
                     </v-btn>
                   </div>
                 </v-col>
-                <v-col cols="auto">
-                  <v-img src="@/assets/illustrations/tasks.svg" width="100" height="90" contain
+                <v-col v-if="!$vuetify.display.mobile" cols="auto" class="d-flex align-center">
+                  <v-img src="@/assets/illustrations/patient.svg" width="100" height="90" contain
                     transition="fade-transition" />
                 </v-col>
               </v-row>
@@ -127,10 +127,10 @@ const epworthScoreLabel = computed(() => {
 
           <!-- STOP-BANG test card -->
           <v-col v-if="selfStore.item?.stopBangScore == null" cols="12" md="6">
-            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100 d-flex flex-column"
               @click="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'stopBang' } })">
-              <v-row align="center">
-                <v-col>
+              <v-row align="stretch" class="flex-grow-1">
+                <v-col class="d-flex flex-column">
                   <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
                     Test STOP-BANG
                   </div>
@@ -139,12 +139,12 @@ const epworthScoreLabel = computed(() => {
                   </div>
                   <v-btn :prepend-icon="mdiLungs" variant="tonal" color="primary" rounded="lg"
                     @click.stop="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'stopBang' } })"
-                    class="text-none">
+                    class="text-none mt-auto align-self-start">
                     Passer le test
                   </v-btn>
                 </v-col>
-                <v-col cols="auto">
-                  <v-img src="@/assets/illustrations/tasks.svg" width="100" height="90" contain
+                <v-col v-if="!$vuetify.display.mobile" cols="auto" class="d-flex align-center">
+                  <v-img src="@/assets/illustrations/congratulations.svg" width="100" height="90" contain
                     transition="fade-transition" />
                 </v-col>
               </v-row>
@@ -153,24 +153,24 @@ const epworthScoreLabel = computed(() => {
 
           <!-- Hamilton test card -->
           <v-col v-if="selfStore.item?.hamiltonScore == null" cols="12" md="6">
-            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100"
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100 d-flex flex-column"
               @click="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'hamilton' } })">
-              <v-row align="center">
-                <v-col>
+              <v-row align="stretch" class="flex-grow-1">
+                <v-col class="d-flex flex-column">
                   <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
                     Échelle de Hamilton
                   </div>
                   <div class="text-body-medium text-medium-emphasis mb-4">
                     Évaluez la sévérité d'un état dépressif sur 17 items
                   </div>
-                  <v-btn :prepend-icon="mdiEmoticonSadOutline" variant="tonal" color="primary" rounded="lg"
+                  <v-btn :prepend-icon="mdiAccountQuestion" variant="tonal" color="primary" rounded="lg"
                     @click.stop="router.push({ path: '/mon-dossier', query: { tab: 'questionnaires', qPanels: 'hamilton' } })"
-                    class="text-none">
+                    class="text-none mt-auto align-self-start">
                     Passer le test
                   </v-btn>
                 </v-col>
-                <v-col cols="auto">
-                  <v-img src="@/assets/illustrations/tasks.svg" width="100" height="90" contain
+                <v-col v-if="!$vuetify.display.mobile" cols="auto" class="d-flex align-center">
+                  <v-img src="@/assets/illustrations/report.svg" width="100" height="90" contain
                     transition="fade-transition" />
                 </v-col>
               </v-row>

@@ -65,6 +65,15 @@ watch(activeTab, (val) => {
   router.replace({ query: { ...route.query, tab: target } })
 })
 
+// Mobile uses a "hub" grid: a section is open only when ?tab= is in the URL.
+const mobileTabActive = computed(() => TAB_VALUES.includes(route.query.tab))
+const activeTabMeta = computed(() => TABS.find((t) => t.value === activeTab.value))
+
+function openTab(value) {
+  activeTab.value = value
+  if (route.query.tab !== value) router.replace({ query: { ...route.query, tab: value } })
+}
+
 const tabPlaceholders = {
   messagerie: {
     title: 'Messagerie',
@@ -113,17 +122,22 @@ const fullName = computed(() => {
             </div>
             <!-- Mobile layout: stacked -->
             <div v-else>
-              <div class="text-headline-medium font-weight-bold">Mon dossier</div>
-              <template v-if="medecinTraitantLabel">
-                <div class="mt-1">
-                  <a class="medecin-link text-title-medium font-weight-medium" @click="medecinDialogOpen = true">{{
-                    medecinTraitantLabel }}</a>
-                </div>
-                <v-btn :prepend-icon="mdiCalendarPlusOutline" color="primary" variant="tonal" rounded="lg" size="small"
-                  class="text-none mt-2" @click="router.push({ name: 'PrendreRendezVous' })">
-                  Prendre rendez-vous
-                </v-btn>
+              <!-- Hub: full header -->
+              <template v-if="!mobileTabActive">
+                <div class="text-headline-medium font-weight-bold">Mon dossier</div>
+                <template v-if="medecinTraitantLabel">
+                  <div class="mt-1">
+                    <a class="medecin-link text-title-medium font-weight-medium" @click="medecinDialogOpen = true">{{
+                      medecinTraitantLabel }}</a>
+                  </div>
+                  <v-btn :prepend-icon="mdiCalendarPlusOutline" color="primary" variant="tonal" rounded="lg"
+                    size="small" class="text-none mt-2" @click="router.push({ name: 'PrendreRendezVous' })">
+                    Prendre rendez-vous
+                  </v-btn>
+                </template>
               </template>
+              <!-- Section: title only (back lives in the app bar) -->
+              <div v-else class="text-headline-medium font-weight-bold">{{ activeTabMeta?.label }}</div>
             </div>
             <div v-if="!$vuetify.display.mobile" class="text-body-medium text-medium-emphasis mt-1">
               Gérez vos informations personnelles et médicales
@@ -131,32 +145,39 @@ const fullName = computed(() => {
           </v-col>
         </v-row>
 
-        <!-- =================== HERO / DETAILS CARD =================== -->
-        <v-card class=" mb-4 px-6"
-          :class="{ 'rounded-15 card-shadow ': !$vuetify.display.mobile, 'bg-transparent': $vuetify.display.mobile }"
-          :flat="$vuetify.display.mobile">
-          <v-tabs v-if="!$vuetify.display.mobile" v-model="activeTab" color="primary" :show-arrows="false">
+        <!-- =================== DESKTOP TABS =================== -->
+        <v-card v-if="!$vuetify.display.mobile" class="mb-4 px-6 rounded-15 card-shadow">
+          <v-tabs v-model="activeTab" color="primary" :show-arrows="false">
             <v-tab v-for="t in TABS" :key="t.value" :value="t.value" :prepend-icon="t.icon" class="text-none">
               {{ t.label }}
             </v-tab>
           </v-tabs>
-          <v-chip-group v-else v-model="activeTab" mandatory class="mt-2 profile-chips" column>
-            <v-chip v-for="t in TABS" :key="t.value" :value="t.value" :prepend-icon="t.icon" variant="flat"
-              :class="{ 'bg-primary': activeTab === t.value, 'bg-white border-light': activeTab !== t.value }"
-              class="text-none px-4">
-              {{ t.label }}
-            </v-chip>
-          </v-chip-group>
         </v-card>
 
+        <!-- =================== MOBILE HUB GRID =================== -->
+        <v-row v-else-if="!mobileTabActive" density="comfortable" class="mx-4 mt-4">
+          <v-col v-for="t in TABS" :key="t.value" cols="6">
+            <v-card
+              class="rounded-15 card-shadow d-flex flex-column align-center justify-center text-center pa-5 fill-height"
+              @click="openTab(t.value)">
+              <v-avatar color="primary" variant="tonal" size="56" class="mb-3">
+                <v-icon :icon="t.icon" size="28" />
+              </v-avatar>
+              <div class="text-body-medium font-weight-medium">{{ t.label }}</div>
+            </v-card>
+          </v-col>
+        </v-row>
+
         <!-- =================== TAB CONTENT =================== -->
-        <DonneesPatientTab v-if="activeTab === 'donnees-patient'" />
-        <ActivitesTab v-else-if="activeTab === 'activites'" />
-        <TraitementsTab v-else-if="activeTab === 'traitements'" />
-        <QuestionnairesTab v-else-if="activeTab === 'questionnaires'" />
-        <DocumentsTab v-else-if="activeTab === 'documents'" />
-        <PlaceholderTab v-else-if="tabPlaceholders[activeTab]" :title="tabPlaceholders[activeTab].title"
-          :subtitle="tabPlaceholders[activeTab].subtitle" :icon="tabPlaceholders[activeTab].icon" />
+        <template v-if="!$vuetify.display.mobile || mobileTabActive">
+          <DonneesPatientTab v-if="activeTab === 'donnees-patient'" />
+          <ActivitesTab v-else-if="activeTab === 'activites'" />
+          <TraitementsTab v-else-if="activeTab === 'traitements'" />
+          <QuestionnairesTab v-else-if="activeTab === 'questionnaires'" />
+          <DocumentsTab v-else-if="activeTab === 'documents'" />
+          <PlaceholderTab v-else-if="tabPlaceholders[activeTab]" :title="tabPlaceholders[activeTab].title"
+            :subtitle="tabPlaceholders[activeTab].subtitle" :icon="tabPlaceholders[activeTab].icon" />
+        </template>
 
       </v-col>
     </v-row>
@@ -214,17 +235,5 @@ const fullName = computed(() => {
 
 .medecin-link:hover {
   text-decoration: underline;
-}
-
-.profile-chips :deep(.v-slide-group__container) {
-  overflow: visible;
-  contain: none;
-}
-
-.profile-chips :deep(.v-slide-group__content) {
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 2px;
-  white-space: normal;
 }
 </style>

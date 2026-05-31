@@ -179,7 +179,7 @@ The app has no backend, so reference and demo data live in [src/data/](src/data/
 - `tests.js` — the catalog of scored questionnaires (Epworth, STOP-BANG, Hamilton).
 - `patientFields.js` — fields a doctor can request a patient to fill before a consultation.
 - `documents.js` — catalog of documents a patient can upload.
-- `activities.json` — consultations and their requested items/documents/questionnaires.
+- `activities.json` — activities (`type`: `consultation` or `acte`) and their requested items/documents/questionnaires.
 - `notifications.json` — seeded notifications.
 - `profileHistory.js` — seeded modification history for the patient record.
 - `personalDataAuthorization.json`, `roles.js` — auxiliary reference data.

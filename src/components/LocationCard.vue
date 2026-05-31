@@ -1,11 +1,10 @@
 <script setup>
 import { mdiApple, mdiGoogleMaps, mdiMapMarkerOutline, mdiWaze } from "@mdi/js"
 
-defineOptions({ inheritAttrs: false })
 
 const props = defineProps({
   locationName: { type: String, default: "" },
-  subtitle: { type: String, default: "Type consultation : Cabinet" }
+  subtitle: { type: String, default: "" }
 })
 
 // Strip a leading "… —" prefix (e.g. "Cabinet Dr X — Paris") so map searches
@@ -33,18 +32,29 @@ function openWaze() {
 </script>
 
 <template>
-  <v-menu location="bottom start">
-    <template #activator="{ props: menuProps }">
-      <v-alert v-bind="{ ...menuProps, ...$attrs }" type="info" variant="tonal" :icon="mdiMapMarkerOutline"
-        density="comfortable" class="cursor-pointer" rounded="lg">
-        <div class="text-body-medium font-weight-medium">{{ locationName }}</div>
-        <div class="text-body-small text-medium-emphasis">{{ subtitle }} • Cliquez pour l'itinéraire</div>
-      </v-alert>
-    </template>
-    <v-list density="compact" rounded="lg" class="card-shadow">
-      <v-list-item :prepend-icon="mdiGoogleMaps" title="Google Maps" @click="openGoogleMaps" />
-      <v-list-item :prepend-icon="mdiApple" title="Plans (Apple)" @click="openAppleMaps" />
-      <v-list-item :prepend-icon="mdiWaze" title="Waze" @click="openWaze" />
-    </v-list>
-  </v-menu>
+  <v-card variant="tonal" color="info" rounded="lg" class="pa-3 d-flex flex-column justify-center">
+    <div class="d-flex align-center ga-3">
+      <v-icon :icon="mdiMapMarkerOutline" v-if="!$vuetify.display.mobile" color="info" size="24"
+        class="flex-shrink-0" />
+      <div class="flex-grow-1" style="min-width: 0">
+        <div class="text-body-medium font-weight-bold">Lieu du rendez-vous</div>
+        <div class="text-body-small text-medium-emphasis">{{ locationName }}</div>
+        <div v-if="subtitle" class="text-body-small text-medium-emphasis">{{ subtitle }}</div>
+      </div>
+      <v-menu location="bottom end">
+        <template #activator="{ props: menuProps }">
+          <v-btn v-bind="menuProps" color="info" :icon="$vuetify.display.mobile" flat rounded="lg" size="small"
+            class="text-none flex-shrink-0">
+            <v-icon v-if="$vuetify.display.mobile" :icon="mdiMapMarkerOutline" />
+            <template v-if="!$vuetify.display.mobile">Direction</template>
+          </v-btn>
+        </template>
+        <v-list density="compact" rounded="lg" class="card-shadow">
+          <v-list-item :prepend-icon="mdiGoogleMaps" title="Google Maps" @click="openGoogleMaps" />
+          <v-list-item :prepend-icon="mdiApple" title="Plans (Apple)" @click="openAppleMaps" />
+          <v-list-item :prepend-icon="mdiWaze" title="Waze" @click="openWaze" />
+        </v-list>
+      </v-menu>
+    </div>
+  </v-card>
 </template>

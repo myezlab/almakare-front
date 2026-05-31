@@ -1,33 +1,31 @@
 <script setup>
+import DateCard from "@/components/DateCard.vue"
 import DoctorCard from "@/components/DoctorCard.vue"
 import DocumentDialog from "@/components/DocumentDialog.vue"
 import FormGeneratorDialog from "@/components/FormGeneratorDialog.vue"
 import LocationCard from "@/components/LocationCard.vue"
+import QuestionnaireResultsDialog from "@/components/QuestionnaireResultsDialog.vue"
 import TestDialog from "@/components/TestDialog.vue"
-import { ISOToDDMMYYYY } from "@/composables/useDates"
+import { ISOToDDMMYYYY, ISOToHHmm, ISOToLongDateTime } from "@/composables/useDates"
+import { useQuestionnaire } from "@/composables/useQuestionnaire"
 import { useUrlPanels } from "@/composables/useUrlPanels"
 import ACTIVITIES_DATA from "@/data/activities.json"
 import { DOCTORS_SEED } from "@/data/doctors"
 import { DOCUMENTS_BY_KEY } from "@/data/documents"
 import { PATIENT_FIELDS, PATIENT_FIELDS_BY_KEY } from "@/data/patientFields"
-import { TESTS_BY_KEY } from "@/data/tests"
+import { TESTS, TESTS_BY_KEY, evaluateTest } from "@/data/tests"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
 import {
-  mdiApple,
   mdiCalendarBlankOutline,
-  mdiCalendarPlusOutline,
   mdiCancel,
   mdiCardAccountDetailsOutline,
   mdiCheck,
-  mdiClipboardCheckOutline,
   mdiClockOutline,
-  mdiFileDocumentEditOutline,
-  mdiGoogle,
-  mdiMicrosoftOutlook
+  mdiFileDocumentEditOutline
 } from "@mdi/js"
 import dayjs from "dayjs"
-import { computed, ref } from "vue"
+import { computed, reactive, ref } from "vue"
 import { useDisplay } from "vuetify"
 
 const { mobile } = useDisplay()
@@ -36,9 +34,55 @@ const messagesStore = useMessagesStore()
 
 const openPanels = useUrlPanels("actPanels")
 
-const activities = ref(
-  [...ACTIVITIES_DATA].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+// One live questionnaire per catalog test, sharing the exact logic and data of
+// the Questionnaires tab (src/data/tests.js + useQuestionnaire). The questions,
+// options, max score and severity bands all come from the test; saving commits
+// a { score, date } entry to the test's history and mirrors the latest score
+// onto the patient record so prep-task completion stays in sync.
+const questionnaireByKey = Object.fromEntries(
+  TESTS.map((test) => [
+    test.key,
+    {
+      test,
+      instance: reactive(
+        useQuestionnaire({
+          count: test.questions.length,
+          answersKey: test.answersKey,
+          scoreKey: test.scoreKey,
+          historyKey: `${test.key}History`,
+          colorFor: (score) => evaluateTest(test, score).color,
+          labelFor: (score) => evaluateTest(test, score).label,
+        })
+      )
+    }
+  ])
 )
+
+const activities = ref(
+  [...ACTIVITIES_DATA].sort((a, b) => (a.startAt < b.startAt ? 1 : a.startAt > b.startAt ? -1 : 0))
+)
+
+// Activities come in two flavours: a "consultation" (a visit with the doctor)
+// and an "acte" (a medical procedure). The gendered French wording adapts to
+// the type; everything else — preparation tasks, calendar export, the cancel
+// flow — is shared.
+const ACTIVITY_TYPES = {
+  consultation: {
+    label: "Consultation",
+    cancelTitle: "Annuler la consultation",
+    cancelledTitle: "Consultation annulée",
+    cancelToast: "Consultation annulée"
+  },
+  acte: {
+    label: "Acte",
+    cancelTitle: "Annuler l'acte",
+    cancelledTitle: "Acte annulé",
+    cancelToast: "Acte annulé"
+  }
+}
+function activityMeta(activity) {
+  return ACTIVITY_TYPES[activity?.type] || ACTIVITY_TYPES.consultation
+}
 
 // Resolve the activity's free-text doctor name ("Dr Lucas Robert") to a seeded
 // doctor record so we can show their profile picture, specialty, etc.
@@ -56,18 +100,15 @@ function getDoctor(activity) {
 
 const today = dayjs().startOf('day')
 function isUpcoming(activity) {
-  return dayjs(activity.date).isSame(today) || dayjs(activity.date).isAfter(today)
+  const day = dayjs(activity.startAt).startOf('day')
+  return day.isSame(today) || day.isAfter(today)
 }
-function isPast(activity) {
-  return dayjs(activity.date).startOf('day').isBefore(today)
-}
-
 const sections = computed(() => {
   const upcoming = []
   const ongoing = []
   const past = []
   for (const activity of activities.value) {
-    const date = dayjs(activity.date).startOf('day')
+    const date = dayjs(activity.startAt).startOf('day')
     if (date.isSame(today)) ongoing.push(activity)
     else if (date.isAfter(today)) upcoming.push(activity)
     else past.push(activity)
@@ -83,60 +124,48 @@ const sections = computed(() => {
 
 // The soonest upcoming consultation carries the preparation tasks the patient
 // must complete beforehand (questionnaires, documents, fields…).
-const nextConsultation = computed(() => {
-  const upcoming = activities.value.filter(isUpcoming)
-  upcoming.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
-  return upcoming[0] || null
-})
-const nextConsultationId = computed(() => nextConsultation.value?.id || null)
-
-// A consultation requests three separate kinds of preparation, each its own
+// An activity requests three separate kinds of preparation, each its own
 // array on the activity:
 //   `requestedFields`    — patient-data field keys (see src/data/patientFields.js),
 //                          gathered into a single "Données patient" card.
 //   `requestedTests`     — test keys (see src/data/tests.js), one card each.
 //   `requestedDocuments` — document keys (see src/data/documents.js), one card each.
-const requestedFieldKeys = computed(() => nextConsultation.value?.requestedFields || [])
-const requestedTestKeys = computed(() => nextConsultation.value?.requestedTests || [])
-const requestedDocumentKeys = computed(() => nextConsultation.value?.requestedDocuments || [])
 
 // Requested fields that drive completion (the primary, non-conditional ones).
-const requestedPatientFields = computed(() =>
-  requestedFieldKeys.value.map((k) => PATIENT_FIELDS_BY_KEY[k]).filter((f) => f && f.complete)
-)
-const hasPatientDataRequest = computed(() => requestedPatientFields.value.length > 0)
+function requestedPatientFields(activity) {
+  return (activity?.requestedFields || [])
+    .map((k) => PATIENT_FIELDS_BY_KEY[k])
+    .filter((f) => f && f.complete)
+}
 
-const patientDataComplete = computed(() => {
-  const item = selfStore.item || {}
-  return requestedPatientFields.value.every((f) => f.complete(item))
-})
-
-// Every field requested for this consultation, plus the conditional details of
-// each requested parent. The dialog shows them all (pre-filled with current
-// values) so a completed "Données patient" task can be reopened and edited.
-const patientDataFields = computed(() => {
-  const requestedKeySet = new Set(requestedPatientFields.value.map((f) => f.key))
+// Every field requested for this activity, plus the conditional details of each
+// requested parent. The dialog shows them all (pre-filled with current values)
+// so a completed "Données patient" task can be reopened and edited.
+function patientDataFields(activity) {
+  const requestedKeySet = new Set(requestedPatientFields(activity).map((f) => f.key))
   return PATIENT_FIELDS.filter(
     (f) => requestedKeySet.has(f.key) || (f.parentKey && requestedKeySet.has(f.parentKey))
   )
-})
+}
 
-// Preparation cards: the aggregate "Données patient" card (when any field is
-// requested), then one card per requested test, then one per requested document.
-const preparationTasks = computed(() => {
+// Preparation cards for a single activity: the aggregate "Données patient" card
+// (when any field is requested), then one card per requested test, then one per
+// requested document. Returns [] when the activity requests nothing.
+function buildPreparationTasks(activity) {
   const item = selfStore.item || {}
   const tasks = []
-  if (hasPatientDataRequest.value) {
+  const fields = requestedPatientFields(activity)
+  if (fields.length) {
     tasks.push({
       key: 'patientData',
       title: 'Données patient',
       icon: mdiCardAccountDetailsOutline,
       todo: 'Renseignez vos informations administratives et cliniques.',
-      completed: patientDataComplete.value,
-      action: openPatientDataDialog
+      completed: fields.every((f) => f.complete(item)),
+      action: () => openPatientDataDialog(activity)
     })
   }
-  for (const key of requestedTestKeys.value) {
+  for (const key of activity?.requestedTests || []) {
     const test = TESTS_BY_KEY[key]
     if (!test) continue
     tasks.push({
@@ -148,7 +177,7 @@ const preparationTasks = computed(() => {
       action: () => openTestDialog(test)
     })
   }
-  for (const key of requestedDocumentKeys.value) {
+  for (const key of activity?.requestedDocuments || []) {
     const doc = DOCUMENTS_BY_KEY[key]
     if (!doc) continue
     tasks.push({
@@ -161,18 +190,30 @@ const preparationTasks = computed(() => {
     })
   }
   return tasks
-})
+}
 
-const completedTasks = computed(() =>
-  preparationTasks.value.filter((task) => task.completed)
-)
-const todoTasks = computed(() =>
-  preparationTasks.value.filter((task) => !task.completed)
-)
-const completedTasksCount = computed(() => completedTasks.value.length)
-const allTasksCompleted = computed(
-  () => completedTasksCount.value === preparationTasks.value.length
-)
+// Preparation is attached to EVERY upcoming activity that requests something
+// (not just the soonest), keyed by activity id. Each entry pre-splits the tasks
+// into completed/todo and carries the progress counters the panel header shows.
+const prepByActivity = computed(() => {
+  const map = {}
+  for (const activity of activities.value) {
+    if (!isUpcoming(activity)) continue
+    const tasks = buildPreparationTasks(activity)
+    if (!tasks.length) continue
+    const completed = tasks.filter((task) => task.completed)
+    const todo = tasks.filter((task) => !task.completed)
+    map[activity.id] = {
+      tasks,
+      completed,
+      todo,
+      completedCount: completed.length,
+      total: tasks.length,
+      allCompleted: completed.length === tasks.length
+    }
+  }
+  return map
+})
 
 const showCancelDialog = ref(false)
 const cancelTarget = ref(null)
@@ -217,13 +258,14 @@ function askCancel(activity) {
 async function doCancel() {
   cancelling.value = true
   try {
-    if (cancelTarget.value) {
-      cancelledIds.value = new Set([...cancelledIds.value, cancelTarget.value.id])
+    const target = cancelTarget.value
+    if (target) {
+      cancelledIds.value = new Set([...cancelledIds.value, target.id])
       const next = new Set(confirmedIds.value)
-      next.delete(cancelTarget.value.id)
+      next.delete(target.id)
       confirmedIds.value = next
     }
-    messagesStore.add({ type: 'success', text: 'Consultation annulée' })
+    messagesStore.add({ type: 'success', text: activityMeta(target).cancelToast })
   } catch {
     messagesStore.add({ type: 'error', text: "Erreur lors de l'annulation" })
   } finally {
@@ -234,19 +276,17 @@ async function doCancel() {
 }
 
 function getEventTimes(activity) {
-  const start = dayjs(`${activity.date}T${activity.time || '09:00'}`)
-  return { start, end: start.add(30, 'minute') }
+  const start = dayjs(activity.startAt)
+  return { start, end: activity.endAt ? dayjs(activity.endAt) : start.add(30, 'minute') }
 }
 
 // Long French date/time shown in the open panel, e.g. "Mercredi 10 juin à 9h00".
 function fullDateTime(activity) {
-  const start = dayjs(`${activity.date}T${activity.time || '09:00'}`)
-  const text = `${start.format('dddd D MMMM')} à ${start.format('H[h]mm')}`
-  return text.charAt(0).toUpperCase() + text.slice(1)
+  return ISOToLongDateTime(activity.startAt)
 }
 
 function calendarTitle(activity) {
-  return `${activity.type} — ${activity.doctor}`
+  return `${activity.title} — ${activity.doctor}`
 }
 
 function escapeIcs(value) {
@@ -299,7 +339,7 @@ function downloadIcs(activity) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `${activity.type}.ics`
+  link.download = `${activity.title}.ics`
   link.click()
   URL.revokeObjectURL(url)
 }
@@ -310,9 +350,9 @@ const patientDialogFields = ref([])
 const patientDialogInitial = ref({})
 const savingPatientData = ref(false)
 
-function openPatientDataDialog() {
+function openPatientDataDialog(activity) {
   const item = selfStore.item || {}
-  const fields = patientDataFields.value
+  const fields = patientDataFields(activity)
   patientDialogFields.value = fields
   patientDialogInitial.value = fields.reduce((acc, f) => {
     if (item[f.key] != null) acc[f.key] = item[f.key]
@@ -340,30 +380,51 @@ function handlePatientDataSubmit(values) {
 
 // =================== TEST (QUESTIONNAIRE) DIALOG ===================
 const testDialogOpen = ref(false)
-const activeTest = ref(null)
-const testDialogAnswers = ref([])
-const savingTest = ref(false)
+const activeTestKey = ref(null)
+const activeQuestionnaire = computed(() =>
+  activeTestKey.value ? questionnaireByKey[activeTestKey.value] : null
+)
 
 function openTestDialog(test) {
-  activeTest.value = test
-  testDialogAnswers.value = selfStore.item?.[test.answersKey] || []
+  activeTestKey.value = test.key
   testDialogOpen.value = true
 }
 
-function handleTestSubmit({ answers, score }) {
-  const test = activeTest.value
-  if (!test) return
-  savingTest.value = true
-  try {
-    selfStore.item[test.answersKey] = answers
-    selfStore.item[test.scoreKey] = score
-    testDialogOpen.value = false
-    messagesStore.add({ type: 'success', text: `${test.title} enregistré` })
-  } catch {
-    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement du test" })
-  } finally {
-    savingTest.value = false
+// Save commits the completed questionnaire to its history (mirroring the latest
+// score), clears the form, closes the dialog and reveals the result.
+function handleTestSave() {
+  const q = activeQuestionnaire.value
+  if (!q) return
+  q.instance.save()
+  q.instance.reset()
+  testDialogOpen.value = false
+  openTestResults(q.test.key)
+}
+
+// =================== TEST RESULTS DIALOG ===================
+// Shared results/history view, identical to the Questionnaires tab.
+const resultsKey = ref(null)
+const resultsOpen = computed({
+  get: () => resultsKey.value !== null,
+  set: (val) => {
+    if (!val) resultsKey.value = null
   }
+})
+const resultsQuestionnaire = computed(() =>
+  resultsKey.value ? questionnaireByKey[resultsKey.value] : null
+)
+const resultsTitle = computed(() => resultsQuestionnaire.value?.test.title || '')
+const resultsMaxScore = computed(() => resultsQuestionnaire.value?.test.maxScore || 0)
+const resultsHistory = computed(() => resultsQuestionnaire.value?.instance.history || [])
+const resultsColorFor = computed(() =>
+  resultsQuestionnaire.value ? resultsQuestionnaire.value.instance.colorFor : () => 'primary'
+)
+const resultsLabelFor = computed(() =>
+  resultsQuestionnaire.value ? resultsQuestionnaire.value.instance.labelFor : () => ''
+)
+
+function openTestResults(key) {
+  resultsKey.value = key
 }
 
 // =================== DOCUMENT DIALOG ===================
@@ -423,7 +484,7 @@ function handleDocumentRemove() {
                 <div class="d-flex align-center ga-2">
                   <span class="panel-title"
                     :class="{ 'text-decoration-line-through text-medium-emphasis': isCancelled(activity) }">
-                    {{ activity.type }}
+                    {{ activity.title }}
                   </span>
                   <v-chip v-if="isCancelled(activity)" color="error" size="x-small" variant="tonal" label>
                     Annulé
@@ -440,9 +501,9 @@ function handleDocumentRemove() {
                   class="d-flex align-center flex-wrap ga-1 text-body-small text-medium-emphasis mt-1">
                   {{ activity.doctor }} •
                   <v-icon :icon="mdiCalendarBlankOutline" size="14" />
-                  {{ ISOToDDMMYYYY(activity.date) }}
+                  {{ ISOToDDMMYYYY(activity.startAt) }}
                   <v-icon :icon="mdiClockOutline" size="14" />
-                  {{ activity.time }}
+                  {{ ISOToHHmm(activity.startAt) }}
                 </span>
                 <v-row v-if="showHeaderActions(activity)" no-gutters class="mt-2" @click.stop>
                   <v-col cols="6" class="pr-1">
@@ -462,7 +523,7 @@ function handleDocumentRemove() {
               <div v-else class="d-flex align-center flex-wrap ga-2 flex-grow-1">
                 <span class="panel-title"
                   :class="{ 'text-decoration-line-through text-medium-emphasis': isCancelled(activity) }">
-                  {{ activity.type }}
+                  {{ activity.title }}
                 </span>
                 <v-chip v-if="isCancelled(activity)" color="error" size="x-small" variant="tonal" label>
                   Annulé
@@ -478,9 +539,9 @@ function handleDocumentRemove() {
                   <span class="text-body-medium">{{ activity.doctor }}</span>
                   <span class="text-medium-emphasis">•</span>
                   <v-icon :icon="mdiCalendarBlankOutline" size="16" class="text-medium-emphasis" />
-                  <span class="text-body-medium text-medium-emphasis">{{ ISOToDDMMYYYY(activity.date) }}</span>
+                  <span class="text-body-medium text-medium-emphasis">{{ ISOToDDMMYYYY(activity.startAt) }}</span>
                   <v-icon :icon="mdiClockOutline" size="16" class="text-medium-emphasis" />
-                  <span class="text-body-medium text-medium-emphasis">{{ activity.time }}</span>
+                  <span class="text-body-medium text-medium-emphasis">{{ ISOToHHmm(activity.startAt) }}</span>
                 </template>
               </div>
               <div v-if="!mobile && canConfirmOrCancel(activity)" class="d-flex align-center ga-1 mr-2" @click.stop>
@@ -496,33 +557,21 @@ function handleDocumentRemove() {
             </v-expansion-panel-title>
             <v-expansion-panel-text>
 
-              <!-- =================== CALENDAR + DATE/TIME ROW =================== -->
-              <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4">
-                <v-menu v-if="isUpcoming(activity)" location="bottom start">
-                  <template #activator="{ props }">
-                    <v-btn v-bind="props" color="primary" variant="tonal" rounded="lg" size="small" class="text-none"
-                      :prepend-icon="mdiCalendarPlusOutline">
-                      Ajouter au calendrier
-                    </v-btn>
-                  </template>
-                  <v-list density="compact" rounded="lg" class="card-shadow">
-                    <v-list-item :prepend-icon="mdiGoogle" title="Google Agenda" @click="addToGoogle(activity)" />
-                    <v-list-item :prepend-icon="mdiMicrosoftOutlook" title="Outlook" @click="addToOutlook(activity)" />
-                    <v-list-item :prepend-icon="mdiApple" title="Apple / iCal" @click="downloadIcs(activity)" />
-                  </v-list>
-                </v-menu>
-                <div class="d-flex align-center ga-2 text-medium-emphasis" :class="{ 'ml-auto': isPast(activity) }">
-                  <v-icon :icon="mdiCalendarBlankOutline" size="18" />
-                  <span class="text-body-medium font-weight-medium">{{ fullDateTime(activity) }}</span>
-                </div>
-              </div>
-
-              <!-- =================== DOCTOR CARD =================== -->
-              <DoctorCard v-if="getDoctor(activity)" :doctor="getDoctor(activity)" :name="activity.doctor"
-                class="mb-3" />
-
-              <!-- =================== LOCATION =================== -->
-              <LocationCard :location-name="activity.locationName" class="mb-3" />
+              <!-- =================== DOCTOR / LOCATION / DATE CARDS ===================
+                   Desktop: doctor spans the full width, location and date share
+                   the row below (6/6). Mobile: each card stacks full width. -->
+              <v-row density="compact" class="mb-3">
+                <v-col v-if="getDoctor(activity)" cols="12">
+                  <DoctorCard :doctor="getDoctor(activity)" :name="activity.doctor" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <LocationCard :location-name="activity.locationName" class="h-100" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <DateCard :start-at="activity.startAt" :upcoming="isUpcoming(activity)" class="h-100"
+                    @google="addToGoogle(activity)" @outlook="addToOutlook(activity)" @ical="downloadIcs(activity)" />
+                </v-col>
+              </v-row>
 
               <!-- =================== RAPPORT MÉDECIN (not shown while upcoming) =================== -->
               <v-alert v-if="!isUpcoming(activity) && activity.report" type="warning" variant="tonal"
@@ -534,30 +583,29 @@ function handleDocumentRemove() {
               <v-alert v-else-if="!isUpcoming(activity)" type="warning" variant="tonal"
                 :icon="mdiFileDocumentEditOutline" density="comfortable" rounded="lg">
                 <div class="text-body-medium font-weight-bold">Rapport médecin</div>
-                <div class="text-body-small text-medium-emphasis">Aucun rapport renseigné pour cette consultation.</div>
+                <div class="text-body-small text-medium-emphasis">Aucun rapport renseigné pour ce rendez-vous.</div>
               </v-alert>
 
-              <!-- =================== TÂCHES À COMPLÉTER AVANT LA CONSULTATION =================== -->
-              <div v-if="activity.id === nextConsultationId" class="prep-tasks mt-6 mb-6">
+              <!-- =================== TÂCHES À COMPLÉTER AVANT LE RENDEZ-VOUS =================== -->
+              <div v-if="prepByActivity[activity.id]" class="prep-tasks mt-6 mb-6">
                 <div class="d-flex align-center justify-space-between ga-2 mb-3">
                   <div class="d-flex align-center ga-2">
-                    <v-icon :icon="mdiClipboardCheckOutline" :color="allTasksCompleted ? 'success' : 'primary'"
-                      size="20" />
-                    <span class="text-body-medium font-weight-bold">À compléter avant votre consultation</span>
+                    <span class="text-body-medium font-weight-bold">À compléter avant votre rendez-vous</span>
                   </div>
-                  <v-chip size="small" :color="allTasksCompleted ? 'success' : 'primary'" variant="tonal" label>
-                    {{ completedTasksCount }}/{{ preparationTasks.length }}
+                  <v-chip size="small" :color="prepByActivity[activity.id].allCompleted ? 'success' : 'primary'"
+                    variant="tonal" label>
+                    {{ prepByActivity[activity.id].completedCount }}/{{ prepByActivity[activity.id].total }}
                   </v-chip>
                 </div>
 
-                <p v-if="!allTasksCompleted" class="text-body-small text-medium-emphasis mb-3">
+                <p v-if="!prepByActivity[activity.id].allCompleted" class="text-body-small text-medium-emphasis mb-3">
                   Votre médecin vous demande de réaliser ces tâches avant le rendez-vous.
                 </p>
 
                 <!-- Completed tasks: compact inline chips -->
-                <div v-if="completedTasks.length" class="d-flex flex-wrap ga-2 mb-3">
-                  <v-chip v-for="task in completedTasks" :key="task.key" variant="text" size="small" rounded="pill"
-                    class="border-light" @click="task.action()">
+                <div v-if="prepByActivity[activity.id].completed.length" class="d-flex flex-wrap ga-2 mb-3">
+                  <v-chip v-for="task in prepByActivity[activity.id].completed" :key="task.key" variant="text"
+                    size="small" rounded="pill" class="border-light" @click="task.action()">
                     <template #append>
                       <v-icon :icon="mdiCheck" color="success" size="18" class="ml-1" />
                     </template>
@@ -565,35 +613,30 @@ function handleDocumentRemove() {
                   </v-chip>
                 </div>
 
-                <!-- Remaining tasks: full cards -->
-                <div v-for="task in todoTasks" :key="task.key" class="task-row task-todo pa-3 mb-2" role="button"
-                  tabindex="0" @click="task.action()" @keydown.enter="task.action()">
+                <!-- Remaining tasks: full cards (same structure as the Lieu / Date cards) -->
+                <v-card v-for="task in prepByActivity[activity.id].todo" :key="task.key" variant="tonal" color="primary"
+                  rounded="lg" class="pa-3 mb-2 d-flex flex-column justify-center">
                   <div class="d-flex align-center ga-3">
-                    <v-avatar class="flex-shrink-0" color="primary" variant="tonal" size="40">
-                      <v-icon :icon="task.icon" size="22" />
-                    </v-avatar>
-                    <div class="task-text flex-grow-1">
+                    <v-icon v-if="!mobile" :icon="task.icon" color="primary" size="24" class="flex-shrink-0" />
+                    <div class="flex-grow-1" style="min-width: 0">
                       <div class="text-body-medium font-weight-bold">{{ task.title }}</div>
                       <div class="text-body-small text-medium-emphasis">{{ task.todo }}</div>
                     </div>
-                    <v-btn v-if="!mobile" color="primary" variant="flat" rounded="lg" size="small"
-                      class="flex-shrink-0 text-none" @click.stop="task.action()">
-                      Compléter
+                    <v-btn color="primary" :icon="mobile" flat rounded="lg" size="small"
+                      class="text-none flex-shrink-0" @click.stop="task.action()">
+                      <v-icon v-if="mobile" :icon="task.icon" />
+                      <template v-if="!mobile">Compléter</template>
                     </v-btn>
                   </div>
-                  <v-btn v-if="mobile" block color="primary" variant="flat" rounded="lg" size="small"
-                    class="text-none mt-3" @click.stop="task.action()">
-                    Compléter
-                  </v-btn>
-                </div>
+                </v-card>
               </div>
 
               <!-- =================== CANCELLED STATUS =================== -->
               <v-alert v-if="isCancelled(activity)" type="error" variant="tonal" :icon="mdiCancel" density="comfortable"
                 rounded="lg" class="mt-3">
-                <div class="text-body-medium font-weight-bold">Consultation annulée</div>
+                <div class="text-body-medium font-weight-bold">{{ activityMeta(activity).cancelledTitle }}</div>
                 <div class="text-body-small text-medium-emphasis">
-                  Cette consultation a été annulée. Pensez à reprendre rendez-vous si nécessaire.
+                  Ce rendez-vous a été annulé. Pensez à reprendre rendez-vous si nécessaire.
                 </div>
               </v-alert>
 
@@ -635,12 +678,12 @@ function handleDocumentRemove() {
     <!-- Cancel confirm dialog -->
     <v-dialog v-model="showCancelDialog" max-width="380">
       <v-card class="card-shadow rounded-15">
-        <v-card-title class="pa-4">Annuler la consultation</v-card-title>
+        <v-card-title class="pa-4">{{ activityMeta(cancelTarget).cancelTitle }}</v-card-title>
         <v-divider />
         <v-card-text class="pa-4">
           <template v-if="cancelTarget">
-            Êtes-vous sûr de vouloir annuler la consultation
-            <strong>{{ cancelTarget.type }}</strong>
+            Êtes-vous sûr de vouloir annuler le rendez-vous
+            <strong>{{ cancelTarget.title }}</strong>
             du {{ fullDateTime(cancelTarget).toLowerCase() }} ?
           </template>
         </v-card-text>
@@ -652,7 +695,7 @@ function handleDocumentRemove() {
           <v-spacer />
           <v-btn color="error" variant="flat" rounded="lg" size="large" class="text-none" :loading="cancelling"
             @click="doCancel">
-            Annuler la consultation
+            {{ activityMeta(cancelTarget).cancelTitle }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -665,8 +708,13 @@ function handleDocumentRemove() {
       @submit="handlePatientDataSubmit" />
 
     <!-- Test (questionnaire) dialog -->
-    <TestDialog v-model="testDialogOpen" :test="activeTest" :initial-answers="testDialogAnswers" :loading="savingTest"
-      @submit="handleTestSubmit" />
+    <TestDialog v-model="testDialogOpen" :test="activeQuestionnaire?.test || null"
+      :instance="activeQuestionnaire?.instance || null" @save="handleTestSave"
+      @results="openTestResults(activeTestKey)" />
+
+    <!-- Test results / history dialog -->
+    <QuestionnaireResultsDialog v-model="resultsOpen" :title="resultsTitle" :max-score="resultsMaxScore"
+      :history="resultsHistory" :color-for="resultsColorFor" :label-for="resultsLabelFor" />
 
     <!-- Document upload dialog -->
     <DocumentDialog v-model="documentDialogOpen" :document="activeDocument" :existing="activeDocumentFile"
@@ -683,27 +731,5 @@ function handleDocumentRemove() {
 
 :deep(.v-expansion-panel-text__wrapper) {
   padding-inline: 12px;
-}
-
-.task-row {
-  border: 1px solid rgba(var(--v-border-color), 0.12);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.task-row:hover {
-  background-color: rgba(var(--v-theme-on-surface), 0.04);
-}
-
-.task-row.task-todo {
-  border-color: rgba(var(--v-theme-primary), 0.4);
-  background-color: rgba(var(--v-theme-primary), 0.04);
-}
-
-/* Let the text column shrink below its content width so a long description
-   wraps inside the column instead of dropping under the icon. */
-.task-text {
-  min-width: 0;
 }
 </style>
