@@ -71,6 +71,63 @@
     "report": "Revue à 6 semaines de la mise en place du traitement. Observance excellente (>6h/nuit). Diminution nette de la somnolence diurne. Prochain contrôle dans 6 mois."
   },
   {
+    "id": "act-10",
+    "type": "acte",
+    "title": "Polygraphie ventilatoire nocturne",
+    "doctor": "Dr Lucas Robert",
+    "startAt": "2026-05-31T20:00:00",
+    "endAt": "2026-06-01T08:00:00",
+    "locationName": "Cabinet Dr Robert — 12 rue de Strasbourg, 44000 Nantes",
+    "report": "",
+    "requestedFields": ["weight", "height", "hasMedicalHistory"],
+    "requestedTests": ["epworth"],
+    "requestedDocuments": ["ordonnance"],
+    "protocol": {
+      "withPpc": false,
+      "withOrthese": false,
+      "withBedRest": false,
+      "comment": "",
+      "steps": [
+        {
+          "label": "Signature consentement",
+          "done": true,
+          "by": "na LGHAZI",
+          "at": "2026-05-31T19:26:00"
+        },
+        {
+          "label": "Signature attestation sur l'honneur",
+          "done": true,
+          "by": "na LGHAZI",
+          "at": "2026-05-31T19:27:00"
+        },
+        {
+          "label": "Signature autorisation de sortie",
+          "done": true,
+          "by": "na LGHAZI",
+          "at": "2026-05-31T19:27:00"
+        },
+        {
+          "label": "Présence du patient",
+          "done": true,
+          "at": "2026-05-31T20:00:00"
+        },
+        {
+          "label": "Uploader fichier métier polygraphie",
+          "done": false
+        },
+        {
+          "label": "Rapport technicien polygraphie",
+          "done": false,
+          "detail": "Chemin S3 : 002/A02/31052024-jean-christophe-temoin-n-a-9826"
+        },
+        {
+          "label": "Rapport d'analyse",
+          "done": false
+        }
+      ]
+    }
+  },
+  {
     "id": "act-8",
     "type": "acte",
     "title": "Pose du dispositif PPC",

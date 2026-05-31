@@ -1,4 +1,5 @@
 <script setup>
+import ActeProtocolCard from "@/components/monDossier/ActeProtocolCard.vue"
 import DateCard from "@/components/DateCard.vue"
 import DoctorCard from "@/components/DoctorCard.vue"
 import DocumentDialog from "@/components/DocumentDialog.vue"
@@ -98,19 +99,27 @@ function getDoctor(activity) {
   )
 }
 
-const today = dayjs().startOf('day')
+// An activity moves through three states based on its real time window
+// (startAt → endAt): "À venir" before it starts, "En cours" while it is
+// happening — an acte can run ~12h — and "Passés" once it has finished.
+const now = dayjs()
 function isUpcoming(activity) {
-  const day = dayjs(activity.startAt).startOf('day')
-  return day.isSame(today) || day.isAfter(today)
+  return now.isBefore(getEventTimes(activity).start)
+}
+function isOngoing(activity) {
+  const { start, end } = getEventTimes(activity)
+  return !now.isBefore(start) && !now.isAfter(end)
+}
+function isPast(activity) {
+  return !isUpcoming(activity) && !isOngoing(activity)
 }
 const sections = computed(() => {
   const upcoming = []
   const ongoing = []
   const past = []
   for (const activity of activities.value) {
-    const date = dayjs(activity.startAt).startOf('day')
-    if (date.isSame(today)) ongoing.push(activity)
-    else if (date.isAfter(today)) upcoming.push(activity)
+    if (isOngoing(activity)) ongoing.push(activity)
+    else if (isUpcoming(activity)) upcoming.push(activity)
     else past.push(activity)
   }
   // soonest upcoming first; ongoing and past keep the most recent first
@@ -192,13 +201,13 @@ function buildPreparationTasks(activity) {
   return tasks
 }
 
-// Preparation is attached to EVERY upcoming activity that requests something
-// (not just the soonest), keyed by activity id. Each entry pre-splits the tasks
-// into completed/todo and carries the progress counters the panel header shows.
+// Preparation is attached to EVERY upcoming OR ongoing activity that requests
+// something (not just the soonest), keyed by activity id. Each entry pre-splits
+// the tasks into completed/todo and carries the progress counters the header shows.
 const prepByActivity = computed(() => {
   const map = {}
   for (const activity of activities.value) {
-    if (!isUpcoming(activity)) continue
+    if (!isUpcoming(activity) && !isOngoing(activity)) continue
     const tasks = buildPreparationTasks(activity)
     if (!tasks.length) continue
     const completed = tasks.filter((task) => task.completed)
@@ -226,7 +235,7 @@ function isCancelled(activity) {
 }
 
 function isDone(activity) {
-  return !isUpcoming(activity) && !isCancelled(activity)
+  return isPast(activity) && !isCancelled(activity)
 }
 
 // The Annuler / Confirmer pair is offered while the consultation is upcoming
@@ -493,6 +502,9 @@ function handleDocumentRemove() {
                     label>
                     Confirmée
                   </v-chip>
+                  <v-chip v-else-if="isOngoing(activity)" color="info" size="x-small" variant="tonal" label>
+                    En cours
+                  </v-chip>
                   <v-chip v-else-if="isDone(activity)" color="primary" size="x-small" variant="tonal" label>
                     Effectué
                   </v-chip>
@@ -530,6 +542,9 @@ function handleDocumentRemove() {
                 </v-chip>
                 <v-chip v-else-if="confirmedIds.has(activity.id)" color="success" size="x-small" variant="tonal" label>
                   Confirmé
+                </v-chip>
+                <v-chip v-else-if="isOngoing(activity)" color="info" size="x-small" variant="tonal" label>
+                  En cours
                 </v-chip>
                 <v-chip v-else-if="isDone(activity)" color="primary" size="x-small" variant="tonal" label>
                   Effectué
@@ -574,13 +589,13 @@ function handleDocumentRemove() {
               </v-row>
 
               <!-- =================== RAPPORT MÉDECIN (not shown while upcoming) =================== -->
-              <v-alert v-if="!isUpcoming(activity) && activity.report" type="warning" variant="tonal"
+              <v-alert v-if="isPast(activity) && activity.report" type="warning" variant="tonal"
                 :icon="mdiFileDocumentEditOutline" density="comfortable" rounded="lg">
                 <div class="text-body-small font-weight-bold mb-1">Rapport médecin</div>
                 <div class="text-body-medium">{{ activity.report }}</div>
               </v-alert>
 
-              <v-alert v-else-if="!isUpcoming(activity)" type="warning" variant="tonal"
+              <v-alert v-else-if="isPast(activity)" type="warning" variant="tonal"
                 :icon="mdiFileDocumentEditOutline" density="comfortable" rounded="lg">
                 <div class="text-body-medium font-weight-bold">Rapport médecin</div>
                 <div class="text-body-small text-medium-emphasis">Aucun rapport renseigné pour ce rendez-vous.</div>
@@ -590,7 +605,11 @@ function handleDocumentRemove() {
               <div v-if="prepByActivity[activity.id]" class="prep-tasks mt-6 mb-6">
                 <div class="d-flex align-center justify-space-between ga-2 mb-3">
                   <div class="d-flex align-center ga-2">
-                    <span class="text-body-medium font-weight-bold">À compléter avant votre rendez-vous</span>
+                    <span class="text-body-medium font-weight-bold">
+                      {{ prepByActivity[activity.id].allCompleted
+                        ? 'Tout est prêt pour votre rendez-vous'
+                        : 'À compléter avant votre rendez-vous' }}
+                    </span>
                   </div>
                   <v-chip size="small" :color="prepByActivity[activity.id].allCompleted ? 'success' : 'primary'"
                     variant="tonal" label>
@@ -630,6 +649,11 @@ function handleDocumentRemove() {
                   </div>
                 </v-card>
               </div>
+
+              <!-- =================== DÉROULÉ DE L'ACTE (en cours) ===================
+                   Step-by-step progress of a medical procedure, attached to the
+                   acte via its `protocol` payload (only the ongoing acte carries it). -->
+              <ActeProtocolCard v-if="activity.protocol" :protocol="activity.protocol" class="mt-3" />
 
               <!-- =================== CANCELLED STATUS =================== -->
               <v-alert v-if="isCancelled(activity)" type="error" variant="tonal" :icon="mdiCancel" density="comfortable"

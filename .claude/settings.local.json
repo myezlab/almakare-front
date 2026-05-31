@@ -40,7 +40,19 @@
       "Bash(Select-String -Pattern \"TABS\",\"activeTab\",\"chip\")",
       "PowerShell(git status --short src/views/SleepDiaryView.vue; \"---\"; \\(Get-Content src/views/SleepDiaryView.vue | Measure-Object -Line\\).Lines)",
       "PowerShell(Write-Output \\(\\(Get-Content src/views/SleepDiaryView.vue | Measure-Object -Line\\).Lines\\))",
-      "PowerShell(npm run build)"
+      "PowerShell(npm run build)",
+      "Bash(xxd)",
+      "Bash(iconv -f UTF-16 -t UTF-8 \"c:/Users/felix/APPS/almakare/src/components/monDossier/ActivitesTab.vue\")",
+      "Read(//tmp/**)",
+      "Bash(iconv -f UTF-16 -t UTF-8 \"c:/Users/felix/APPS/almakare/src/components/monDossier/DateCard.vue\" > /tmp/datecard_utf8.vue; wc -l /tmp/datecard_utf8.vue; file \"c:/Users/felix/APPS/almakare/src/data/activities.json\")",
+      "Bash(xxd \"c:/Users/felix/APPS/almakare/src/data/activities.json\")",
+      "Bash(iconv -f UTF-16 -t UTF-8 \"c:/Users/felix/APPS/almakare/src/data/activities.json\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('src/data/activities.json','utf8'\\)\\); console.log\\('JSON OK'\\)\")",
+      "Bash(node -e \"const f=require\\('./src/data/patientFields.js'\\)\")",
+      "Bash(node -e \"console.log\\('skip'\\)\")"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }

@@ -1,8 +1,9 @@
 <script setup>
+import PpcTrackingChart from "@/components/monDossier/PpcTrackingChart.vue"
 import { useUrlPanels } from "@/composables/useUrlPanels"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
-import { mdiFileDocumentOutline, mdiPencil } from "@mdi/js"
+import { mdiPencil } from "@mdi/js"
 import { ref, watch } from "vue"
 
 const selfStore = useSelfStore()
@@ -80,15 +81,11 @@ async function handleSaveMachine(proxyModel, confirmSave) {
               <span class="panel-title">Traitements par DAP</span>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
-              <div class="d-flex flex-column align-center text-center pa-6 empty-state">
-                <div class="empty-state-icon mb-3">
-                  <v-icon :icon="mdiFileDocumentOutline" size="32" />
-                </div>
-                <div class="text-title-medium font-weight-bold mb-1">Aucun traitement par DAP</div>
-                <div class="text-body-small text-medium-emphasis">
-                  Vos demandes d'accord préalable apparaîtront ici.
-                </div>
+              <div class="text-title-medium font-weight-bold mb-1">Suivi du traitement par PPC</div>
+              <div class="text-body-small text-medium-emphasis mb-4">
+                30 derniers jours · utilisation nocturne et index d'apnées-hypopnées (IAH).
               </div>
+              <PpcTrackingChart />
             </v-expansion-panel-text>
           </v-expansion-panel>
 
