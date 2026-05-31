@@ -1,0 +1,65 @@
+[
+  {
+    "id": "msg-001",
+    "sender": "partenaire",
+    "authorName": "Julien Mercier",
+    "avatarUrl": "https://randomuser.me/api/portraits/men/45.jpg",
+    "text": "Bonjour, je suis Julien de chez Asten Santé, votre partenaire santé. Je vous accompagne dans la prise en main de votre dispositif PPC. N'hésitez pas à m'écrire pour toute question sur son utilisation.",
+    "createdAt": "2026-05-19T16:10:00Z",
+    "read": true
+  },
+  {
+    "id": "msg-002",
+    "sender": "patient",
+    "authorName": "Vous",
+    "avatarUrl": null,
+    "text": "Bonjour Julien, merci. J'ai bien installé l'appareil hier soir mais j'ai trouvé le masque un peu inconfortable au niveau du nez.",
+    "createdAt": "2026-05-19T18:42:00Z",
+    "read": true
+  },
+  {
+    "id": "msg-003",
+    "sender": "partenaire",
+    "authorName": "Julien Mercier",
+    "avatarUrl": "https://randomuser.me/api/portraits/men/45.jpg",
+    "text": "C'est fréquent les premières nuits. Vérifiez que le masque n'est pas trop serré : il doit être étanche sans marquer la peau. Je peux passer ajuster la taille si besoin.",
+    "createdAt": "2026-05-20T08:05:00Z",
+    "read": true
+  },
+  {
+    "id": "msg-004",
+    "sender": "patient",
+    "authorName": "Vous",
+    "avatarUrl": null,
+    "text": "D'accord, je vais réessayer ce soir en desserrant un peu. Faut-il nettoyer le masque tous les jours ?",
+    "createdAt": "2026-05-27T09:30:00Z",
+    "read": true
+  },
+  {
+    "id": "msg-005",
+    "sender": "partenaire",
+    "authorName": "Julien Mercier",
+    "avatarUrl": "https://randomuser.me/api/portraits/men/45.jpg",
+    "text": "Rincez le masque à l'eau tiède chaque matin et changez l'eau de l'humidificateur quotidiennement. Vos données d'utilisation me sont transmises : vous êtes déjà à 6h par nuit, c'est excellent !",
+    "createdAt": "2026-05-28T11:20:00Z",
+    "read": true
+  },
+  {
+    "id": "msg-006",
+    "sender": "patient",
+    "authorName": "Vous",
+    "avatarUrl": null,
+    "text": "Super, je me sens effectivement plus reposé. La pression réglée à 8 cmH2O me convient bien.",
+    "createdAt": "2026-05-29T07:55:00Z",
+    "read": true
+  },
+  {
+    "id": "msg-007",
+    "sender": "partenaire",
+    "authorName": "Julien Mercier",
+    "avatarUrl": "https://randomuser.me/api/portraits/men/45.jpg",
+    "text": "Parfait. Je reste disponible et je vous recontacte dans 15 jours pour faire le point sur votre observance. Bonne nuit et bon traitement !",
+    "createdAt": "2026-05-29T09:10:00Z",
+    "read": false
+  }
+]

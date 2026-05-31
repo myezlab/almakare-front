@@ -4,11 +4,9 @@ import { useRules } from "@/composables/useRules"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
 import {
-  mdiAccountOutline,
   mdiDeleteOutline,
   mdiEye,
-  mdiEyeOff,
-  mdiLockOutline,
+  mdiEyeOff
 } from "@mdi/js"
 import { computed, ref } from "vue"
 import { useRouter } from "vue-router"
@@ -100,7 +98,6 @@ async function handleDeleteAccount() {
         <!-- =================== INFORMATIONS =================== -->
         <v-card class="card-shadow mb-4 pa-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
           <div class="d-flex align-center mb-4">
-            <v-icon :icon="mdiAccountOutline" class="mr-2" />
             <span class="section-title">Informations du compte</span>
           </div>
           <v-row>
@@ -118,14 +115,13 @@ async function handleDeleteAccount() {
         <!-- =================== MOT DE PASSE =================== -->
         <v-card class="card-shadow mb-4 pa-6" :class="{ 'rounded-15': !$vuetify.display.mobile }">
           <div class="d-flex align-center mb-4">
-            <v-icon :icon="mdiLockOutline" class="mr-2" />
             <span class="section-title">Modifier le mot de passe</span>
           </div>
           <v-form ref="passwordFormRef" @submit.prevent="handleChangePassword">
             <v-text-field v-model="currentPassword" label="Mot de passe actuel"
               :type="showCurrent ? 'text' : 'password'" variant="outlined" rounded="lg" density="comfortable"
-              autocomplete="current-password" :rules="[required]"
-              :append-inner-icon="showCurrent ? mdiEyeOff : mdiEye" @click:append-inner="showCurrent = !showCurrent" />
+              autocomplete="current-password" :rules="[required]" :append-inner-icon="showCurrent ? mdiEyeOff : mdiEye"
+              @click:append-inner="showCurrent = !showCurrent" />
 
             <v-text-field v-model="newPassword" label="Nouveau mot de passe" :type="showNew ? 'text' : 'password'"
               variant="outlined" rounded="lg" density="comfortable" autocomplete="new-password"
@@ -148,7 +144,6 @@ async function handleDeleteAccount() {
         <!-- =================== SUPPRESSION =================== -->
         <v-card class="card-shadow pa-6 danger-card" :class="{ 'rounded-15': !$vuetify.display.mobile }">
           <div class="d-flex align-center mb-2">
-            <v-icon :icon="mdiDeleteOutline" color="error" class="mr-2" />
             <span class="section-title text-error">Supprimer le compte</span>
           </div>
           <div class="text-body-medium text-medium-emphasis mb-4">

@@ -1,0 +1,13 @@
+{
+  "id": "partenaire-001",
+  "company": "Asten Santé",
+  "firstName": "Julien",
+  "lastName": "Mercier",
+  "role": "Technicien-conseil",
+  "mission": "Assistance respiratoire à domicile",
+  "avatarUrl": "https://randomuser.me/api/portraits/men/45.jpg",
+  "phone": "02 40 55 66 77",
+  "email": "j.mercier@asten-sante.fr",
+  "city": "Nantes",
+  "description": "Votre partenaire santé vous accompagne au quotidien dans l'utilisation de votre dispositif de pression positive continue (PPC) afin de garantir un traitement efficace et un sommeil réparateur."
+}

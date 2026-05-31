@@ -2,6 +2,8 @@
 import logoInitials from "@/assets/img/logo-initials.svg"
 import logo from "@/assets/img/logo.svg"
 import { useNavigationItems } from "@/composables/useNavigationItems"
+import { useReadState } from "@/composables/useReadState"
+import notificationsData from "@/data/notifications.json"
 import { mdiChevronLeft, mdiChevronRight } from "@mdi/js"
 import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
@@ -10,11 +12,23 @@ const MINI_STORAGE_KEY = "mini"
 
 const mini = ref(localStorage.getItem(MINI_STORAGE_KEY) === "true")
 const { items } = useNavigationItems()
+const { isNotificationRead } = useReadState()
 const route = useRoute()
+
+// Number of unread notifications, surfaced as a badge on the Notifications nav item.
+const unreadCount = computed(
+  () => notificationsData.filter((n) => !isNotificationRead(n)).length,
+)
 
 const active = computed(() => items.value.length > 0)
 
 const activeRouteName = computed(() => route.name)
+
+// The Chat tab in Mon dossier is a full-screen conversation on mobile: hide the
+// floating bottom nav so it doesn't overlap the message composer.
+const hideBottomNav = computed(
+  () => route.name === "MonDossier" && route.query.tab === "chat",
+)
 
 watch(mini, (val) => {
   localStorage.setItem(MINI_STORAGE_KEY, val)
@@ -23,18 +37,21 @@ watch(mini, (val) => {
 
 <template>
   <!-- Mobile: Floating Bottom Navigation -->
-  <div v-if="$vuetify.display.mobile && active" class="bottom-nav-wrap">
+  <div v-if="$vuetify.display.mobile && active && !hideBottomNav" class="bottom-nav-wrap">
     <nav class="bottom-nav">
       <button v-for="(item, index) in items" :key="index" class="nav-item"
         :class="{ active: activeRouteName === item.to.name }" :aria-label="item.text" @click="$router.push(item.to)">
         <span class="nav-pill">
-          <v-img :src="item.img" width="24" height="24" transition="fade-transition"
-            :class="{ 'rounded-circle': item.rounded }" :cover="item.cover">
-            <template v-slot:placeholder>
-              <v-icon size="22">{{ activeRouteName === item.to.name ? (item.iconActive || item.icon) : item.icon
-              }}</v-icon>
-            </template>
-          </v-img>
+          <v-badge :model-value="item.to.name === 'Notifications' && unreadCount > 0" :content="unreadCount"
+            color="error" offset-x="-2" offset-y="-2">
+            <v-img :src="item.img" width="24" height="24" transition="fade-transition"
+              :class="{ 'rounded-circle': item.rounded }" :cover="item.cover">
+              <template v-slot:placeholder>
+                <v-icon size="22">{{ activeRouteName === item.to.name ? (item.iconActive || item.icon) : item.icon
+                }}</v-icon>
+              </template>
+            </v-img>
+          </v-badge>
           <span class="nav-label">{{ item.shortText || item.text }}</span>
         </span>
       </button>
@@ -55,16 +72,19 @@ watch(mini, (val) => {
         <v-list-item :value="item.to.name" color="primary" :to="item.to" :title="!mini ? item.text : ''"
           class="rounded-15">
           <template v-slot:prepend>
-            <v-img :src="item.img" :width="mini ? 33 : 45" :height="mini ? 33 : 45" class="my-1 "
-              transition="fade-transition">
-              <template v-slot:placeholder>
-                <v-row class="fill-height ma-0" align="center" justify="center">
-                  <v-icon>{{ activeRouteName === item.to.name ? (item.iconActive || item.icon) :
-                    item.icon
-                  }}</v-icon>
-                </v-row>
-              </template>
-            </v-img>
+            <v-badge :model-value="item.to.name === 'Notifications' && unreadCount > 0" :content="unreadCount"
+              color="error" offset-x="6" offset-y="6">
+              <v-img :src="item.img" :width="mini ? 33 : 45" :height="mini ? 33 : 45" class="my-1 "
+                transition="fade-transition">
+                <template v-slot:placeholder>
+                  <v-row class="fill-height ma-0" align="center" justify="center">
+                    <v-icon>{{ activeRouteName === item.to.name ? (item.iconActive || item.icon) :
+                      item.icon
+                    }}</v-icon>
+                  </v-row>
+                </template>
+              </v-img>
+            </v-badge>
           </template>
           <v-tooltip activator="parent" location="start" :disabled="!mini">{{ item.text }}</v-tooltip>
         </v-list-item>

@@ -11,6 +11,17 @@
     "projectId": null
   },
   {
+    "id": "notif-chat-001",
+    "type": "newMessage",
+    "userFullName": "Julien Mercier — Asten Santé",
+    "userAvatarUrl": "https://randomuser.me/api/portraits/men/45.jpg",
+    "text": "Vous avez un nouveau message de votre partenaire santé : un point sur votre observance est prévu dans 15 jours. Ouvrez votre chat pour répondre.",
+    "createdAt": "2026-05-29T09:12:00Z",
+    "read": false,
+    "to": "/mon-dossier?tab=chat",
+    "projectId": null
+  },
+  {
     "id": "notif-001",
     "type": "newMessage",
     "userFullName": "Dr Lucas Robert",

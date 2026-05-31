@@ -37,7 +37,10 @@
       "PowerShell(npm run build 2>&1)",
       "PowerShell(\"---\")",
       "Bash(Get-Content src/views/MonDossierView.vue -TotalCount 200)",
-      "Bash(Select-String -Pattern \"TABS\",\"activeTab\",\"chip\")"
+      "Bash(Select-String -Pattern \"TABS\",\"activeTab\",\"chip\")",
+      "PowerShell(git status --short src/views/SleepDiaryView.vue; \"---\"; \\(Get-Content src/views/SleepDiaryView.vue | Measure-Object -Line\\).Lines)",
+      "PowerShell(Write-Output \\(\\(Get-Content src/views/SleepDiaryView.vue | Measure-Object -Line\\).Lines\\))",
+      "PowerShell(npm run build)"
     ]
   }
 }

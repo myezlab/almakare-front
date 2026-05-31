@@ -1,30 +1,34 @@
 <script setup>
 import DoctorDialog from "@/components/DoctorDialog.vue"
 import ActivitesTab from "@/components/monDossier/ActivitesTab.vue"
+import ChatTab from "@/components/monDossier/ChatTab.vue"
 import DocumentsTab from "@/components/monDossier/DocumentsTab.vue"
 import DonneesPatientTab from "@/components/monDossier/DonneesPatientTab.vue"
-import PlaceholderTab from "@/components/monDossier/PlaceholderTab.vue"
 import QuestionnairesTab from "@/components/monDossier/QuestionnairesTab.vue"
 import TraitementsTab from "@/components/monDossier/TraitementsTab.vue"
 import { ISOToShortenedDate } from "@/composables/useDates"
+import { useChatStore } from "@/stores/chat"
 import { useSelfStore } from "@/stores/self"
 import {
   mdiAccountOutline,
   mdiCalendarCheckOutline,
   mdiCalendarPlusOutline,
+  mdiChatOutline,
   mdiClipboardListOutline,
-  mdiEmailOutline,
   mdiFileMultipleOutline,
   mdiPill
 } from "@mdi/js"
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
+import { useDisplay } from "vuetify"
 
 const GENDER_LABELS = { male: 'Homme', female: 'Femme', other: 'Autre' }
 
 const selfStore = useSelfStore()
+const chatStore = useChatStore()
 const router = useRouter()
 const route = useRoute()
+const { mobile } = useDisplay()
 
 const currentUser = computed(() => selfStore.item || {})
 
@@ -44,7 +48,7 @@ const TABS = [
   { value: 'traitements', label: 'Traitements', icon: mdiPill },
   { value: 'documents', label: 'Documents', icon: mdiFileMultipleOutline },
   { value: 'questionnaires', label: 'Questionnaires', icon: mdiClipboardListOutline },
-  { value: 'messagerie', label: 'Messagerie', icon: mdiEmailOutline },
+  { value: 'chat', label: 'Chat', icon: mdiChatOutline },
 ]
 const TAB_VALUES = TABS.map((t) => t.value)
 const DEFAULT_TAB = 'donnees-patient'
@@ -69,17 +73,13 @@ watch(activeTab, (val) => {
 const mobileTabActive = computed(() => TAB_VALUES.includes(route.query.tab))
 const activeTabMeta = computed(() => TABS.find((t) => t.value === activeTab.value))
 
+// On mobile the Chat tab is a full-screen conversation (no section title, header
+// under the app bar, composer pinned to the bottom).
+const isMobileChat = computed(() => mobile.value && mobileTabActive.value && activeTab.value === 'chat')
+
 function openTab(value) {
   activeTab.value = value
   if (route.query.tab !== value) router.replace({ query: { ...route.query, tab: value } })
-}
-
-const tabPlaceholders = {
-  messagerie: {
-    title: 'Messagerie',
-    subtitle: 'Échangez avec votre praticien en toute sécurité.',
-    icon: mdiEmailOutline,
-  },
 }
 
 const dobDisplay = computed(() => {
@@ -100,7 +100,10 @@ const fullName = computed(() => {
 
 <template>
   <div>
-    <v-row v-if="selfStore.item.id" justify="center" class="mt-8 mb-16 pb-10">
+    <!-- Mobile: full-screen chat, rendered outside the standard layout -->
+    <ChatTab v-if="selfStore.item.id && isMobileChat" fullscreen />
+
+    <v-row v-else-if="selfStore.item.id" justify="center" class="mt-8 pb-10">
       <v-col :cols="$vuetify.display.mobile ? 12 : 10">
 
         <!-- =================== HEADER =================== -->
@@ -150,6 +153,8 @@ const fullName = computed(() => {
           <v-tabs v-model="activeTab" color="primary" :show-arrows="false">
             <v-tab v-for="t in TABS" :key="t.value" :value="t.value" :prepend-icon="t.icon" class="text-none">
               {{ t.label }}
+              <v-badge v-if="t.value === 'chat' && chatStore.unreadCount" color="error" :content="chatStore.unreadCount"
+                inline />
             </v-tab>
           </v-tabs>
         </v-card>
@@ -160,9 +165,12 @@ const fullName = computed(() => {
             <v-card
               class="rounded-15 card-shadow d-flex flex-column align-center justify-center text-center pa-5 fill-height"
               @click="openTab(t.value)">
-              <v-avatar color="primary" variant="tonal" size="56" class="mb-3">
-                <v-icon :icon="t.icon" size="28" />
-              </v-avatar>
+              <v-badge :model-value="t.value === 'chat' && chatStore.unreadCount > 0" color="error"
+                :content="chatStore.unreadCount" offset-x="4" offset-y="4" class="mb-3">
+                <v-avatar color="primary" variant="tonal" size="56">
+                  <v-icon :icon="t.icon" size="28" />
+                </v-avatar>
+              </v-badge>
               <div class="text-body-medium font-weight-medium">{{ t.label }}</div>
             </v-card>
           </v-col>
@@ -175,8 +183,7 @@ const fullName = computed(() => {
           <TraitementsTab v-else-if="activeTab === 'traitements'" />
           <QuestionnairesTab v-else-if="activeTab === 'questionnaires'" />
           <DocumentsTab v-else-if="activeTab === 'documents'" />
-          <PlaceholderTab v-else-if="tabPlaceholders[activeTab]" :title="tabPlaceholders[activeTab].title"
-            :subtitle="tabPlaceholders[activeTab].subtitle" :icon="tabPlaceholders[activeTab].icon" />
+          <ChatTab v-else-if="activeTab === 'chat'" />
         </template>
 
       </v-col>

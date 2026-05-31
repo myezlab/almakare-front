@@ -90,6 +90,9 @@ const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const showForm = ref(false)
+// Both diary sections start open so nothing is hidden on first glance, but each
+// can be collapsed to focus on matin / soir one at a time.
+const openPanels = ref([0, 1])
 const showDelete = ref(false)
 const deleteTarget = ref(null)
 
@@ -385,11 +388,21 @@ function confirmTimePicker() {
                     prepend-icon="" hide-details density="comfortable" />
                 </div>
 
-                <!-- Morning section -->
-                <div class="section-header mb-4">
-                  <v-icon :icon="mdiWhiteBalanceSunny" color="warning" size="20" class="mr-2" />
-                  Section matin
-                </div>
+                <!-- Sections matin & soir as collapsible panels -->
+                <v-expansion-panels v-model="openPanels" multiple variant="accordion" class="diary-panels mb-2">
+
+                  <!-- Section matin -->
+                  <v-expansion-panel rounded="lg">
+                    <v-expansion-panel-title class="panel-title">
+                      <div class="section-header">
+                        <v-icon :icon="mdiWhiteBalanceSunny" color="warning" size="22" class="mr-2" />
+                        <div>
+                          <div>Section matin</div>
+                          <div class="panel-subtitle">À remplir au réveil</div>
+                        </div>
+                      </div>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
 
                 <v-row class="mb-4">
                   <v-col cols="6">
@@ -467,13 +480,21 @@ function confirmTimePicker() {
                     hide-details placeholder="Ex : Doliprane, sport le soir, stress…" />
                 </div>
 
-                <v-divider class="mb-5" />
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
 
-                <!-- Evening section -->
-                <div class="section-header mb-4">
-                  <v-icon :icon="mdiMoonWaningCrescent" color="primary" size="20" class="mr-2" />
-                  Section soir
-                </div>
+                  <!-- Section soir -->
+                  <v-expansion-panel rounded="lg">
+                    <v-expansion-panel-title class="panel-title">
+                      <div class="section-header">
+                        <v-icon :icon="mdiMoonWaningCrescent" color="primary" size="22" class="mr-2" />
+                        <div>
+                          <div>Section soir</div>
+                          <div class="panel-subtitle">À remplir avant de dormir</div>
+                        </div>
+                      </div>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
 
                 <!-- Naps -->
                 <div class="mb-5">
@@ -510,6 +531,10 @@ function confirmTimePicker() {
                     </v-btn>
                   </div>
                 </div>
+
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
 
               </v-card-text>
               <v-divider />
@@ -629,6 +654,40 @@ function confirmTimePicker() {
   align-items: center;
   font-size: 1.1rem;
   font-weight: 700;
+}
+
+/* Collapsible matin / soir sections */
+.diary-panels {
+  border-radius: 12px;
+}
+
+.diary-panels .v-expansion-panel {
+  background: rgba(0, 0, 0, 0.015);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px !important;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.diary-panels .v-expansion-panel:last-child {
+  margin-bottom: 0;
+}
+
+/* Hide the default accordion divider line between panels */
+.diary-panels .v-expansion-panel:not(:first-child)::after {
+  border-top: none !important;
+}
+
+.panel-title {
+  min-height: 68px;
+  font-weight: 700;
+}
+
+.panel-subtitle {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.55);
+  margin-top: 2px;
 }
 
 .time-btn {
