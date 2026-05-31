@@ -125,7 +125,7 @@ Defined in [src/router.js](src/router.js):
 | `/agenda`                  | BookAppointmentView        | requiresAuth |
 | `/parcours-hospitalisation`| HospitalizationJourneyView | requiresAuth |
 | `/test-epworth`            | EpworthTestView            | requiresAuth |
-| `/agenda-sommeil`          | SleepDiaryView             | requiresAuth |
+| `/agenda-du-sommeil`       | SleepDiaryView             | requiresAuth |
 | `/troubles-du-sommeil`     | SleepStatsFranceView       | requiresAuth |
 
 Navigation behavior ([src/router.js:103-123](src/router.js#L103-L123)):

@@ -19,7 +19,8 @@
       "Bash(xargs grep -l \"doctor\")",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\felix\\\\APPS\\\\almakare\" -Recurse -Filter \"*.vue\")",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('src/data/activities.json','utf8'\\)\\); console.log\\('activities.json valid'\\)\")"
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('src/data/activities.json','utf8'\\)\\); console.log\\('activities.json valid'\\)\")",
+      "Bash(node -e \"const m=require\\('@mdi/js'\\); console.log\\('mdiFire' in m ? 'ok' : 'missing'\\)\")"
     ]
   }
 }

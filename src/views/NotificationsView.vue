@@ -2,7 +2,7 @@
 import { ISOToRelativeTime } from "@/composables/useDates.js"
 import { useReadState } from "@/composables/useReadState.js"
 import notificationsData from '@/data/notifications.json'
-import { mdiAccount, mdiBell, mdiBellOutline, mdiCheckCircle, mdiPen, mdiRefresh } from "@mdi/js"
+import { mdiBell, mdiBellOutline, mdiCalendar, mdiCheckCircle, mdiPen, mdiRefresh } from "@mdi/js"
 import { ref } from "vue"
 import { useRouter } from "vue-router"
 
@@ -20,13 +20,8 @@ const notificationTypeIcons = {
   newMessage: { icon: mdiBell, color: 'primary' },
   appointmentConfirmed: { icon: mdiCheckCircle, color: 'success' },
   documentSigned: { icon: mdiPen, color: 'warning' },
-  default: { icon: mdiBell, color: 'grey' }
-}
-
-const notificationTypeTexts = {
-  newMessage: 'Nouveau message',
-  appointmentConfirmed: 'Rendez-vous confirmé',
-  documentSigned: 'Document signé'
+  agendaDuSommeil: { icon: mdiCalendar, color: 'amber' },
+  default: { icon: mdiBell, color: 'grey' },
 }
 
 function markAsRead(notification) {
@@ -79,15 +74,21 @@ function getTitle(notification) {
                 <v-col cols="auto" class="pr-0">
                   <div style="position: relative; display: inline-block;">
                     <v-avatar size="50" :color="notification.userAvatarUrl ? undefined : 'grey-lighten-3'">
-                      <v-img :src="notification.userAvatarUrl" cover>
+                      <v-img v-if="notification.userAvatarUrl" :src="notification.userAvatarUrl" cover>
                         <template v-slot:placeholder>
                           <div class="d-flex align-center justify-center fill-height">
-                            <v-icon :icon="mdiAccount" color="grey-lighten-1" size="32" />
+                            <v-icon
+                              :icon="(notificationTypeIcons[notification.type] ?? notificationTypeIcons.default).icon"
+                              :color="notificationTypeIcons[notification.type].color" size="32" />
                           </div>
                         </template>
                       </v-img>
+                      <v-icon v-else
+                        :icon="(notificationTypeIcons[notification.type] ?? notificationTypeIcons.default).icon"
+                        color="grey-darken-1" size="28" />
                     </v-avatar>
-                    <v-icon :icon="(notificationTypeIcons[notification.type] ?? notificationTypeIcons.default).icon"
+                    <v-icon v-if="notification.userAvatarUrl"
+                      :icon="(notificationTypeIcons[notification.type] ?? notificationTypeIcons.default).icon"
                       color="white" size="26"
                       :class="[`bg-${(notificationTypeIcons[notification.type] ?? notificationTypeIcons.default).color}`]"
                       style="position: absolute; bottom: -4px; right: -4px; border-radius: 50%; padding: 5px;" />
@@ -100,7 +101,7 @@ function getTitle(notification) {
                   </div>
                   <div class="text-body-small mt-1"
                     :class="isNotificationRead(notification) ? 'text-medium-emphasis' : 'font-weight-bold'">
-                    {{ notification.text || notificationTypeTexts[notification.type] }}
+                    {{ notification.text }}
                   </div>
                   <div v-if="notification.createdAt" class="text-label-small text-grey mt-2 first-letter-uppercase">
                     {{ ISOToRelativeTime(notification.createdAt.toDate()) }}

@@ -6,10 +6,11 @@ import { useRules } from "@/composables/useRules"
 import { useUrlPanels } from "@/composables/useUrlPanels"
 import ACTIVITIES_DATA from "@/data/activities.json"
 import { DOCTORS_SEED } from "@/data/doctors"
+import { PROFILE_HISTORY_SEED } from "@/data/profileHistory"
 import gendersEnum from "@/enums/genders.json"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
-import { mdiCalendar, mdiClipboardTextOutline, mdiDoctor, mdiFileDocumentEditOutline, mdiMagnify, mdiPencil, mdiTruckOutline } from "@mdi/js"
+import { mdiCalendar, mdiClipboardTextOutline, mdiDoctor, mdiFileDocumentEditOutline, mdiHistory, mdiMagnify, mdiPencil, mdiTruckOutline } from "@mdi/js"
 import dayjs from "dayjs"
 import { computed, ref, watch } from "vue"
 
@@ -81,6 +82,77 @@ const issueDateRules = [
   v => !v || /^\d{2}\/\d{2}\/\d{4}$/.test(v) || 'Format attendu : JJ/MM/AAAA',
 ]
 
+// ----- Modification history --------------------------------------------------
+const HISTORY_SECTION_LABELS = { general: 'Données générales', clinical: 'Données cliniques' }
+
+const historyDialogOpen = ref(false)
+const historySection = ref('general')
+
+const history = computed(() => selfStore.item?.history || [])
+
+const historyEntries = computed(() =>
+  history.value
+    .filter(e => e.section === historySection.value)
+    .slice()
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+)
+
+// Build a labelled snapshot of a section so two snapshots can be diffed field by field.
+function generalSnapshot(u = {}) {
+  const dob = u.dob ? ISOToDDMMYYYY(u.dob?.toDate ? u.dob.toDate() : u.dob) : ''
+  const address = [u.postalAddress, [u.postalCode, u.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+  return [
+    { label: 'Prénom', value: u.firstName || '' },
+    { label: 'Nom', value: u.lastName || '' },
+    { label: 'Nom de naissance', value: u.birthName || '' },
+    { label: 'Genre', value: GENDER_LABELS[u.gender] || '' },
+    { label: 'Date de naissance', value: dob },
+    { label: 'Téléphone', value: u.phoneNumber || '' },
+    { label: 'Adresse', value: address },
+    { label: 'Régime alimentaire', value: u.hasDietaryRestrictions === false ? 'Aucun' : (u.dietaryRestrictions || '') },
+    { label: 'Antécédents médicaux', value: u.hasMedicalHistory === false ? 'Aucun' : (u.medicalHistory || '') },
+    { label: 'Numéro de sécurité sociale', value: formatNir(u.carteVitaleNir) || '' },
+    { label: "Date d'émission carte vitale", value: u.carteVitaleIssueDate || '' },
+  ]
+}
+
+function clinicalSnapshot(u = {}) {
+  return [
+    { label: 'Poids (kg)', value: u.weight != null ? String(u.weight) : '' },
+    { label: 'Taille (m)', value: u.height != null ? String(u.height) : '' },
+    { label: 'IAH', value: u.iah != null ? String(u.iah) : '' },
+  ]
+}
+
+function diffSnapshots(before, after) {
+  const changes = []
+  after.forEach((field, i) => {
+    const from = before[i]?.value ?? ''
+    const to = field.value ?? ''
+    if (String(from) !== String(to)) {
+      changes.push({ label: field.label, from: from || '—', to: to || '—' })
+    }
+  })
+  return changes
+}
+
+function recordHistory(section, changes) {
+  if (!changes.length) return
+  const entry = {
+    id: `hist-${Date.now()}`,
+    section,
+    date: new Date().toISOString(),
+    author: 'Vous',
+    changes,
+  }
+  selfStore.item.history = [entry, ...(selfStore.item.history || [])]
+}
+
+function openHistory(section) {
+  historySection.value = section
+  historyDialogOpen.value = true
+}
+
 const showGeneralView = computed(() => !editingGeneral.value)
 const showClinicalView = computed(() => !editingClinical.value)
 
@@ -110,6 +182,7 @@ const clinicalModel = ref({
 
 watch(() => currentUser.value, (item) => {
   if (!item?.id) return
+  if (!item.history) item.history = PROFILE_HISTORY_SEED.map(e => ({ ...e }))
   let dob = null
   if (item.dob?.toDate) {
     dob = item.dob.toDate()
@@ -179,8 +252,10 @@ async function handleSaveGeneral(proxyModel, confirmSave) {
       carteVitaleNir: (value.carteVitaleNir || '').replace(/\D/g, ''),
       carteVitaleIssueDate: value.carteVitaleIssueDate || '',
     }
+    const before = generalSnapshot(currentUser.value)
     confirmSave()
     Object.assign(selfStore.item, { ...updateData, dob: value.dob })
+    recordHistory('general', diffSnapshots(before, generalSnapshot(selfStore.item)))
     editingGeneral.value = false
     messagesStore.add({ type: 'success', text: 'Profil mis à jour avec succès' })
   } catch (error) {
@@ -204,8 +279,10 @@ async function handleSaveClinical(proxyModel, confirmSave) {
       height: value.height != null ? Number(value.height) : null,
       iah: value.iah != null ? Number(value.iah) : null,
     }
+    const before = clinicalSnapshot(currentUser.value)
     confirmSave()
     Object.assign(selfStore.item, updateData)
+    recordHistory('clinical', diffSnapshots(before, clinicalSnapshot(selfStore.item)))
     editingClinical.value = false
     messagesStore.add({ type: 'success', text: 'Profil mis à jour avec succès' })
   } catch (error) {
@@ -407,6 +484,12 @@ function selectMedecin(doctor) {
                     </div>
                   </v-col>
                 </v-row>
+                <div class="d-flex justify-start mt-2">
+                  <v-btn variant="text" rounded="lg" size="small" class="text-none" :prepend-icon="mdiHistory"
+                    @click="openHistory('general')">
+                    Historique
+                  </v-btn>
+                </div>
               </template>
 
               <!-- EDIT MODE -->
@@ -548,6 +631,12 @@ function selectMedecin(doctor) {
                     <div class="field-value">{{ currentUser.iah != null ? currentUser.iah : EMPTY }}</div>
                   </v-col>
                 </v-row>
+                <div class="d-flex justify-start mt-2">
+                  <v-btn variant="text" rounded="lg" size="small" class="text-none" :prepend-icon="mdiHistory"
+                    @click="openHistory('clinical')">
+                    Historique
+                  </v-btn>
+                </div>
               </template>
 
               <!-- EDIT MODE -->
@@ -768,6 +857,54 @@ function selectMedecin(doctor) {
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- =================== HISTORIQUE DIALOG =================== -->
+    <v-dialog v-model="historyDialogOpen" max-width="640" :fullscreen="$vuetify.display.mobile" scrollable>
+      <v-card class="card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+        <v-card-title class="d-flex align-center pa-4">
+          <v-icon :icon="mdiHistory" class="mr-2" />
+          <span class="text-headline-small font-weight-bold">Historique des modifications</span>
+        </v-card-title>
+        <div class="px-4 pb-2 text-body-small text-medium-emphasis">
+          {{ HISTORY_SECTION_LABELS[historySection] }}
+        </div>
+        <v-divider />
+        <v-card-text class="pa-4">
+          <v-timeline v-if="historyEntries.length" side="end" align="start" density="comfortable" truncate-line="both">
+            <v-timeline-item v-for="entry in historyEntries" :key="entry.id" dot-color="primary" size="x-small">
+              <div class="d-flex align-center mb-1">
+                <span class="text-body-small font-weight-bold">{{ ISOToDDMMYYYY(entry.date) }}</span>
+                <span class="text-body-small text-medium-emphasis ml-2">— {{ entry.author }}</span>
+              </div>
+              <div v-for="(change, i) in entry.changes" :key="i" class="history-change">
+                <span class="field-label">{{ change.label }}</span>
+                <div class="d-flex align-center flex-wrap text-body-small">
+                  <span class="history-from">{{ change.from }}</span>
+                  <span class="mx-2">→</span>
+                  <span class="history-to">{{ change.to }}</span>
+                </div>
+              </div>
+            </v-timeline-item>
+          </v-timeline>
+          <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
+            <div class="empty-state-icon mb-3">
+              <v-icon :icon="mdiHistory" size="32" />
+            </div>
+            <div class="text-title-medium font-weight-bold mb-1">Aucune modification</div>
+            <div class="text-body-small text-medium-emphasis">
+              Les modifications apportées à cette section apparaîtront ici.
+            </div>
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" rounded="lg" class="text-none" @click="historyDialogOpen = false">
+            Fermer
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-row>
 </template>
 
@@ -791,6 +928,24 @@ function selectMedecin(doctor) {
 
 .medecin-card:hover {
   background: rgba(var(--v-theme-primary), 0.06);
+}
+
+.history-change {
+  margin-bottom: 8px;
+}
+
+.history-change:last-child {
+  margin-bottom: 0;
+}
+
+.history-from {
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  text-decoration: line-through;
+}
+
+.history-to {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
 }
 
 .cv-svg {

@@ -1,5 +1,16 @@
 [
   {
+    "id": "notif-000",
+    "type": "agendaDuSommeil",
+    "userFullName": "Agenda du sommeil",
+    "userAvatarUrl": null,
+    "text": "🔥 Ne perdez pas votre série ! Complétez votre agenda du sommeil aujourd'hui pour garder votre flamme allumée. Quelques secondes suffisent : notez votre nuit et votre forme du jour.",
+    "createdAt": "2026-05-31T07:00:00Z",
+    "read": false,
+    "to": "/agenda-du-sommeil?day=31-05-2026",
+    "projectId": null
+  },
+  {
     "id": "notif-001",
     "type": "newMessage",
     "userFullName": "Dr Lucas Robert",

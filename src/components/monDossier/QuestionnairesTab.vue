@@ -1,12 +1,11 @@
 <script setup>
+import QuestionnaireResultsDialog from "@/components/QuestionnaireResultsDialog.vue"
+import { useQuestionnaire } from "@/composables/useQuestionnaire"
 import { useUrlPanels } from "@/composables/useUrlPanels"
-import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
-import { computed, ref, watch } from "vue"
+import { computed, reactive, ref } from "vue"
 
 const selfStore = useSelfStore()
-const messagesStore = useMessagesStore()
-const currentUser = computed(() => selfStore.item || {})
 
 const openPanels = useUrlPanels("qPanels")
 
@@ -218,144 +217,40 @@ const HAMILTON_QUESTIONS = [
   },
 ]
 
-const answers = ref([null, null, null, null, null, null, null, null])
-const stopBangAnswers = ref([null, null, null, null, null, null, null, null])
-const hamiltonAnswers = ref(Array(17).fill(null))
-
-watch(
-  () => selfStore.item?.epworthAnswers,
-  (val) => {
-    if (Array.isArray(val) && val.length === 8) {
-      answers.value = [...val]
-    }
-  },
-  { immediate: true },
-)
-
-watch(
-  () => selfStore.item?.stopBangAnswers,
-  (val) => {
-    if (Array.isArray(val) && val.length === 8) {
-      stopBangAnswers.value = [...val]
-    }
-  },
-  { immediate: true },
-)
-
-watch(
-  () => selfStore.item?.hamiltonAnswers,
-  (val) => {
-    if (Array.isArray(val) && val.length === 17) {
-      hamiltonAnswers.value = [...val]
-    }
-  },
-  { immediate: true },
-)
-
-const epworthScore = computed(() => {
-  if (answers.value.some((v) => v === null)) return null
-  return answers.value.reduce((sum, v) => sum + v, 0)
-})
-
-const scoreColor = computed(() => {
-  if (epworthScore.value === null) return 'primary'
-  if (epworthScore.value <= 10) return 'success'
-  if (epworthScore.value <= 15) return 'warning'
-  return 'error'
-})
-
-const scoreLabel = computed(() => {
-  if (epworthScore.value === null) return ''
-  if (epworthScore.value <= 10) return 'Somnolence normale'
-  if (epworthScore.value <= 15) return 'Somnolence modérée'
-  return 'Somnolence sévère'
-})
-
-const summaryChipColor = computed(() => {
-  const score = currentUser.value?.epworthScore
+// ---- Severity scales -------------------------------------------------------
+function epworthColor(score) {
   if (score == null) return 'primary'
   if (score <= 10) return 'success'
   if (score <= 15) return 'warning'
   return 'error'
-})
-
-const summaryChipLabel = computed(() => {
-  const score = currentUser.value?.epworthScore
+}
+function epworthLabel(score) {
   if (score == null) return ''
   if (score <= 10) return 'Somnolence normale'
   if (score <= 15) return 'Somnolence modérée'
   return 'Somnolence sévère'
-})
+}
 
-const stopBangScore = computed(() => {
-  if (stopBangAnswers.value.some((v) => v === null)) return null
-  return stopBangAnswers.value.reduce((sum, v) => sum + v, 0)
-})
-
-function stopBangColorFor(score) {
+function stopBangColor(score) {
   if (score == null) return 'primary'
   if (score <= 2) return 'success'
   if (score <= 4) return 'warning'
   return 'error'
 }
-
-function stopBangLabelFor(score) {
+function stopBangLabel(score) {
   if (score == null) return ''
   if (score <= 2) return 'Risque faible'
   if (score <= 4) return 'Risque intermédiaire'
   return 'Risque élevé'
 }
 
-const stopBangScoreColor = computed(() => stopBangColorFor(stopBangScore.value))
-const stopBangScoreLabel = computed(() => stopBangLabelFor(stopBangScore.value))
-const stopBangSummaryColor = computed(() => stopBangColorFor(currentUser.value?.stopBangScore))
-const stopBangSummaryLabel = computed(() => stopBangLabelFor(currentUser.value?.stopBangScore))
-
-async function selectAnswer(questionIndex, value) {
-  const newAnswers = [...answers.value]
-  newAnswers[questionIndex] = value
-  answers.value = newAnswers
-
-  try {
-    const score = newAnswers.every((v) => v !== null)
-      ? newAnswers.reduce((sum, v) => sum + v, 0)
-      : null
-    if (score !== null) selfStore.item.epworthScore = score
-    selfStore.item.epworthAnswers = newAnswers
-  } catch {
-    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement du test" })
-  }
-}
-
-async function selectStopBangAnswer(questionIndex, value) {
-  const newAnswers = [...stopBangAnswers.value]
-  newAnswers[questionIndex] = value
-  stopBangAnswers.value = newAnswers
-
-  try {
-    const score = newAnswers.every((v) => v !== null)
-      ? newAnswers.reduce((sum, v) => sum + v, 0)
-      : null
-    if (score !== null) selfStore.item.stopBangScore = score
-    selfStore.item.stopBangAnswers = newAnswers
-  } catch {
-    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement du test" })
-  }
-}
-
-const hamiltonScore = computed(() => {
-  if (hamiltonAnswers.value.some((v) => v === null)) return null
-  return hamiltonAnswers.value.reduce((sum, v) => sum + v, 0)
-})
-
-function hamiltonColorFor(score) {
+function hamiltonColor(score) {
   if (score == null) return 'primary'
   if (score <= 7) return 'success'
   if (score <= 17) return 'warning'
   return 'error'
 }
-
-function hamiltonLabelFor(score) {
+function hamiltonLabel(score) {
   if (score == null) return ''
   if (score <= 7) return 'Pas de dépression'
   if (score <= 13) return 'Dépression légère'
@@ -364,25 +259,72 @@ function hamiltonLabelFor(score) {
   return 'Dépression très sévère'
 }
 
-const hamiltonScoreColor = computed(() => hamiltonColorFor(hamiltonScore.value))
-const hamiltonScoreLabel = computed(() => hamiltonLabelFor(hamiltonScore.value))
-const hamiltonSummaryColor = computed(() => hamiltonColorFor(currentUser.value?.hamiltonScore))
-const hamiltonSummaryLabel = computed(() => hamiltonLabelFor(currentUser.value?.hamiltonScore))
+// ---- Questionnaires --------------------------------------------------------
+const epworth = reactive(
+  useQuestionnaire({
+    count: 8,
+    answersKey: 'epworthAnswers',
+    scoreKey: 'epworthScore',
+    historyKey: 'epworthHistory',
+    colorFor: epworthColor,
+    labelFor: epworthLabel,
+  }),
+)
 
-async function selectHamiltonAnswer(questionIndex, value) {
-  const newAnswers = [...hamiltonAnswers.value]
-  newAnswers[questionIndex] = value
-  hamiltonAnswers.value = newAnswers
+const stopBang = reactive(
+  useQuestionnaire({
+    count: 8,
+    answersKey: 'stopBangAnswers',
+    scoreKey: 'stopBangScore',
+    historyKey: 'stopBangHistory',
+    colorFor: stopBangColor,
+    labelFor: stopBangLabel,
+  }),
+)
 
-  try {
-    const score = newAnswers.every((v) => v !== null)
-      ? newAnswers.reduce((sum, v) => sum + v, 0)
-      : null
-    if (score !== null) selfStore.item.hamiltonScore = score
-    selfStore.item.hamiltonAnswers = newAnswers
-  } catch {
-    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement du test" })
-  }
+const hamilton = reactive(
+  useQuestionnaire({
+    count: 17,
+    answersKey: 'hamiltonAnswers',
+    scoreKey: 'hamiltonScore',
+    historyKey: 'hamiltonHistory',
+    colorFor: hamiltonColor,
+    labelFor: hamiltonLabel,
+  }),
+)
+
+// ---- History dialog --------------------------------------------------------
+const META = {
+  epworth: { instance: epworth, title: "Test d'Epworth", maxScore: 24 },
+  stopBang: { instance: stopBang, title: 'Test STOP-BANG', maxScore: 8 },
+  hamilton: { instance: hamilton, title: 'Échelle de Hamilton (HAM-D)', maxScore: 52 },
+}
+
+const activeKey = ref(null)
+const historyOpen = computed({
+  get: () => activeKey.value !== null,
+  set: (val) => {
+    if (!val) activeKey.value = null
+  },
+})
+const activeMeta = computed(() => (activeKey.value ? META[activeKey.value] : null))
+const activeTitle = computed(() => activeMeta.value?.title || '')
+const activeMaxScore = computed(() => activeMeta.value?.maxScore || 0)
+const activeHistory = computed(() => (activeMeta.value ? activeMeta.value.instance.history : []))
+const activeColorFor = computed(() => (activeMeta.value ? activeMeta.value.instance.colorFor : () => 'primary'))
+const activeLabelFor = computed(() => (activeMeta.value ? activeMeta.value.instance.labelFor : () => ''))
+
+function openResults(key) {
+  activeKey.value = key
+}
+
+// Save the completed questionnaire, reveal the results dialog, then clear the
+// form so it can be filled again.
+function saveQuestionnaire(key) {
+  const { instance } = META[key]
+  instance.save()
+  instance.reset()
+  openResults(key)
 }
 </script>
 
@@ -395,9 +337,9 @@ async function selectHamiltonAnswer(questionIndex, value) {
             <v-expansion-panel-title>
               <div class="d-flex align-center ga-3 flex-grow-1">
                 <span class="panel-title">Test d'Epworth</span>
-                <v-chip v-if="currentUser.epworthScore != null && !$vuetify.display.mobile" :color="summaryChipColor"
+                <v-chip v-if="epworth.latest && !$vuetify.display.mobile" :color="epworth.latestColor"
                   variant="tonal" size="small" class="ml-2">
-                  {{ summaryChipLabel }}
+                  {{ epworth.latestLabel }}
                 </v-chip>
               </div>
             </v-expansion-panel-title>
@@ -415,28 +357,28 @@ async function selectHamiltonAnswer(questionIndex, value) {
                   </div>
                   <div class="d-flex flex-wrap ga-2">
                     <v-btn v-for="option in ANSWER_OPTIONS" :key="option.value"
-                      :color="answers[i] === option.value ? 'primary' : undefined" variant="flat" rounded="lg"
-                      size="small" class="text-none" :class="{ 'border-light': answers[i] !== option.value }"
-                      @click="selectAnswer(i, option.value)">
+                      :color="epworth.answers[i] === option.value ? 'primary' : undefined" variant="flat" rounded="lg"
+                      size="small" class="text-none" :class="{ 'border-light': epworth.answers[i] !== option.value }"
+                      @click="epworth.select(i, option.value)">
                       {{ option.label }}
                     </v-btn>
                   </div>
                 </v-card>
 
-                <v-card v-if="epworthScore !== null" flat color="success" class="mt-4 pa-6 rounded-lg text-center"
-                  :style="`border-top: 4px solid rgb(var(--v-theme-${scoreColor}))`" variant="outlined">
-                  <div class="text-body-small text-medium-emphasis text-uppercase font-weight-bold letter-spacing mb-3">
-                    Score total
-                  </div>
-                  <div :class="`text-display-small font-weight-bold text-${scoreColor}`">{{ epworthScore }}<span
-                      class="text-title-large text-medium-emphasis"> / 24</span></div>
-                  <v-chip :color="scoreColor" variant="tonal" rounded="pill" size="small" class="mt-3">
-                    {{ scoreLabel }}
-                  </v-chip>
-                </v-card>
+                <div class="text-center text-body-medium text-medium-emphasis mt-4">
+                  {{ epworth.answeredCount }} / 8
+                </div>
 
-                <div v-else class="text-center text-body-medium text-medium-emphasis mt-4">
-                  {{answers.filter(v => v !== null).length}} / 8
+                <div class="d-flex flex-wrap align-center ga-2 mt-4">
+                  <v-btn color="primary" variant="flat" rounded="lg" class="text-none"
+                    :disabled="!epworth.complete" @click="saveQuestionnaire('epworth')">
+                    Enregistrer
+                  </v-btn>
+                  <v-spacer />
+                  <v-btn variant="tonal" rounded="lg" class="text-none" :disabled="!epworth.history.length"
+                    @click="openResults('epworth')">
+                    Résultats
+                  </v-btn>
                 </div>
               </div>
 
@@ -455,9 +397,9 @@ async function selectHamiltonAnswer(questionIndex, value) {
             <v-expansion-panel-title>
               <div class="d-flex align-center ga-3 flex-grow-1">
                 <span class="panel-title">Test STOP-BANG</span>
-                <v-chip v-if="currentUser.stopBangScore != null && !$vuetify.display.mobile"
-                  :color="stopBangSummaryColor" variant="tonal" size="small" class="ml-2">
-                  {{ stopBangSummaryLabel }}
+                <v-chip v-if="stopBang.latest && !$vuetify.display.mobile" :color="stopBang.latestColor"
+                  variant="tonal" size="small" class="ml-2">
+                  {{ stopBang.latestLabel }}
                 </v-chip>
               </div>
             </v-expansion-panel-title>
@@ -471,34 +413,33 @@ async function selectHamiltonAnswer(questionIndex, value) {
                 <v-card v-for="(question, i) in STOP_BANG_QUESTIONS" :key="i" class="mb-3 py-4" flat rounded="lg">
                   <div class="text-body-medium font-weight-medium mb-3">
                     <span class="text-medium-emphasis mr-1">{{ i + 1 }}.</span>
-                    <span class="font-weight-bold mr-1">{{ question.letter }} —</span>
                     {{ question.text }}
                   </div>
                   <div class="d-flex flex-wrap ga-2">
                     <v-btn v-for="option in YES_NO_OPTIONS" :key="option.value"
-                      :color="stopBangAnswers[i] === option.value ? 'primary' : undefined" variant="flat" rounded="lg"
+                      :color="stopBang.answers[i] === option.value ? 'primary' : undefined" variant="flat" rounded="lg"
                       size="small" class="text-none"
-                      :class="{ 'border-light': stopBangAnswers[i] !== option.value }"
-                      @click="selectStopBangAnswer(i, option.value)">
+                      :class="{ 'border-light': stopBang.answers[i] !== option.value }"
+                      @click="stopBang.select(i, option.value)">
                       {{ option.label }}
                     </v-btn>
                   </div>
                 </v-card>
 
-                <v-card v-if="stopBangScore !== null" flat color="success" class="mt-4 pa-6 rounded-lg text-center"
-                  :style="`border-top: 4px solid rgb(var(--v-theme-${stopBangScoreColor}))`" variant="outlined">
-                  <div class="text-body-small text-medium-emphasis text-uppercase font-weight-bold letter-spacing mb-3">
-                    Score total
-                  </div>
-                  <div :class="`text-display-small font-weight-bold text-${stopBangScoreColor}`">{{ stopBangScore
-                    }}<span class="text-title-large text-medium-emphasis"> / 8</span></div>
-                  <v-chip :color="stopBangScoreColor" variant="tonal" rounded="pill" size="small" class="mt-3">
-                    {{ stopBangScoreLabel }}
-                  </v-chip>
-                </v-card>
+                <div class="text-center text-body-medium text-medium-emphasis mt-4">
+                  {{ stopBang.answeredCount }} / 8
+                </div>
 
-                <div v-else class="text-center text-body-medium text-medium-emphasis mt-4">
-                  {{stopBangAnswers.filter(v => v !== null).length}} / 8
+                <div class="d-flex flex-wrap align-center ga-2 mt-4">
+                  <v-btn color="primary" variant="flat" rounded="lg" class="text-none"
+                    :disabled="!stopBang.complete" @click="saveQuestionnaire('stopBang')">
+                    Enregistrer
+                  </v-btn>
+                  <v-spacer />
+                  <v-btn variant="tonal" rounded="lg" class="text-none" :disabled="!stopBang.history.length"
+                    @click="openResults('stopBang')">
+                    Résultats
+                  </v-btn>
                 </div>
               </div>
 
@@ -517,9 +458,9 @@ async function selectHamiltonAnswer(questionIndex, value) {
             <v-expansion-panel-title>
               <div class="d-flex align-center ga-3 flex-grow-1">
                 <span class="panel-title">Échelle de Hamilton (HAM-D)</span>
-                <v-chip v-if="currentUser.hamiltonScore != null && !$vuetify.display.mobile"
-                  :color="hamiltonSummaryColor" variant="tonal" size="small" class="ml-2">
-                  {{ hamiltonSummaryLabel }}
+                <v-chip v-if="hamilton.latest && !$vuetify.display.mobile" :color="hamilton.latestColor"
+                  variant="tonal" size="small" class="ml-2">
+                  {{ hamilton.latestLabel }}
                 </v-chip>
               </div>
             </v-expansion-panel-title>
@@ -539,29 +480,29 @@ async function selectHamiltonAnswer(questionIndex, value) {
                   <div class="text-body-small text-medium-emphasis mb-3">{{ question.text }}</div>
                   <div class="d-flex flex-wrap ga-2">
                     <v-btn v-for="option in question.options" :key="option.value"
-                      :color="hamiltonAnswers[i] === option.value ? 'primary' : undefined" variant="flat" rounded="lg"
+                      :color="hamilton.answers[i] === option.value ? 'primary' : undefined" variant="flat" rounded="lg"
                       size="small" class="text-none"
-                      :class="{ 'border-light': hamiltonAnswers[i] !== option.value }"
-                      @click="selectHamiltonAnswer(i, option.value)">
-                      {{ option.value }} — {{ option.label }}
+                      :class="{ 'border-light': hamilton.answers[i] !== option.value }"
+                      @click="hamilton.select(i, option.value)">
+                      {{ option.label }}
                     </v-btn>
                   </div>
                 </v-card>
 
-                <v-card v-if="hamiltonScore !== null" flat color="success" class="mt-4 pa-6 rounded-lg text-center"
-                  :style="`border-top: 4px solid rgb(var(--v-theme-${hamiltonScoreColor}))`" variant="outlined">
-                  <div class="text-body-small text-medium-emphasis text-uppercase font-weight-bold letter-spacing mb-3">
-                    Score total
-                  </div>
-                  <div :class="`text-display-small font-weight-bold text-${hamiltonScoreColor}`">{{ hamiltonScore
-                    }}<span class="text-title-large text-medium-emphasis"> / 52</span></div>
-                  <v-chip :color="hamiltonScoreColor" variant="tonal" rounded="pill" size="small" class="mt-3">
-                    {{ hamiltonScoreLabel }}
-                  </v-chip>
-                </v-card>
+                <div class="text-center text-body-medium text-medium-emphasis mt-4">
+                  {{ hamilton.answeredCount }} / 17
+                </div>
 
-                <div v-else class="text-center text-body-medium text-medium-emphasis mt-4">
-                  {{hamiltonAnswers.filter(v => v !== null).length}} / 17
+                <div class="d-flex flex-wrap align-center ga-2 mt-4">
+                  <v-btn color="primary" variant="flat" rounded="lg" class="text-none"
+                    :disabled="!hamilton.complete" @click="saveQuestionnaire('hamilton')">
+                    Enregistrer
+                  </v-btn>
+                  <v-spacer />
+                  <v-btn variant="tonal" rounded="lg" class="text-none" :disabled="!hamilton.history.length"
+                    @click="openResults('hamilton')">
+                    Résultats
+                  </v-btn>
                 </div>
               </div>
 
@@ -579,6 +520,9 @@ async function selectHamiltonAnswer(questionIndex, value) {
       </v-card>
     </v-col>
   </v-row>
+
+  <QuestionnaireResultsDialog v-model="historyOpen" :title="activeTitle" :max-score="activeMaxScore"
+    :history="activeHistory" :color-for="activeColorFor" :label-for="activeLabelFor" />
 </template>
 
 <style scoped>

@@ -1,4 +1,5 @@
 <script setup>
+import SleepDiaryStreak from '@/components/SleepDiaryStreak.vue'
 import { useParamsStore } from '@/stores/params'
 import { useSelfStore } from '@/stores/self'
 import { mdiClipboardPulse, mdiEmoticonSadOutline, mdiFolderOutline, mdiLungs, mdiMoonWaningCrescent } from '@mdi/js'
@@ -81,14 +82,11 @@ const epworthScoreLabel = computed(() => {
                   <div class="text-body-medium text-medium-emphasis mb-4">
                     Suivez votre sommeil nuit après nuit avec un agenda visuel
                   </div>
+                  <SleepDiaryStreak dense class="mb-4" @click.stop />
                   <v-btn :prepend-icon="mdiMoonWaningCrescent" variant="tonal" color="primary" rounded="lg"
                     @click.stop="router.push({ name: 'SleepDiary' })" class="text-none">
                     Ouvrir l'agenda
                   </v-btn>
-                </v-col>
-                <v-col cols="auto">
-                  <v-img src="@/assets/illustrations/report.svg" width="100" height="90" contain
-                    transition="fade-transition" />
                 </v-col>
               </v-row>
             </v-card>

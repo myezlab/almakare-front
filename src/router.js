@@ -54,7 +54,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/agenda-sommeil',
+      path: '/agenda-du-sommeil',
       name: 'SleepDiary',
       component: () => import('./views/SleepDiaryView.vue'),
       meta: { requiresAuth: true },

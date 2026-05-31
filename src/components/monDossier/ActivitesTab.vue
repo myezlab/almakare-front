@@ -1,7 +1,6 @@
 <script setup>
 import DocumentDialog from "@/components/DocumentDialog.vue"
 import DoctorCard from "@/components/DoctorCard.vue"
-import DoctorFormDialog from "@/components/DoctorFormDialog.vue"
 import FormGeneratorDialog from "@/components/FormGeneratorDialog.vue"
 import LocationCard from "@/components/LocationCard.vue"
 import TestDialog from "@/components/TestDialog.vue"
@@ -22,7 +21,6 @@ import {
   mdiCardAccountDetailsOutline,
   mdiCheckCircleOutline,
   mdiClipboardCheckOutline,
-  mdiClipboardEditOutline,
   mdiClockOutline,
   mdiFileDocumentEditOutline,
   mdiGoogle,
@@ -102,29 +100,6 @@ const requestedFieldKeys = computed(() => nextConsultation.value?.requestedField
 const requestedTestKeys = computed(() => nextConsultation.value?.requestedTests || [])
 const requestedDocumentKeys = computed(() => nextConsultation.value?.requestedDocuments || [])
 
-// `requestedData` is an unstructured, doctor-authored form: the questions live
-// inline on the activity rather than referencing a catalog. We key the patient's
-// answers by activity id so each consultation keeps its own responses.
-const requestedDataQuestions = computed(() => nextConsultation.value?.requestedData || [])
-const hasRequestedData = computed(() => requestedDataQuestions.value.length > 0)
-
-function isDataAnswered(question, answer) {
-  if (question.type === "boolean") return answer === true || answer === false
-  if (typeof answer === "number") return true
-  return answer != null && String(answer).trim() !== ""
-}
-
-function savedDataAnswers(activityId) {
-  return selfStore.item?.requestedDataAnswers?.[activityId] || []
-}
-
-const requestedDataComplete = computed(() => {
-  const saved = savedDataAnswers(nextConsultationId.value)
-  return requestedDataQuestions.value.every(
-    (q, i) => q.optional || isDataAnswered(q, saved[i]),
-  )
-})
-
 // Requested fields that drive completion (the primary, non-conditional ones).
 const requestedPatientFields = computed(() =>
   requestedFieldKeys.value.map((k) => PATIENT_FIELDS_BY_KEY[k]).filter((f) => f && f.complete)
@@ -159,16 +134,6 @@ const preparationTasks = computed(() => {
       todo: 'Renseignez vos informations administratives et cliniques.',
       completed: patientDataComplete.value,
       action: openPatientDataDialog
-    })
-  }
-  if (hasRequestedData.value) {
-    tasks.push({
-      key: 'requestedData',
-      title: 'Formulaire de votre médecin',
-      icon: mdiClipboardEditOutline,
-      todo: 'Répondez aux questions préparées par votre médecin pour cette consultation.',
-      completed: requestedDataComplete.value,
-      action: openRequestedDataDialog
     })
   }
   for (const key of requestedTestKeys.value) {
@@ -365,34 +330,6 @@ function handlePatientDataSubmit(values) {
     messagesStore.add({ type: 'error', text: 'Erreur lors de la mise à jour' })
   } finally {
     savingPatientData.value = false
-  }
-}
-
-// =================== DOCTOR FORM (requestedData) DIALOG ===================
-const requestedDataDialogOpen = ref(false)
-const requestedDataInitial = ref([])
-const savingRequestedData = ref(false)
-
-function openRequestedDataDialog() {
-  requestedDataInitial.value = savedDataAnswers(nextConsultationId.value)
-  requestedDataDialogOpen.value = true
-}
-
-function handleRequestedDataSubmit(answers) {
-  const activityId = nextConsultationId.value
-  if (!activityId) return
-  savingRequestedData.value = true
-  try {
-    selfStore.item.requestedDataAnswers = {
-      ...(selfStore.item.requestedDataAnswers || {}),
-      [activityId]: answers
-    }
-    requestedDataDialogOpen.value = false
-    messagesStore.add({ type: 'success', text: 'Formulaire enregistré' })
-  } catch {
-    messagesStore.add({ type: 'error', text: "Erreur lors de l'enregistrement du formulaire" })
-  } finally {
-    savingRequestedData.value = false
   }
 }
 
@@ -703,12 +640,6 @@ function handleDocumentRemove() {
       subtitle="Complétez les informations demandées par votre médecin avant la consultation."
       :fields="patientDialogFields" :initial-values="patientDialogInitial" :loading="savingPatientData"
       @submit="handlePatientDataSubmit" />
-
-    <!-- Doctor-authored form (requestedData) dialog -->
-    <DoctorFormDialog v-model="requestedDataDialogOpen" title="Formulaire de votre médecin"
-      subtitle="Quelques questions préparées par votre médecin pour cette consultation."
-      :questions="requestedDataQuestions" :initial-answers="requestedDataInitial"
-      :loading="savingRequestedData" @submit="handleRequestedDataSubmit" />
 
     <!-- Test (questionnaire) dialog -->
     <TestDialog v-model="testDialogOpen" :test="activeTest" :initial-answers="testDialogAnswers"

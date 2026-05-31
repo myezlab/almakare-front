@@ -1,4 +1,5 @@
 <script setup>
+import SleepDiaryStreak from '@/components/SleepDiaryStreak.vue'
 import { useMessagesStore } from '@/stores/messages'
 import { useSelfStore } from '@/stores/self'
 import {
@@ -7,13 +8,16 @@ import {
   mdiPlus, mdiTrashCanOutline,
   mdiWhiteBalanceSunny,
 } from '@mdi/js'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { VBottomSheet } from 'vuetify/components/VBottomSheet'
 import { VDialog } from 'vuetify/components/VDialog'
 
 const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
+const route = useRoute()
+const router = useRouter()
 const { xs } = useDisplay()
 
 const QUALITY_OPTIONS = ['TB', 'B', 'Moy', 'M', 'TM']
@@ -90,7 +94,7 @@ const showDelete = ref(false)
 const deleteTarget = ref(null)
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0]
+  return toIsoDate(new Date())
 }
 
 function emptyForm(date = todayStr()) {
@@ -110,24 +114,78 @@ function emptyForm(date = todayStr()) {
 const form = ref(emptyForm())
 const hasToday = computed(() => entries.value.some(e => e.date === todayStr()))
 
-// Bridge form.date (YYYY-MM-DD string) to VDateInput (Date object)
+// Bridge form.date (YYYY-MM-DD string) to VDateInput (Date object).
+// Build the ISO string from *local* date parts — toISOString() would convert to
+// UTC and shift the day back in positive-offset timezones (e.g. France).
+function toIsoDate(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 const formDate = computed({
   get: () => form.value.date ? new Date(form.value.date + 'T12:00:00') : null,
   set: (val) => {
-    form.value.date = val ? new Date(val).toISOString().split('T')[0] : ''
+    form.value.date = val ? toIsoDate(new Date(val)) : ''
   },
 })
 
-function openForm() {
-  const existing = entries.value.find(e => e.date === todayStr())
-  form.value = existing ? { ...emptyForm(), ...existing } : emptyForm()
+// Bridge between the stored ISO date (yyyy-mm-dd) and the route query (dd-mm-yyyy).
+function toQueryDate(iso) {
+  const [y, m, d] = iso.split('-')
+  return `${d}-${m}-${y}`
+}
+function fromQueryDate(q) {
+  const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(q || '')
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : null
+}
+
+function openForDate(date) {
+  const existing = entries.value.find(e => e.date === date)
+  form.value = existing ? { ...emptyForm(date), ...existing } : emptyForm(date)
   showForm.value = true
 }
 
-function editEntry(entry) {
-  form.value = { ...emptyForm(entry.date), ...entry }
-  showForm.value = true
+// Opening/editing an entry is driven through the route so the URL reflects the
+// day being filled (deep-linkable, e.g. from the "compléter votre agenda"
+// notification). The watch below reacts and opens the form.
+function setDayQuery(date) {
+  const day = toQueryDate(date)
+  if (route.query.day === day) {
+    openForDate(date)
+    return
+  }
+  router.replace({ query: { ...route.query, day } })
 }
+
+function openTodayEntry() {
+  setDayQuery(todayStr())
+}
+
+function editEntry(entry) {
+  setDayQuery(entry.date)
+}
+
+// Open the form when navigated to with ?day=dd-mm-yyyy. Waits for the profile to
+// be loaded so the form section is mounted before opening.
+watch(
+  [() => route.query.day, () => selfStore.item?.id],
+  ([day, id]) => {
+    const date = fromQueryDate(day)
+    if (date && id && !showForm.value) openForDate(date)
+  },
+  { immediate: true },
+)
+
+// Strip the query once the form is dismissed so the URL stays clean.
+watch(showForm, (open) => {
+  if (!open && route.query.day !== undefined) {
+    const nextQuery = { ...route.query }
+    delete nextQuery.day
+    router.replace({ query: nextQuery })
+  }
+})
 
 async function saveEntry() {
   saving.value = true
@@ -208,10 +266,15 @@ function confirmTimePicker() {
 
         <template v-if="selfStore.item.id">
 
+          <!-- Weekly streak — encourages a daily entry -->
+          <v-card class="mb-8 pa-5 card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }" color="white">
+            <SleepDiaryStreak :entries="entries" />
+          </v-card>
+
           <!-- Add / edit today -->
           <div class="mb-8" :class="{ 'mx-6': $vuetify.display.mobile }">
             <v-btn :prepend-icon="mdiPlus" color="primary" variant="flat" rounded="lg" size="large" class="text-none"
-              @click="openForm">
+              :block="$vuetify.display.mobile" @click="openTodayEntry">
               {{ hasToday ? "Modifier l'entrée du jour" : 'Ajouter une entrée' }}
             </v-btn>
           </div>
