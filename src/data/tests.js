@@ -6,7 +6,7 @@
 // under `scoreKey` on the patient record (selfStore).
 //
 // Question shape read by TestDialog:
-//   { text, caption?, prefix?, options? }   // options override the test default
+//   { text, caption?, options? }   // options override the test default
 // Options shape: { value: Number, label: String }
 // `thresholds` map a total score to a colour + label; evaluated in order, an
 // entry with `upTo: null` is the catch-all for the highest band.
@@ -67,14 +67,14 @@ export const TESTS = [
     maxScore: 8,
     options: YES_NO_OPTIONS,
     questions: [
-      { prefix: 'S', caption: 'Ronflement', text: 'Ronflez-vous bruyamment (plus fort que la voix ou suffisamment pour être entendu à travers une porte fermée) ?' },
-      { prefix: 'T', caption: 'Fatigue', text: 'Vous sentez-vous souvent fatigué, épuisé ou somnolent pendant la journée ?' },
-      { prefix: 'O', caption: 'Apnées observées', text: 'Quelqu\'un vous a-t-il déjà observé cesser de respirer ou s\'étouffer pendant votre sommeil ?' },
-      { prefix: 'P', caption: 'Tension artérielle', text: 'Avez-vous ou êtes-vous traité pour de l\'hypertension artérielle ?' },
-      { prefix: 'B', caption: 'IMC', text: 'Votre indice de masse corporelle (IMC) est-il supérieur à 35 kg/m² ?' },
-      { prefix: 'A', caption: 'Âge', text: 'Avez-vous plus de 50 ans ?' },
-      { prefix: 'N', caption: 'Tour de cou', text: 'Votre tour de cou est-il supérieur à 40 cm ?' },
-      { prefix: 'G', caption: 'Sexe', text: 'Êtes-vous de sexe masculin ?' }
+      { caption: 'Ronflement', text: 'Ronflez-vous bruyamment (plus fort que la voix ou suffisamment pour être entendu à travers une porte fermée) ?' },
+      { caption: 'Fatigue', text: 'Vous sentez-vous souvent fatigué, épuisé ou somnolent pendant la journée ?' },
+      { caption: 'Apnées observées', text: 'Quelqu\'un vous a-t-il déjà observé cesser de respirer ou s\'étouffer pendant votre sommeil ?' },
+      { caption: 'Tension artérielle', text: 'Avez-vous ou êtes-vous traité pour de l\'hypertension artérielle ?' },
+      { caption: 'IMC', text: 'Votre indice de masse corporelle (IMC) est-il supérieur à 35 kg/m² ?' },
+      { caption: 'Âge', text: 'Avez-vous plus de 50 ans ?' },
+      { caption: 'Tour de cou', text: 'Votre tour de cou est-il supérieur à 40 cm ?' },
+      { caption: 'Sexe', text: 'Êtes-vous de sexe masculin ?' }
     ],
     thresholds: [
       { upTo: 2, color: 'success', label: 'Risque faible' },

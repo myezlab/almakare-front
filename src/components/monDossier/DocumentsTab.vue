@@ -1,4 +1,5 @@
 <script setup>
+import DocumentDialog from "@/components/DocumentDialog.vue"
 import { useUrlPanels } from "@/composables/useUrlPanels"
 import { ORDONNANCE_DOCUMENTS as ORDONNANCES_DOCS, REQUIRED_DOCUMENTS as REQUIRED_DOCS } from "@/data/documents"
 import { useMessagesStore } from "@/stores/messages"
@@ -11,8 +12,6 @@ import {
   mdiFolderOutline,
   mdiPaperclip,
   mdiPlus,
-  mdiTrashCanOutline,
-  mdiUploadOutline,
 } from "@mdi/js"
 import { computed, ref } from "vue"
 
@@ -28,32 +27,39 @@ const documents = computed(() => selfStore.item.documents || {})
 
 const otherFiles = computed(() => documents.value.other || [])
 
-const fileInputs = ref({})
+// Every document card opens the shared DocumentDialog (same interface as the
+// requested documents in ActivitesTab), keeping the whole app consistent.
+const docDialogOpen = ref(false)
+const activeDoc = ref(null)
+const savingDoc = ref(false)
 
-function pickFile(key) {
-  const input = fileInputs.value[key]
-  if (input) input.click()
+const activeDocFile = computed(() =>
+  activeDoc.value ? documents.value[activeDoc.value.key] || null : null
+)
+
+function openDocDialog(doc) {
+  activeDoc.value = doc
+  docDialogOpen.value = true
 }
 
-function handleUpload(key, event) {
-  const file = event.target.files?.[0]
-  if (!file) return
-  selfStore.item.documents = {
-    ...selfStore.item.documents,
-    [key]: {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      uploadedAt: new Date().toISOString(),
-    },
+function handleDocumentSubmit(file) {
+  const doc = activeDoc.value
+  if (!doc) return
+  savingDoc.value = true
+  try {
+    selfStore.item.documents = { ...(selfStore.item.documents || {}), [doc.key]: file }
+    docDialogOpen.value = false
+    messagesStore.add({ type: 'success', text: 'Document enregistré' })
+  } finally {
+    savingDoc.value = false
   }
-  messagesStore.add({ type: 'success', text: 'Document enregistré' })
-  event.target.value = ''
 }
 
-function removeDoc(key) {
+function handleDocumentRemove() {
+  const doc = activeDoc.value
+  if (!doc) return
   const next = { ...(selfStore.item.documents || {}) }
-  delete next[key]
+  delete next[doc.key]
   selfStore.item.documents = next
   messagesStore.add({ type: 'success', text: 'Document supprimé' })
 }
@@ -112,10 +118,8 @@ function formatSize(bytes) {
                 <v-col v-for="doc in REQUIRED_DOCS" :key="doc.key" cols="12" sm="6" md="4">
                   <div class="doc-card"
                     :class="{ 'doc-card--uploaded': documents[doc.key], 'doc-card--missing': !documents[doc.key] }"
-                    @click="!documents[doc.key] && pickFile(doc.key)">
-
-                    <input :ref="(el) => (fileInputs[doc.key] = el)" type="file" :accept="doc.accept"
-                      style="display: none" @change="(e) => handleUpload(doc.key, e)" />
+                    role="button" tabindex="0" @click="openDocDialog(doc)"
+                    @keydown.enter.prevent="openDocDialog(doc)" @keydown.space.prevent="openDocDialog(doc)">
 
                     <!-- Status badge -->
                     <div class="doc-card-badge"
@@ -139,22 +143,7 @@ function formatSize(bytes) {
                         <v-icon :icon="mdiPaperclip" size="13" class="mr-1" />
                         <span class="text-truncate">{{ documents[doc.key].name }}</span>
                       </div>
-
-                      <div class="d-flex ga-1 mt-3">
-                        <v-btn variant="text" size="x-small" color="primary" rounded="lg" class="text-none flex-grow-1"
-                          :prepend-icon="mdiUploadOutline" @click.stop="pickFile(doc.key)">
-                          Remplacer
-                        </v-btn>
-                        <v-btn :icon="mdiTrashCanOutline" variant="text" size="x-small" density="comfortable"
-                          color="error" @click.stop="removeDoc(doc.key)" />
-                      </div>
                     </template>
-
-                    <!-- Missing CTA -->
-                    <div v-else class="doc-card-cta mt-3">
-                      <v-icon :icon="mdiUploadOutline" size="14" class="mr-1" />
-                      Ajouter
-                    </div>
                   </div>
                 </v-col>
               </v-row>
@@ -214,10 +203,8 @@ function formatSize(bytes) {
                 <v-col v-for="doc in ORDONNANCES_DOCS" :key="doc.key" cols="12" sm="6" md="4">
                   <div class="doc-card"
                     :class="{ 'doc-card--uploaded': documents[doc.key], 'doc-card--missing': !documents[doc.key] }"
-                    @click="!documents[doc.key] && pickFile(doc.key)">
-
-                    <input :ref="(el) => (fileInputs[doc.key] = el)" type="file" :accept="doc.accept"
-                      style="display: none" @change="(e) => handleUpload(doc.key, e)" />
+                    role="button" tabindex="0" @click="openDocDialog(doc)"
+                    @keydown.enter.prevent="openDocDialog(doc)" @keydown.space.prevent="openDocDialog(doc)">
 
                     <div class="doc-card-badge"
                       :class="documents[doc.key] ? 'doc-card-badge--ok' : 'doc-card-badge--todo'">
@@ -237,21 +224,7 @@ function formatSize(bytes) {
                         <v-icon :icon="mdiPaperclip" size="13" class="mr-1" />
                         <span class="text-truncate">{{ documents[doc.key].name }}</span>
                       </div>
-
-                      <div class="d-flex ga-1 mt-3">
-                        <v-btn variant="text" size="x-small" color="primary" rounded="lg" class="text-none flex-grow-1"
-                          :prepend-icon="mdiUploadOutline" @click.stop="pickFile(doc.key)">
-                          Remplacer
-                        </v-btn>
-                        <v-btn :icon="mdiTrashCanOutline" variant="text" size="x-small" density="comfortable"
-                          color="error" @click.stop="removeDoc(doc.key)" />
-                      </div>
                     </template>
-
-                    <div v-else class="doc-card-cta mt-3">
-                      <v-icon :icon="mdiUploadOutline" size="14" class="mr-1" />
-                      Ajouter
-                    </div>
                   </div>
                 </v-col>
               </v-row>
@@ -261,6 +234,9 @@ function formatSize(bytes) {
         </v-expansion-panels>
       </v-card>
     </v-col>
+
+    <DocumentDialog v-model="docDialogOpen" :document="activeDoc" :existing="activeDocFile" :loading="savingDoc"
+      @submit="handleDocumentSubmit" @remove="handleDocumentRemove" />
   </v-row>
 </template>
 

@@ -20,7 +20,14 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\felix\\\\APPS\\\\almakare\" -Recurse -Filter \"*.vue\")",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('src/data/activities.json','utf8'\\)\\); console.log\\('activities.json valid'\\)\")",
-      "Bash(node -e \"const m=require\\('@mdi/js'\\); console.log\\('mdiFire' in m ? 'ok' : 'missing'\\)\")"
+      "Bash(node -e \"const m=require\\('@mdi/js'\\); console.log\\('mdiFire' in m ? 'ok' : 'missing'\\)\")",
+      "Read(//c/c/Users/felix/APPS/almakare/**)",
+      "Read(//c/c/Users/felix/APPS/**)",
+      "Bash(cd \"/c/Users/felix/APPS/almakare\" && pwd && ls -la)",
+      "PowerShell(Get-ChildItem -Recurse -File -Path \"c:\\\\Users\\\\felix\\\\APPS\\\\almakare\\\\src\" | Where-Object { $_.FullName -notmatch 'node_modules' } | Select-String -Pattern 'adeli','phone' -List | Select-Object Path -Unique)",
+      "Bash(dir)",
+      "PowerShell(cmd /c \"dir /b c:\\\\Users\\\\felix\\\\APPS\\\\almakare\\\\src\")",
+      "Bash(npx eslint *)"
     ]
   }
 }

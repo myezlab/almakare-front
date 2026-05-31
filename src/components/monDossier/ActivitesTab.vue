@@ -1,6 +1,6 @@
 <script setup>
-import DocumentDialog from "@/components/DocumentDialog.vue"
 import DoctorCard from "@/components/DoctorCard.vue"
+import DocumentDialog from "@/components/DocumentDialog.vue"
 import FormGeneratorDialog from "@/components/FormGeneratorDialog.vue"
 import LocationCard from "@/components/LocationCard.vue"
 import TestDialog from "@/components/TestDialog.vue"
@@ -19,7 +19,7 @@ import {
   mdiCalendarPlusOutline,
   mdiCancel,
   mdiCardAccountDetailsOutline,
-  mdiCheckCircleOutline,
+  mdiCheck,
   mdiClipboardCheckOutline,
   mdiClockOutline,
   mdiFileDocumentEditOutline,
@@ -188,15 +188,20 @@ function isDone(activity) {
   return !isUpcoming(activity) && !isCancelled(activity)
 }
 
-// Show the Annuler / Confirmer buttons in the collapsed header while the
-// consultation is upcoming and the patient hasn't confirmed yet.
-function showHeaderActions(activity) {
+// The Annuler / Confirmer pair is offered while the consultation is upcoming
+// and the patient hasn't confirmed yet.
+function canConfirmOrCancel(activity) {
   return (
     isUpcoming(activity) &&
     !isCancelled(activity) &&
-    !confirmedIds.value.has(activity.id) &&
-    !openPanels.value.includes(activity.id)
+    !confirmedIds.value.has(activity.id)
   )
+}
+
+// On mobile the header buttons only show while collapsed (they move to the
+// panel bottom once expanded). On desktop they stay pinned in the header.
+function showHeaderActions(activity) {
+  return canConfirmOrCancel(activity) && !openPanels.value.includes(activity.id)
 }
 
 function confirmAttendance(activity) {
@@ -478,8 +483,8 @@ function handleDocumentRemove() {
                   <span class="text-body-medium text-medium-emphasis">{{ activity.time }}</span>
                 </template>
               </div>
-              <div v-if="!mobile && showHeaderActions(activity)" class="d-flex align-center ga-1 mr-2" @click.stop>
-                <v-btn color="error" variant="text" rounded="lg" size="small" class="text-none"
+              <div v-if="!mobile && canConfirmOrCancel(activity)" class="d-flex align-center ga-1 mr-2" @click.stop>
+                <v-btn color="error" variant="tonal" rounded="lg" size="small" class="text-none"
                   @click="askCancel(activity)">
                   Annuler
                 </v-btn>
@@ -551,8 +556,11 @@ function handleDocumentRemove() {
 
                 <!-- Completed tasks: compact inline chips -->
                 <div v-if="completedTasks.length" class="d-flex flex-wrap ga-2 mb-3">
-                  <v-chip v-for="task in completedTasks" :key="task.key" color="success" variant="tonal" size="small"
-                    label :prepend-icon="mdiCheckCircleOutline" @click="task.action()">
+                  <v-chip v-for="task in completedTasks" :key="task.key" variant="text" size="small" rounded="pill"
+                    class="border-light" @click="task.action()">
+                    <template #append>
+                      <v-icon :icon="mdiCheck" color="success" size="18" class="ml-1" />
+                    </template>
                     {{ task.title }}
                   </v-chip>
                 </div>
@@ -589,18 +597,33 @@ function handleDocumentRemove() {
                 </div>
               </v-alert>
 
-              <!-- =================== CANCEL / CONFIRM CONSULTATION =================== -->
-              <div v-if="isUpcoming(activity) && !isCancelled(activity)"
-                class="d-flex justify-center align-center ga-2 mt-4">
+              <!-- =================== CANCEL / CONFIRM CONSULTATION ===================
+                   Desktop keeps these in the header (see canConfirmOrCancel); they
+                   only live at the bottom on mobile, or on desktop once confirmed
+                   so the patient can still cancel after confirming. -->
+              <!-- Once confirmed, only a discreet centered Annuler remains. -->
+              <div v-if="confirmedIds.has(activity.id) && isUpcoming(activity) && !isCancelled(activity)"
+                class="d-flex justify-center mt-4">
                 <v-btn color="error" variant="text" rounded="lg" size="small" class="text-none"
                   @click="askCancel(activity)">
-                  Annuler la consultation
-                </v-btn>
-                <v-btn v-if="!confirmedIds.has(activity.id)" color="success" variant="flat" rounded="lg" size="small"
-                  class="text-none" @click="confirmAttendance(activity)">
-                  Je confirme ma présence
+                  Annuler
                 </v-btn>
               </div>
+              <!-- Mobile, not yet confirmed: full-width half/half Annuler + Confirmer. -->
+              <v-row v-else-if="mobile && isUpcoming(activity) && !isCancelled(activity)" no-gutters class="mt-4">
+                <v-col cols="6" class="pr-1">
+                  <v-btn block color="error" variant="tonal" rounded="lg" size="small" class="text-none"
+                    @click="askCancel(activity)">
+                    Annuler
+                  </v-btn>
+                </v-col>
+                <v-col cols="6" class="pl-1">
+                  <v-btn block color="success" variant="flat" rounded="lg" size="small" class="text-none"
+                    @click="confirmAttendance(activity)">
+                    Confirmer
+                  </v-btn>
+                </v-col>
+              </v-row>
 
             </v-expansion-panel-text>
           </v-expansion-panel>
@@ -642,8 +665,8 @@ function handleDocumentRemove() {
       @submit="handlePatientDataSubmit" />
 
     <!-- Test (questionnaire) dialog -->
-    <TestDialog v-model="testDialogOpen" :test="activeTest" :initial-answers="testDialogAnswers"
-      :loading="savingTest" @submit="handleTestSubmit" />
+    <TestDialog v-model="testDialogOpen" :test="activeTest" :initial-answers="testDialogAnswers" :loading="savingTest"
+      @submit="handleTestSubmit" />
 
     <!-- Document upload dialog -->
     <DocumentDialog v-model="documentDialogOpen" :document="activeDocument" :existing="activeDocumentFile"

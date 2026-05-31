@@ -80,7 +80,6 @@ function submit() {
         <v-card v-for="(question, i) in questions" :key="i" class="mb-3 py-4" flat rounded="lg">
           <div class="text-body-medium font-weight-medium mb-1">
             <span class="text-medium-emphasis mr-1">{{ i + 1 }}.</span>
-            <span v-if="question.prefix" class="font-weight-bold mr-1">{{ question.prefix }} —</span>
             {{ question.text }}
           </div>
           <div v-if="question.caption" class="text-body-small text-medium-emphasis mb-3">{{ question.caption }}</div>
