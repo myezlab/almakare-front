@@ -42,7 +42,7 @@ function onChange(meta) {
     <div v-if="document" class="doc-dialog-shell doc-dialog-shell--sheet">
       <v-btn :icon="mdiClose" variant="text" density="comfortable" class="doc-dialog-close"
         aria-label="Fermer" @click="close" />
-      <DocumentUploadCard :title="document.title" :icon="document.icon"
+      <DocumentUploadCard :title="document.title" :icon="document.icon" :capture-frame="document.capture || null"
         :helper="document.subtitle ? `${document.subtitle} — photo ou PDF.` : 'Ajoutez une photo ou un PDF de ce document.'"
         :model-value="existing" @update:model-value="onChange" />
     </div>
@@ -53,7 +53,7 @@ function onChange(meta) {
     <div v-if="document" class="doc-dialog-shell">
       <v-btn :icon="mdiClose" variant="text" density="comfortable" class="doc-dialog-close"
         aria-label="Fermer" @click="close" />
-      <DocumentUploadCard :title="document.title" :icon="document.icon"
+      <DocumentUploadCard :title="document.title" :icon="document.icon" :capture-frame="document.capture || null"
         :helper="document.subtitle ? `${document.subtitle} — photo ou PDF.` : 'Ajoutez une photo ou un PDF de ce document.'"
         :model-value="existing" @update:model-value="onChange" />
     </div>

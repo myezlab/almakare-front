@@ -14,11 +14,12 @@
 // match the rest of the app (selfStore.item.documents). Pass an async `uploader`
 // to do the real upload; without one a short client-side upload is simulated so
 // the progress / success / error states still work in this seeded app.
+import DocumentCaptureOverlay from "@/components/DocumentCaptureOverlay.vue"
 import {
+  mdiAlertCircleOutline,
   mdiCameraOutline,
   mdiCardAccountDetailsOutline,
   mdiCheckCircle,
-  mdiAlertCircleOutline,
   mdiFilePdfBox,
   mdiFolderOpenOutline,
   mdiImageOutline,
@@ -39,6 +40,10 @@ const props = defineProps({
   icon: { type: String, default: mdiCardAccountDetailsOutline },
   accept: { type: String, default: "image/jpeg,image/png,application/pdf" },
   maxSizeMb: { type: Number, default: 10 },
+  // Optional in-app camera config { shape: 'card' | 'page', guide: string }.
+  // When set (and getUserMedia is available) "Prendre une photo" opens the
+  // DocumentCaptureOverlay instead of leaving the app for the OS camera.
+  captureFrame: { type: Object, default: null },
   // Optional async uploader: (file, { onProgress, signal }) => any.
   // Resolve to persist; throw to surface the error state.
   uploader: { type: Function, default: null },
@@ -54,6 +59,12 @@ const progress = ref(0)
 const errorMessage = ref("")
 const isDragging = ref(false)
 const sheetOpen = ref(false)
+const captureOpen = ref(false)
+
+// In-app camera is only offered when configured and the browser supports it.
+const supportsCamera =
+  typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia
+const useInAppCamera = computed(() => !!props.captureFrame && supportsCamera)
 
 // Metadata currently shown (picked file, or the stored modelValue).
 const currentFile = ref(props.modelValue || null)
@@ -107,11 +118,27 @@ function openPicker() {
 
 function pick(which) {
   sheetOpen.value = false
-  // Defer so the bottom sheet finishes closing before the OS picker opens.
+  // Defer so the bottom sheet finishes closing before the next surface opens.
   setTimeout(() => {
+    if (which === "camera" && useInAppCamera.value) {
+      captureOpen.value = true
+      return
+    }
     const input = { camera: cameraInput, gallery: galleryInput, browse: browseInput }[which]
     input?.value?.click()
   }, 150)
+}
+
+// Overlay produced a photo File — run it through the normal upload flow.
+function onCaptured(file) {
+  captureOpen.value = false
+  if (file) startUpload(file)
+}
+
+// Camera unavailable / permission refused — fall back to the OS camera input.
+function onCaptureFallback() {
+  captureOpen.value = false
+  setTimeout(() => cameraInput.value?.click(), 150)
 }
 
 function validate(file) {
@@ -243,8 +270,8 @@ function formatSize(bytes) {
       <!-- ================= EMPTY ================= -->
       <template v-if="status === 'empty'">
         <div class="dropzone d-flex flex-column align-center text-center pa-6" :class="{ 'dropzone--drag': isDragging }"
-          role="button" tabindex="0" :aria-label="buttonLabel" @click="openPicker"
-          @keydown.enter.prevent="openPicker" @keydown.space.prevent="openPicker" @dragover.prevent="isDragging = true"
+          role="button" tabindex="0" :aria-label="buttonLabel" @click="openPicker" @keydown.enter.prevent="openPicker"
+          @keydown.space.prevent="openPicker" @dragover.prevent="isDragging = true"
           @dragleave.prevent="isDragging = false" @drop.prevent="onDrop">
           <div class="dropzone-icon mb-3" aria-hidden="true">
             <v-icon :icon="mdiUploadOutline" size="30" />
@@ -343,8 +370,7 @@ function formatSize(bytes) {
     <!-- ================= MOBILE SOURCE PICKER ================= -->
     <v-bottom-sheet v-model="sheetOpen">
       <v-card class="source-sheet">
-        <div class="source-sheet-handle" aria-hidden="true" />
-        <v-card-title class="text-title-medium font-weight-bold pa-4 pb-2">Ajouter un document</v-card-title>
+        <v-card-title class="text-title-medium font-weight-bold pa-4 pb-2 mt-2">Ajouter un document</v-card-title>
         <v-list>
           <v-list-item class="source-item py-4" :prepend-icon="mdiCameraOutline" title="Prendre une photo"
             @click="pick('camera')" />
@@ -360,6 +386,10 @@ function formatSize(bytes) {
         </div>
       </v-card>
     </v-bottom-sheet>
+
+    <!-- ================= IN-APP CAMERA ================= -->
+    <DocumentCaptureOverlay v-if="useInAppCamera" v-model="captureOpen" :title="title"
+      :frame="captureFrame.shape" :guide="captureFrame.guide" @capture="onCaptured" @error="onCaptureFallback" />
   </v-card>
 </template>
 

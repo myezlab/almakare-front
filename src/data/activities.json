@@ -75,8 +75,8 @@
     "type": "acte",
     "title": "Polygraphie ventilatoire nocturne",
     "doctor": "Dr Lucas Robert",
-    "startAt": "2026-05-31T20:00:00",
-    "endAt": "2026-06-01T08:00:00",
+    "startAt": "2026-06-01T10:00:00",
+    "endAt": "2026-06-02T08:00:00",
     "locationName": "Cabinet Dr Robert — 12 rue de Strasbourg, 44000 Nantes",
     "report": "",
     "requestedFields": ["weight", "height", "hasMedicalHistory"],
@@ -126,16 +126,6 @@
         }
       ]
     }
-  },
-  {
-    "id": "act-8",
-    "type": "acte",
-    "title": "Pose du dispositif PPC",
-    "doctor": "Dr Lucas Robert",
-    "startAt": "2026-06-03T09:00:00",
-    "endAt": "2026-06-03T09:45:00",
-    "locationName": "Cabinet Dr Robert — 12 rue de Strasbourg, 44000 Nantes",
-    "report": ""
   },
   {
     "id": "act-9",

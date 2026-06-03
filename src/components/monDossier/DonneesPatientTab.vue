@@ -681,10 +681,10 @@ function selectMedecin(doctor) {
             </v-expansion-panel-text>
           </v-expansion-panel>
 
-          <!-- Conclusion de la dernière consultation -->
+          <!-- Compte rendu de la dernière consultation -->
           <v-expansion-panel value="lastConsultation">
             <v-expansion-panel-title>
-              <span class="panel-title">Conclusion de la dernière consultation</span>
+              <span class="panel-title">Compte rendu de la dernière consultation</span>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <v-alert v-if="lastConsultationReport" type="warning" variant="tonal"

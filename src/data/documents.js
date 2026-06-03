@@ -5,6 +5,10 @@
 // by `key` to show one upload card + dialog per requested document. Uploaded
 // files live on the patient record at `selfStore.item.documents[key]` as
 // `{ name, size, type, uploadedAt }`.
+//
+// `capture` drives the in-app camera (DocumentCaptureOverlay): `shape` picks the
+// guide frame — 'card' for ID-1 cards (CNI, Vitale, mutuelle), 'page' for A4
+// documents — and `guide` is the on-screen framing instruction.
 
 import {
   mdiCardAccountDetailsOutline,
@@ -21,35 +25,40 @@ export const REQUIRED_DOCUMENTS = [
     title: "Carte d'identité",
     subtitle: 'Recto',
     icon: mdiCardAccountDetailsOutline,
-    accept: 'image/*,application/pdf'
+    accept: 'image/*,application/pdf',
+    capture: { shape: 'card', guide: "Placez le recto de votre carte d'identité dans le cadre" }
   },
   {
     key: 'idBack',
     title: "Carte d'identité",
     subtitle: 'Verso',
     icon: mdiCardAccountDetailsOutline,
-    accept: 'image/*,application/pdf'
+    accept: 'image/*,application/pdf',
+    capture: { shape: 'card', guide: "Placez le verso de votre carte d'identité dans le cadre" }
   },
   {
     key: 'carteVitale',
     title: 'Carte vitale',
     subtitle: 'Attestation de droits',
     icon: mdiCreditCardOutline,
-    accept: 'image/*,application/pdf'
+    accept: 'image/*,application/pdf',
+    capture: { shape: 'card', guide: 'Placez votre carte Vitale dans le cadre' }
   },
   {
     key: 'mutuelle',
     title: 'Carte de mutuelle',
     subtitle: 'Complémentaire santé',
     icon: mdiShieldCheckOutline,
-    accept: 'image/*,application/pdf'
+    accept: 'image/*,application/pdf',
+    capture: { shape: 'card', guide: 'Placez votre carte de mutuelle dans le cadre' }
   },
   {
     key: 'priseEnCharge',
     title: 'Prise en charge',
     subtitle: 'Notification organisme',
     icon: mdiFileDocumentCheckOutline,
-    accept: 'image/*,application/pdf'
+    accept: 'image/*,application/pdf',
+    capture: { shape: 'page', guide: 'Cadrez votre notification de prise en charge' }
   }
 ]
 
@@ -59,14 +68,16 @@ export const ORDONNANCE_DOCUMENTS = [
     title: "Lettre d'adressage",
     subtitle: 'Médecin référent',
     icon: mdiFileDocumentOutline,
-    accept: 'image/*,application/pdf'
+    accept: 'image/*,application/pdf',
+    capture: { shape: 'page', guide: "Cadrez la lettre d'adressage dans le cadre" }
   },
   {
     key: 'ordonnance',
     title: 'Ordonnance',
     subtitle: 'Prescription médicale',
     icon: mdiFileSign,
-    accept: 'image/*,application/pdf'
+    accept: 'image/*,application/pdf',
+    capture: { shape: 'page', guide: 'Cadrez votre ordonnance dans le cadre' }
   }
 ]
 

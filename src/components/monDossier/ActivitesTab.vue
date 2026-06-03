@@ -1,11 +1,12 @@
 <script setup>
-import ActeProtocolCard from "@/components/monDossier/ActeProtocolCard.vue"
 import DateCard from "@/components/DateCard.vue"
 import DoctorCard from "@/components/DoctorCard.vue"
 import DocumentDialog from "@/components/DocumentDialog.vue"
 import FormGeneratorDialog from "@/components/FormGeneratorDialog.vue"
 import LocationCard from "@/components/LocationCard.vue"
+import ActeProtocolCard from "@/components/monDossier/ActeProtocolCard.vue"
 import QuestionnaireResultsDialog from "@/components/QuestionnaireResultsDialog.vue"
+import RapportDialog from "@/components/RapportDialog.vue"
 import TestDialog from "@/components/TestDialog.vue"
 import { ISOToDDMMYYYY, ISOToHHmm, ISOToLongDateTime } from "@/composables/useDates"
 import { useQuestionnaire } from "@/composables/useQuestionnaire"
@@ -14,6 +15,7 @@ import ACTIVITIES_DATA from "@/data/activities.json"
 import { DOCTORS_SEED } from "@/data/doctors"
 import { DOCUMENTS_BY_KEY } from "@/data/documents"
 import { PATIENT_FIELDS, PATIENT_FIELDS_BY_KEY } from "@/data/patientFields"
+import { RAPPORTS_BY_ACTIVITY } from "@/data/rapports"
 import { TESTS, TESTS_BY_KEY, evaluateTest } from "@/data/tests"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
@@ -23,7 +25,12 @@ import {
   mdiCardAccountDetailsOutline,
   mdiCheck,
   mdiClockOutline,
-  mdiFileDocumentEditOutline
+  mdiClose,
+  mdiDoctor,
+  mdiFileChartOutline,
+  mdiFileDocumentEditOutline,
+  mdiOpenInNew,
+  mdiPaperclip
 } from "@mdi/js"
 import dayjs from "dayjs"
 import { computed, reactive, ref } from "vue"
@@ -99,34 +106,27 @@ function getDoctor(activity) {
   )
 }
 
-// An activity moves through three states based on its real time window
-// (startAt → endAt): "À venir" before it starts, "En cours" while it is
-// happening — an acte can run ~12h — and "Passés" once it has finished.
+// An activity sits in one of two states based on its end time (startAt → endAt):
+// "À venir" as long as it hasn't finished — this covers an acte still running,
+// which can take ~12h — and "Passés" once it has finished.
 const now = dayjs()
 function isUpcoming(activity) {
-  return now.isBefore(getEventTimes(activity).start)
-}
-function isOngoing(activity) {
-  const { start, end } = getEventTimes(activity)
-  return !now.isBefore(start) && !now.isAfter(end)
+  return now.isBefore(getEventTimes(activity).end)
 }
 function isPast(activity) {
-  return !isUpcoming(activity) && !isOngoing(activity)
+  return !isUpcoming(activity)
 }
 const sections = computed(() => {
   const upcoming = []
-  const ongoing = []
   const past = []
   for (const activity of activities.value) {
-    if (isOngoing(activity)) ongoing.push(activity)
-    else if (isUpcoming(activity)) upcoming.push(activity)
+    if (isUpcoming(activity)) upcoming.push(activity)
     else past.push(activity)
   }
-  // soonest upcoming first; ongoing and past keep the most recent first
+  // soonest upcoming first; past keeps the most recent first
   upcoming.reverse()
   return [
     { key: 'upcoming', title: 'À venir', items: upcoming },
-    { key: 'ongoing', title: 'En cours', items: ongoing },
     { key: 'past', title: 'Passés', items: past }
   ].filter((section) => section.items.length > 0)
 })
@@ -201,13 +201,13 @@ function buildPreparationTasks(activity) {
   return tasks
 }
 
-// Preparation is attached to EVERY upcoming OR ongoing activity that requests
-// something (not just the soonest), keyed by activity id. Each entry pre-splits
+// Preparation is attached to EVERY upcoming activity that requests something
+// (not just the soonest), keyed by activity id. Each entry pre-splits
 // the tasks into completed/todo and carries the progress counters the header shows.
 const prepByActivity = computed(() => {
   const map = {}
   for (const activity of activities.value) {
-    if (!isUpcoming(activity) && !isOngoing(activity)) continue
+    if (!isUpcoming(activity)) continue
     const tasks = buildPreparationTasks(activity)
     if (!tasks.length) continue
     const completed = tasks.filter((task) => task.completed)
@@ -473,6 +473,35 @@ function handleDocumentRemove() {
   selfStore.item.documents = next
   messagesStore.add({ type: 'success', text: 'Document supprimé' })
 }
+
+// =================== COMPTE RENDU (free-text report) ===================
+// The activity's free-text compte rendu: the card shows a one-line teaser,
+// "Voir" opens the full text in a dialog.
+const compteRenduDialogOpen = ref(false)
+const activeCompteRendu = ref(null)
+
+function openCompteRendu(activity) {
+  if (!activity.report) return
+  activeCompteRendu.value = activity
+  compteRenduDialogOpen.value = true
+}
+
+// =================== RAPPORT (medical report document) ===================
+// A past activity's rapport is the downloadable counterpart of its "Compte
+// rendu"; it is also retrievable from the Documents tab "Rapports" panel.
+const rapportDialogOpen = ref(false)
+const activeRapport = ref(null)
+
+function rapportFor(activity) {
+  return RAPPORTS_BY_ACTIVITY[activity.id] || null
+}
+
+function openRapport(activity) {
+  const rapport = rapportFor(activity)
+  if (!rapport) return
+  activeRapport.value = rapport
+  rapportDialogOpen.value = true
+}
 </script>
 
 <template>
@@ -502,9 +531,6 @@ function handleDocumentRemove() {
                     label>
                     Confirmée
                   </v-chip>
-                  <v-chip v-else-if="isOngoing(activity)" color="info" size="x-small" variant="tonal" label>
-                    En cours
-                  </v-chip>
                   <v-chip v-else-if="isDone(activity)" color="primary" size="x-small" variant="tonal" label>
                     Effectué
                   </v-chip>
@@ -532,32 +558,35 @@ function handleDocumentRemove() {
                   </v-col>
                 </v-row>
               </div>
-              <div v-else class="d-flex align-center flex-wrap ga-2 flex-grow-1">
-                <span class="panel-title"
-                  :class="{ 'text-decoration-line-through text-medium-emphasis': isCancelled(activity) }">
-                  {{ activity.title }}
+              <div v-else class="d-flex flex-column flex-grow-1">
+                <div class="d-flex align-center flex-wrap ga-2">
+                  <span class="panel-title"
+                    :class="{ 'text-decoration-line-through text-medium-emphasis': isCancelled(activity) }">
+                    {{ activity.title }}
+                  </span>
+                  <v-chip v-if="isCancelled(activity)" color="error" size="x-small" variant="tonal" label>
+                    Annulé
+                  </v-chip>
+                  <v-chip v-else-if="confirmedIds.has(activity.id)" color="success" size="x-small" variant="tonal" label>
+                    Confirmé
+                  </v-chip>
+                  <v-chip v-else-if="isDone(activity)" color="primary" size="x-small" variant="tonal" label>
+                    Effectué
+                  </v-chip>
+                </div>
+                <span v-if="!openPanels.includes(activity.id)"
+                  class="d-flex align-center flex-wrap ga-1 text-body-medium text-medium-emphasis mt-1">
+                  <v-avatar size="20" color="primary" class="mr-1">
+                    <v-img v-if="getDoctor(activity)?.avatarUrl" :src="getDoctor(activity).avatarUrl"
+                      :alt="activity.doctor" />
+                    <v-icon v-else :icon="mdiDoctor" size="14" />
+                  </v-avatar>
+                  {{ activity.doctor }} •
+                  <v-icon :icon="mdiCalendarBlankOutline" size="16" />
+                  {{ ISOToDDMMYYYY(activity.startAt) }}
+                  <v-icon :icon="mdiClockOutline" size="16" />
+                  {{ ISOToHHmm(activity.startAt) }}
                 </span>
-                <v-chip v-if="isCancelled(activity)" color="error" size="x-small" variant="tonal" label>
-                  Annulé
-                </v-chip>
-                <v-chip v-else-if="confirmedIds.has(activity.id)" color="success" size="x-small" variant="tonal" label>
-                  Confirmé
-                </v-chip>
-                <v-chip v-else-if="isOngoing(activity)" color="info" size="x-small" variant="tonal" label>
-                  En cours
-                </v-chip>
-                <v-chip v-else-if="isDone(activity)" color="primary" size="x-small" variant="tonal" label>
-                  Effectué
-                </v-chip>
-                <template v-if="!openPanels.includes(activity.id)">
-                  <span class="text-medium-emphasis">•</span>
-                  <span class="text-body-medium">{{ activity.doctor }}</span>
-                  <span class="text-medium-emphasis">•</span>
-                  <v-icon :icon="mdiCalendarBlankOutline" size="16" class="text-medium-emphasis" />
-                  <span class="text-body-medium text-medium-emphasis">{{ ISOToDDMMYYYY(activity.startAt) }}</span>
-                  <v-icon :icon="mdiClockOutline" size="16" class="text-medium-emphasis" />
-                  <span class="text-body-medium text-medium-emphasis">{{ ISOToHHmm(activity.startAt) }}</span>
-                </template>
               </div>
               <div v-if="!mobile && canConfirmOrCancel(activity)" class="d-flex align-center ga-1 mr-2" @click.stop>
                 <v-btn color="error" variant="tonal" rounded="lg" size="small" class="text-none"
@@ -588,18 +617,60 @@ function handleDocumentRemove() {
                 </v-col>
               </v-row>
 
-              <!-- =================== RAPPORT MÉDECIN (not shown while upcoming) =================== -->
-              <v-alert v-if="isPast(activity) && activity.report" type="warning" variant="tonal"
-                :icon="mdiFileDocumentEditOutline" density="comfortable" rounded="lg">
-                <div class="text-body-small font-weight-bold mb-1">Rapport médecin</div>
-                <div class="text-body-medium">{{ activity.report }}</div>
-              </v-alert>
-
-              <v-alert v-else-if="isPast(activity)" type="warning" variant="tonal"
-                :icon="mdiFileDocumentEditOutline" density="comfortable" rounded="lg">
-                <div class="text-body-medium font-weight-bold">Rapport médecin</div>
-                <div class="text-body-small text-medium-emphasis">Aucun rapport renseigné pour ce rendez-vous.</div>
-              </v-alert>
+              <!-- =================== COMPTE RENDU + RAPPORT (not shown while upcoming) ===================
+                   Two warning cards side by side (6/6 on desktop, stacked on
+                   mobile): the free-text compte rendu, and the rapport document
+                   (also retrievable from the Documents tab "Rapports" panel). -->
+              <v-row v-if="isPast(activity)" density="compact">
+                <v-col cols="12" md="6">
+                  <v-card variant="tonal" color="warning" rounded="lg"
+                    class="h-100 pa-3 d-flex flex-column justify-center">
+                    <div class="d-flex align-center ga-3">
+                      <v-icon v-if="!mobile" :icon="mdiFileDocumentEditOutline" color="warning" size="24"
+                        class="flex-shrink-0" />
+                      <div class="flex-grow-1" style="min-width: 0">
+                        <div class="text-body-medium font-weight-bold">Compte rendu</div>
+                        <div v-if="activity.report" class="text-body-small text-medium-emphasis text-truncate">
+                          {{ activity.report }}
+                        </div>
+                        <div v-else class="text-body-small text-medium-emphasis">
+                          Aucun compte rendu renseigné pour ce rendez-vous.
+                        </div>
+                      </div>
+                      <v-btn v-if="activity.report" color="warning" :icon="mobile" flat rounded="lg" size="small"
+                        class="text-none flex-shrink-0" @click="openCompteRendu(activity)">
+                        <v-icon v-if="mobile" :icon="mdiOpenInNew" />
+                        <template v-if="!mobile">Voir</template>
+                      </v-btn>
+                    </div>
+                  </v-card>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-card variant="tonal" color="warning" rounded="lg"
+                    class="h-100 pa-3 d-flex flex-column justify-center">
+                    <div class="d-flex align-center ga-3">
+                      <v-icon v-if="!mobile" :icon="mdiFileChartOutline" color="warning" size="24"
+                        class="flex-shrink-0" />
+                      <div class="flex-grow-1" style="min-width: 0">
+                        <div class="text-body-medium font-weight-bold">Rapport</div>
+                        <div v-if="rapportFor(activity)"
+                          class="d-flex align-center ga-1 text-body-small text-medium-emphasis">
+                          <v-icon :icon="mdiPaperclip" size="14" class="flex-shrink-0" />
+                          <span class="text-truncate">{{ rapportFor(activity).name }}</span>
+                        </div>
+                        <div v-else class="text-body-small text-medium-emphasis">
+                          Aucun rapport disponible pour le moment.
+                        </div>
+                      </div>
+                      <v-btn v-if="rapportFor(activity)" color="warning" :icon="mobile" flat rounded="lg" size="small"
+                        class="text-none flex-shrink-0" @click="openRapport(activity)">
+                        <v-icon v-if="mobile" :icon="mdiOpenInNew" />
+                        <template v-if="!mobile">Ouvrir</template>
+                      </v-btn>
+                    </div>
+                  </v-card>
+                </v-col>
+              </v-row>
 
               <!-- =================== TÂCHES À COMPLÉTER AVANT LE RENDEZ-VOUS =================== -->
               <div v-if="prepByActivity[activity.id]" class="prep-tasks mt-6 mb-6">
@@ -641,8 +712,8 @@ function handleDocumentRemove() {
                       <div class="text-body-medium font-weight-bold">{{ task.title }}</div>
                       <div class="text-body-small text-medium-emphasis">{{ task.todo }}</div>
                     </div>
-                    <v-btn color="primary" :icon="mobile" flat rounded="lg" size="small"
-                      class="text-none flex-shrink-0" @click.stop="task.action()">
+                    <v-btn color="primary" :icon="mobile" flat rounded="lg" size="small" class="text-none flex-shrink-0"
+                      @click.stop="task.action()">
                       <v-icon v-if="mobile" :icon="task.icon" />
                       <template v-if="!mobile">Compléter</template>
                     </v-btn>
@@ -650,9 +721,9 @@ function handleDocumentRemove() {
                 </v-card>
               </div>
 
-              <!-- =================== DÉROULÉ DE L'ACTE (en cours) ===================
+              <!-- =================== DÉROULÉ DE L'ACTE ===================
                    Step-by-step progress of a medical procedure, attached to the
-                   acte via its `protocol` payload (only the ongoing acte carries it). -->
+                   acte via its `protocol` payload (only an acte carries it). -->
               <ActeProtocolCard v-if="activity.protocol" :protocol="activity.protocol" class="mt-3" />
 
               <!-- =================== CANCELLED STATUS =================== -->
@@ -670,7 +741,7 @@ function handleDocumentRemove() {
                    so the patient can still cancel after confirming. -->
               <!-- Once confirmed, only a discreet centered Annuler remains. -->
               <div v-if="confirmedIds.has(activity.id) && isUpcoming(activity) && !isCancelled(activity)"
-                class="d-flex justify-center mt-4">
+                class="d-flex justify-center">
                 <v-btn color="error" variant="text" rounded="lg" size="small" class="text-none"
                   @click="askCancel(activity)">
                   Annuler
@@ -743,6 +814,43 @@ function handleDocumentRemove() {
     <!-- Document upload dialog -->
     <DocumentDialog v-model="documentDialogOpen" :document="activeDocument" :existing="activeDocumentFile"
       :loading="savingDocument" @submit="handleDocumentSubmit" @remove="handleDocumentRemove" />
+
+    <!-- Compte rendu (free-text) dialog -->
+    <v-dialog v-model="compteRenduDialogOpen" :fullscreen="mobile" :max-width="mobile ? undefined : 640" scrollable>
+      <v-card v-if="activeCompteRendu" class="card-shadow" :class="{ 'rounded-15': !mobile }">
+        <v-card-item class="pa-4">
+          <template #prepend>
+            <div class="cr-icon" aria-hidden="true">
+              <v-icon :icon="mdiFileDocumentEditOutline" size="24" />
+            </div>
+          </template>
+          <v-card-title class="text-headline-small font-weight-bold text-wrap">Compte rendu</v-card-title>
+          <v-card-subtitle class="text-body-medium text-medium-emphasis text-wrap mt-1">
+            {{ activeCompteRendu.doctor }} — {{ fullDateTime(activeCompteRendu) }}
+          </v-card-subtitle>
+          <template #append>
+            <v-btn :icon="mdiClose" variant="text" density="comfortable" aria-label="Fermer"
+              @click="compteRenduDialogOpen = false" />
+          </template>
+        </v-card-item>
+
+        <v-divider />
+
+        <v-card-text class="pa-4">
+          <div class="text-body-medium cr-body">{{ activeCompteRendu.report }}</div>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" rounded="lg" class="text-none" @click="compteRenduDialogOpen = false">Fermer</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Rapport preview / download dialog -->
+    <RapportDialog v-model="rapportDialogOpen" :rapport="activeRapport" />
   </v-row>
 </template>
 
@@ -755,5 +863,21 @@ function handleDocumentRemove() {
 
 :deep(.v-expansion-panel-text__wrapper) {
   padding-inline: 12px;
+}
+
+.cr-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--v-theme-warning), 0.14);
+  color: rgb(var(--v-theme-warning));
+}
+
+.cr-body {
+  white-space: pre-line;
+  line-height: 1.6;
 }
 </style>

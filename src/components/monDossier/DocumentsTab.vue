@@ -1,15 +1,20 @@
 <script setup>
 import DocumentDialog from "@/components/DocumentDialog.vue"
+import RapportDialog from "@/components/RapportDialog.vue"
+import { ISOToDDMMYYYY } from "@/composables/useDates"
 import { useUrlPanels } from "@/composables/useUrlPanels"
 import { ORDONNANCE_DOCUMENTS as ORDONNANCES_DOCS, REQUIRED_DOCUMENTS as REQUIRED_DOCS } from "@/data/documents"
+import { RAPPORTS } from "@/data/rapports"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
 import {
   mdiCheck,
   mdiClose,
+  mdiFileChartOutline,
   mdiFileDocumentOutline,
   mdiFileDocumentPlusOutline,
   mdiFolderOutline,
+  mdiOpenInNew,
   mdiPaperclip,
   mdiPlus,
 } from "@mdi/js"
@@ -92,6 +97,20 @@ function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} o`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} ko`
   return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`
+}
+
+// =================== RAPPORTS ===================
+// Read-only medical reports produced by the doctor after each past activity
+// (seeded from activities.json). Patients retrieve them here; the same dialog
+// is reachable from each past activity's "Rapport" card in the Activités tab.
+const rapports = computed(() => RAPPORTS)
+
+const rapportDialogOpen = ref(false)
+const activeRapport = ref(null)
+
+function openRapport(rapport) {
+  activeRapport.value = rapport
+  rapportDialogOpen.value = true
 }
 </script>
 
@@ -231,12 +250,52 @@ function formatSize(bytes) {
             </v-expansion-panel-text>
           </v-expansion-panel>
 
+          <!-- =================== RAPPORTS =================== -->
+          <v-expansion-panel value="rapports">
+            <v-expansion-panel-title>
+              <span class="panel-title">Rapports</span>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <div class="text-body-small text-medium-emphasis mb-4">
+                Les comptes rendus rédigés par votre médecin après chaque rendez-vous.
+              </div>
+
+              <div v-if="rapports.length" class="d-flex flex-column ga-2">
+                <div v-for="rapport in rapports" :key="rapport.id" class="rapport-row" role="button" tabindex="0"
+                  @click="openRapport(rapport)" @keydown.enter.prevent="openRapport(rapport)"
+                  @keydown.space.prevent="openRapport(rapport)">
+                  <div class="rapport-row-icon">
+                    <v-icon :icon="mdiFileChartOutline" size="20" />
+                  </div>
+                  <div class="flex-grow-1 min-w-0">
+                    <div class="text-body-medium font-weight-medium text-truncate">{{ rapport.title }}</div>
+                    <div class="text-body-small text-medium-emphasis text-truncate">
+                      {{ rapport.doctor }} — {{ ISOToDDMMYYYY(rapport.date) }}
+                    </div>
+                  </div>
+                  <v-btn color="primary" variant="tonal" rounded="lg" size="small" class="text-none flex-shrink-0"
+                    :prepend-icon="mdiOpenInNew" @click.stop="openRapport(rapport)">
+                    Ouvrir
+                  </v-btn>
+                </div>
+              </div>
+
+              <div v-else class="empty-state d-flex align-center pa-4">
+                <v-icon :icon="mdiFileChartOutline" size="22" class="mr-2 text-medium-emphasis" />
+                <span class="text-body-small text-medium-emphasis">Aucun rapport disponible pour le moment.</span>
+              </div>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+
         </v-expansion-panels>
       </v-card>
     </v-col>
 
     <DocumentDialog v-model="docDialogOpen" :document="activeDoc" :existing="activeDocFile" :loading="savingDoc"
       @submit="handleDocumentSubmit" @remove="handleDocumentRemove" />
+
+    <!-- Rapport preview / download dialog -->
+    <RapportDialog v-model="rapportDialogOpen" :rapport="activeRapport" />
   </v-row>
 </template>
 
@@ -348,6 +407,37 @@ function formatSize(bytes) {
   justify-content: center;
   background: rgba(var(--v-theme-primary), 0.08);
   color: rgb(var(--v-theme-primary));
+  flex-shrink: 0;
+}
+
+.rapport-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.rapport-row:hover,
+.rapport-row:focus-visible {
+  background: rgba(var(--v-theme-warning), 0.06);
+  border-color: rgba(var(--v-theme-warning), 0.35);
+  outline: none;
+}
+
+.rapport-row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--v-theme-warning), 0.12);
+  color: rgb(var(--v-theme-warning));
   flex-shrink: 0;
 }
 
