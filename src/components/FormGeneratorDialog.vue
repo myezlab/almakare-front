@@ -18,6 +18,7 @@
 //     options:    [{ title, value }]                       (type 'options')
 //     rows:       Number   // textarea rows                (default 3)
 //     showIf:     (model) => Boolean  // conditional display (optional)
+//     group:      String   // section header to group under (optional)
 //   }
 import { computed, ref, watch } from "vue"
 
@@ -69,6 +70,25 @@ const visibleFields = computed(() =>
   props.fields.filter((f) => (f.showIf ? f.showIf(model.value) : true)),
 )
 
+// Group visible fields under their `group` header, preserving the order in
+// which each group first appears. Ungrouped fields fall under an empty name
+// (rendered without a header).
+const fieldGroups = computed(() => {
+  const groups = []
+  const byName = new Map()
+  for (const field of visibleFields.value) {
+    const name = field.group || ""
+    let group = byName.get(name)
+    if (!group) {
+      group = { name, fields: [] }
+      byName.set(name, group)
+      groups.push(group)
+    }
+    group.fields.push(field)
+  }
+  return groups
+})
+
 function close() {
   emit("update:modelValue", false)
 }
@@ -104,8 +124,13 @@ async function submit() {
 
       <v-card-text class="pa-4">
         <v-form ref="formRef" @submit.prevent="submit">
-          <v-row>
-            <v-col v-for="field in visibleFields" :key="field.key" cols="12" :md="field.md || field.cols || 12">
+          <template v-for="(group, gi) in fieldGroups" :key="group.name || gi">
+            <div v-if="group.name" class="form-section-header" :class="{ 'mt-6': gi > 0 }">
+              <div class="text-subtitle-1 font-weight-bold text-primary">{{ group.name }}</div>
+              <v-divider class="mt-1 mb-5" />
+            </div>
+            <v-row>
+              <v-col v-for="field in group.fields" :key="field.key" cols="12" :md="field.md || field.cols || 12">
 
               <!-- TEXT -->
               <v-text-field v-if="field.type === 'text'" v-model.trim="model[field.key]" :label="field.label"
@@ -133,8 +158,9 @@ async function submit() {
                 </v-btn-toggle>
               </div>
 
-            </v-col>
-          </v-row>
+              </v-col>
+            </v-row>
+          </template>
         </v-form>
       </v-card-text>
 

@@ -5,6 +5,7 @@ import { useRules } from "@/composables/useRules"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
 import {
+  mdiCalendar,
   mdiCheckCircleOutline,
   mdiEye,
   mdiEyeOff,
@@ -35,6 +36,11 @@ const signUpConfirmPassword = ref("testtest")
 const showSignUpPassword = ref(false)
 const showSignUpConfirmPassword = ref(false)
 const signUpForm = ref(null)
+
+// Sign-up — patient identity & coverage
+const signUpFirstName = ref("")
+const signUpLastName = ref("")
+const signUpDob = ref(null)
 
 // Password reset
 const resetEmail = ref("")
@@ -70,9 +76,15 @@ async function handleSignUp() {
   if (!(await signUpForm.value.validate()).valid) return
   pendingEmail.value = true
   try {
-    selfStore.item.id = "123456"
-    selfStore.item.email = signUpEmail.value
-    selfStore.item.createdAt = new Date().toISOString()
+    Object.assign(selfStore.item, {
+      id: "123456",
+      email: signUpEmail.value,
+      createdAt: new Date().toISOString(),
+      firstName: signUpFirstName.value,
+      lastName: signUpLastName.value,
+      fullName: `${signUpFirstName.value} ${signUpLastName.value}`.trim(),
+      dob: signUpDob.value ? new Date(signUpDob.value).toISOString() : null,
+    })
     redirectToApp()
   } catch (error) {
     console.error("Sign-up error:", error)
@@ -160,6 +172,16 @@ async function handlePasswordReset() {
         <div class="text-body-medium text-medium-emphasis mb-6">Rejoignez Almakare en créant votre compte</div>
 
         <v-form ref="signUpForm" @submit.prevent="handleSignUp">
+          <v-text-field v-model="signUpFirstName" label="Prénom" variant="outlined" rounded="lg"
+            density="comfortable" class="mb-2" :rules="[required]" />
+
+          <v-text-field v-model="signUpLastName" label="Nom" variant="outlined" rounded="lg"
+            density="comfortable" class="mb-2" :rules="[required]" />
+
+          <v-date-input v-model="signUpDob" label="Date de naissance" variant="outlined" rounded="lg"
+            density="comfortable" class="mb-2" input-format="dd/MM/yyyy" placeholder="jj/mm/aaaa"
+            :prepend-inner-icon="mdiCalendar" prepend-icon="" :rules="[required]" />
+
           <v-text-field v-model="signUpEmail" label="Email" type="email" variant="outlined" rounded="lg"
             density="comfortable" class="mb-2" :rules="[required, emailValidation]" />
 

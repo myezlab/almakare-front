@@ -2,11 +2,11 @@
 import DoctorCard from "@/components/DoctorCard.vue"
 import { ISOToDDMMYYYY, ISOToShortenedDate } from "@/composables/useDates"
 
+import { diffSnapshots, formatNir, generalSnapshot, useProfileHistory } from "@/composables/useProfileHistory"
 import { useRules } from "@/composables/useRules"
 import { useUrlPanels } from "@/composables/useUrlPanels"
 import ACTIVITIES_DATA from "@/data/activities.json"
 import { DOCTORS_SEED } from "@/data/doctors"
-import { PROFILE_HISTORY_SEED } from "@/data/profileHistory"
 import gendersEnum from "@/enums/genders.json"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
@@ -15,11 +15,13 @@ import dayjs from "dayjs"
 import { computed, ref, watch } from "vue"
 
 const GENDER_LABELS = { male: 'Homme', female: 'Femme', other: 'Autre' }
+const SLEEP_LATENCY_LABELS = { rapide: 'Rapide', lente: 'Lente' }
 const EMPTY = '-'
 
 const { phoneNumberValidation } = useRules()
 const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
+const { ensureSeed, recordHistory } = useProfileHistory()
 
 const currentUser = computed(() => selfStore.item || {})
 
@@ -27,12 +29,9 @@ const openPanels = useUrlPanels("dpPanels")
 const addressSelected = ref(false)
 
 const generalFormRef = ref(null)
-const clinicalFormRef = ref(null)
 
 const savingGeneral = ref(false)
-const savingClinical = ref(false)
 const editingGeneral = ref(false)
-const editingClinical = ref(false)
 
 const dobDisplay = computed(() => {
   const d = currentUser.value?.dob
@@ -50,6 +49,11 @@ const bmiDisplay = computed(() => {
 
 const genderLabel = computed(() => GENDER_LABELS[currentUser.value?.gender] || '')
 
+const hasClinicalData = computed(() => {
+  const u = currentUser.value || {}
+  return u.weight != null || u.height != null || u.iah != null || u.sleepLatency != null
+})
+
 const lastConsultationReport = computed(() => {
   const today = dayjs().startOf('day')
   return [...ACTIVITIES_DATA]
@@ -66,13 +70,6 @@ const genderOptions = computed(() => gendersEnum.map(g => ({
   title: GENDER_LABELS[g] || g,
   value: g,
 })))
-
-function formatNir(nir) {
-  if (!nir) return null
-  const clean = nir.replace(/\D/g, '')
-  if (clean.length !== 15) return nir
-  return `${clean[0]} ${clean.slice(1, 3)} ${clean.slice(3, 5)} ${clean.slice(5, 7)} ${clean.slice(7, 10)} ${clean.slice(10, 13)} ${clean.slice(13, 15)}`
-}
 
 const nirRules = [
   v => !v || /^\d{15}$/.test(v) || 'Le numéro doit contenir 15 chiffres',
@@ -97,64 +94,12 @@ const historyEntries = computed(() =>
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 )
 
-// Build a labelled snapshot of a section so two snapshots can be diffed field by field.
-function generalSnapshot(u = {}) {
-  const dob = u.dob ? ISOToDDMMYYYY(u.dob?.toDate ? u.dob.toDate() : u.dob) : ''
-  const address = [u.postalAddress, [u.postalCode, u.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
-  return [
-    { label: 'Prénom', value: u.firstName || '' },
-    { label: 'Nom', value: u.lastName || '' },
-    { label: 'Nom de naissance', value: u.birthName || '' },
-    { label: 'Genre', value: GENDER_LABELS[u.gender] || '' },
-    { label: 'Date de naissance', value: dob },
-    { label: 'Téléphone', value: u.phoneNumber || '' },
-    { label: 'Adresse', value: address },
-    { label: 'Régime alimentaire', value: u.hasDietaryRestrictions === false ? 'Aucun' : (u.dietaryRestrictions || '') },
-    { label: 'Antécédents médicaux', value: u.hasMedicalHistory === false ? 'Aucun' : (u.medicalHistory || '') },
-    { label: 'Numéro de sécurité sociale', value: formatNir(u.carteVitaleNir) || '' },
-    { label: "Date d'émission carte vitale", value: u.carteVitaleIssueDate || '' },
-  ]
-}
-
-function clinicalSnapshot(u = {}) {
-  return [
-    { label: 'Poids (kg)', value: u.weight != null ? String(u.weight) : '' },
-    { label: 'Taille (m)', value: u.height != null ? String(u.height) : '' },
-    { label: 'IAH', value: u.iah != null ? String(u.iah) : '' },
-  ]
-}
-
-function diffSnapshots(before, after) {
-  const changes = []
-  after.forEach((field, i) => {
-    const from = before[i]?.value ?? ''
-    const to = field.value ?? ''
-    if (String(from) !== String(to)) {
-      changes.push({ label: field.label, from: from || '—', to: to || '—' })
-    }
-  })
-  return changes
-}
-
-function recordHistory(section, changes) {
-  if (!changes.length) return
-  const entry = {
-    id: `hist-${Date.now()}`,
-    section,
-    date: new Date().toISOString(),
-    author: 'Vous',
-    changes,
-  }
-  selfStore.item.history = [entry, ...(selfStore.item.history || [])]
-}
-
 function openHistory(section) {
   historySection.value = section
   historyDialogOpen.value = true
 }
 
 const showGeneralView = computed(() => !editingGeneral.value)
-const showClinicalView = computed(() => !editingClinical.value)
 
 const generalModel = ref({
   firstName: '',
@@ -174,15 +119,9 @@ const generalModel = ref({
   carteVitaleIssueDate: '',
 })
 
-const clinicalModel = ref({
-  weight: null,
-  height: null,
-  iah: null,
-})
-
 watch(() => currentUser.value, (item) => {
   if (!item?.id) return
-  if (!item.history) item.history = PROFILE_HISTORY_SEED.map(e => ({ ...e }))
+  ensureSeed()
   let dob = null
   if (item.dob?.toDate) {
     dob = item.dob.toDate()
@@ -207,11 +146,6 @@ watch(() => currentUser.value, (item) => {
     carteVitaleIssueDate: item.carteVitaleIssueDate || '',
   }
   addressSelected.value = !!(item.postalAddress || item.city || item.postalCode)
-  clinicalModel.value = {
-    weight: item.weight ?? null,
-    height: item.height ?? null,
-    iah: item.iah ?? null,
-  }
 }, { immediate: true })
 
 function ensureOpen(value) {
@@ -221,11 +155,6 @@ function ensureOpen(value) {
 function startEditGeneral() {
   editingGeneral.value = true
   ensureOpen('general')
-}
-
-function startEditClinical() {
-  editingClinical.value = true
-  ensureOpen('clinical')
 }
 
 async function handleSaveGeneral(proxyModel, confirmSave) {
@@ -268,33 +197,6 @@ async function handleSaveGeneral(proxyModel, confirmSave) {
 function cancelGeneral(cancel) {
   cancel()
   editingGeneral.value = false
-}
-
-async function handleSaveClinical(proxyModel, confirmSave) {
-  savingClinical.value = true
-  try {
-    const value = proxyModel.value
-    const updateData = {
-      weight: value.weight != null ? Number(value.weight) : null,
-      height: value.height != null ? Number(value.height) : null,
-      iah: value.iah != null ? Number(value.iah) : null,
-    }
-    const before = clinicalSnapshot(currentUser.value)
-    confirmSave()
-    Object.assign(selfStore.item, updateData)
-    recordHistory('clinical', diffSnapshots(before, clinicalSnapshot(selfStore.item)))
-    editingClinical.value = false
-    messagesStore.add({ type: 'success', text: 'Profil mis à jour avec succès' })
-  } catch (error) {
-    messagesStore.add({ type: 'error', text: 'Erreur lors de la mise à jour du profil' })
-  } finally {
-    savingClinical.value = false
-  }
-}
-
-function cancelClinical(cancel) {
-  cancel()
-  editingClinical.value = false
 }
 
 const MEDECIN_TARGETS = {
@@ -601,83 +503,39 @@ function selectMedecin(doctor) {
           </v-expansion-panel>
 
           <!-- Données Cliniques -->
-          <v-expansion-panel value="clinical">
+          <v-expansion-panel v-if="hasClinicalData" value="clinical">
             <v-expansion-panel-title>
-              <div class="d-flex align-center flex-grow-1">
-                <span class="panel-title">Données cliniques</span>
-                <v-spacer />
-                <v-btn v-if="showClinicalView" :icon="mdiPencil" color="primary" variant="text" size="small"
-                  density="comfortable" class="mr-2" @click.stop="startEditClinical" />
-              </div>
+              <span class="panel-title">Données cliniques</span>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
-              <!-- VIEW MODE -->
-              <template v-if="showClinicalView">
-                <v-row>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Poids</div>
-                    <div class="field-value">{{ currentUser.weight != null ? `${currentUser.weight} kg` : EMPTY }}</div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">Taille</div>
-                    <div class="field-value">{{ currentUser.height != null ? `${currentUser.height} m` : EMPTY }}</div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">IMC</div>
-                    <div class="field-value">{{ bmiDisplay != null ? bmiDisplay : EMPTY }}</div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="field-label">IAH</div>
-                    <div class="field-value">{{ currentUser.iah != null ? currentUser.iah : EMPTY }}</div>
-                  </v-col>
-                </v-row>
-                <div class="d-flex justify-start mt-2">
-                  <v-btn variant="text" rounded="lg" size="small" class="text-none" :prepend-icon="mdiHistory"
-                    @click="openHistory('clinical')">
-                    Historique
-                  </v-btn>
-                </div>
-              </template>
-
-              <!-- EDIT MODE -->
-              <v-confirm-edit v-else v-model="clinicalModel" hide-actions>
-                <template #default="{ model: proxyModel, save: confirmSave, cancel, isPristine }">
-                  <v-form ref="clinicalFormRef">
-                    <v-row>
-                      <v-col cols="12" md="6">
-                        <v-text-field v-model.number="proxyModel.value.weight" label="Poids (kg)" variant="outlined"
-                          rounded="lg" inputmode="decimal" type="number" step="0.1" />
-                      </v-col>
-
-                      <v-col cols="12" md="6">
-                        <v-text-field v-model.number="proxyModel.value.height" label="Taille (m)" variant="outlined"
-                          rounded="lg" inputmode="decimal" type="number" step="0.01" />
-                      </v-col>
-
-                      <v-col cols="12" md="6">
-                        <v-text-field
-                          :model-value="proxyModel.value.weight && proxyModel.value.height ? Math.round(proxyModel.value.weight / (proxyModel.value.height * proxyModel.value.height) * 10) / 10 : ''"
-                          label="IMC (calculé)" variant="outlined" rounded="lg" readonly />
-                      </v-col>
-
-                      <v-col cols="12" md="6">
-                        <v-text-field v-model.number="proxyModel.value.iah" label="IAH" variant="outlined" rounded="lg"
-                          inputmode="decimal" type="number" step="0.1" />
-                      </v-col>
-                    </v-row>
-
-                    <div v-if="!isPristine" class="d-flex justify-end">
-                      <v-btn variant="text" rounded="lg" size="small" @click="cancelClinical(cancel)" class="text-none">
-                        Annuler
-                      </v-btn>
-                      <v-btn color="primary" rounded="lg" size="small" :loading="savingClinical"
-                        @click="handleSaveClinical(proxyModel, confirmSave)" flat>
-                        Enregistrer
-                      </v-btn>
-                    </div>
-                  </v-form>
-                </template>
-              </v-confirm-edit>
+              <v-row>
+                <v-col cols="12" md="6">
+                  <div class="field-label">Poids</div>
+                  <div class="field-value">{{ currentUser.weight != null ? `${currentUser.weight} kg` : EMPTY }}</div>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <div class="field-label">Taille</div>
+                  <div class="field-value">{{ currentUser.height != null ? `${currentUser.height} m` : EMPTY }}</div>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <div class="field-label">IMC</div>
+                  <div class="field-value">{{ bmiDisplay != null ? bmiDisplay : EMPTY }}</div>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <div class="field-label">IAH</div>
+                  <div class="field-value">{{ currentUser.iah != null ? currentUser.iah : EMPTY }}</div>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <div class="field-label">Latence d'endormissement</div>
+                  <div class="field-value">{{ SLEEP_LATENCY_LABELS[currentUser.sleepLatency] || EMPTY }}</div>
+                </v-col>
+              </v-row>
+              <div class="d-flex justify-start mt-2">
+                <v-btn variant="text" rounded="lg" size="small" class="text-none" :prepend-icon="mdiHistory"
+                  @click="openHistory('clinical')">
+                  Historique
+                </v-btn>
+              </div>
             </v-expansion-panel-text>
           </v-expansion-panel>
 

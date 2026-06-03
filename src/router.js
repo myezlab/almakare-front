@@ -4,6 +4,12 @@ import { createRouter, createWebHistory } from 'vue-router'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   scrollBehavior(to, from, savedPosition) {
+    // Same route, only the query changed (e.g. opening an expansion panel
+    // writes its open/closed state to the URL) — keep the current scroll
+    // position instead of jumping back to the top.
+    if (to.path === from.path && !to.hash) {
+      return false
+    }
     if (to.hash) {
       return new Promise((resolve) => {
         setTimeout(() => {

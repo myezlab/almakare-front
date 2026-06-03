@@ -11,9 +11,30 @@
 
 export const PATIENT_FIELDS = [
   {
+    key: 'firstName',
+    type: 'text',
+    label: 'Prénom',
+    group: 'Données générales',
+    cols: 12,
+    md: 6,
+    rules: [(v) => !!v || 'Ce champ est requis'],
+    complete: (item) => !!item.firstName
+  },
+  {
+    key: 'lastName',
+    type: 'text',
+    label: 'Nom',
+    group: 'Données générales',
+    cols: 12,
+    md: 6,
+    rules: [(v) => !!v || 'Ce champ est requis'],
+    complete: (item) => !!item.lastName
+  },
+  {
     key: 'carteVitaleNir',
     type: 'text',
     label: 'Numéro de sécurité sociale',
+    group: 'Données générales',
     inputmode: 'numeric',
     hint: '15 chiffres sans espaces',
     persistentHint: true,
@@ -27,6 +48,7 @@ export const PATIENT_FIELDS = [
     key: 'carteVitaleIssueDate',
     type: 'text',
     label: "Date d'émission carte vitale",
+    group: 'Données générales',
     placeholder: 'JJ/MM/AAAA',
     cols: 12,
     md: 6,
@@ -40,6 +62,7 @@ export const PATIENT_FIELDS = [
     key: 'weight',
     type: 'text',
     label: 'Poids (kg)',
+    group: 'Données cliniques',
     number: true,
     inputmode: 'decimal',
     cols: 12,
@@ -51,6 +74,7 @@ export const PATIENT_FIELDS = [
     key: 'height',
     type: 'text',
     label: 'Taille (m)',
+    group: 'Données cliniques',
     number: true,
     inputmode: 'decimal',
     cols: 12,
@@ -62,6 +86,7 @@ export const PATIENT_FIELDS = [
     key: 'iah',
     type: 'text',
     label: 'IAH',
+    group: 'Données cliniques',
     number: true,
     inputmode: 'decimal',
     cols: 12,
@@ -70,9 +95,19 @@ export const PATIENT_FIELDS = [
     complete: (item) => item.iah != null
   },
   {
+    key: 'sleepLatency',
+    type: 'options',
+    label: "Votre vitesse d'endormissement",
+    group: 'Données cliniques',
+    options: [{ title: 'Rapide', value: 'rapide' }, { title: 'Lente', value: 'lente' }],
+    rules: [(v) => v != null || 'Veuillez répondre'],
+    complete: (item) => item.sleepLatency != null
+  },
+  {
     key: 'hasMedicalHistory',
     type: 'options',
     label: 'Avez-vous des antécédents médicaux ?',
+    group: 'Données générales',
     options: [{ title: 'Oui', value: true }, { title: 'Non', value: false }],
     rules: [(v) => v != null || 'Veuillez répondre'],
     complete: (item) => item.hasMedicalHistory != null
@@ -81,6 +116,7 @@ export const PATIENT_FIELDS = [
     key: 'medicalHistory',
     type: 'textarea',
     label: 'Précisez vos antécédents',
+    group: 'Données générales',
     parentKey: 'hasMedicalHistory',
     showIf: (m) => m.hasMedicalHistory === true,
     rules: [(v) => !!v || 'Veuillez préciser ou répondre Non']
@@ -89,6 +125,7 @@ export const PATIENT_FIELDS = [
     key: 'hasDietaryRestrictions',
     type: 'options',
     label: 'Suivez-vous un régime alimentaire ?',
+    group: 'Données générales',
     options: [{ title: 'Oui', value: true }, { title: 'Non', value: false }],
     rules: [(v) => v != null || 'Veuillez répondre'],
     complete: (item) => item.hasDietaryRestrictions != null
@@ -97,6 +134,7 @@ export const PATIENT_FIELDS = [
     key: 'dietaryRestrictions',
     type: 'textarea',
     label: 'Précisez votre régime',
+    group: 'Données générales',
     parentKey: 'hasDietaryRestrictions',
     showIf: (m) => m.hasDietaryRestrictions === true,
     rules: [(v) => !!v || 'Veuillez préciser votre régime']

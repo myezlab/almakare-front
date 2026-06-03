@@ -9,6 +9,7 @@ import QuestionnaireResultsDialog from "@/components/QuestionnaireResultsDialog.
 import RapportDialog from "@/components/RapportDialog.vue"
 import TestDialog from "@/components/TestDialog.vue"
 import { ISOToDDMMYYYY, ISOToHHmm, ISOToLongDateTime } from "@/composables/useDates"
+import { useProfileHistory } from "@/composables/useProfileHistory"
 import { useQuestionnaire } from "@/composables/useQuestionnaire"
 import { useUrlPanels } from "@/composables/useUrlPanels"
 import ACTIVITIES_DATA from "@/data/activities.json"
@@ -39,6 +40,7 @@ import { useDisplay } from "vuetify"
 const { mobile } = useDisplay()
 const selfStore = useSelfStore()
 const messagesStore = useMessagesStore()
+const { recordProfileChanges } = useProfileHistory()
 
 const openPanels = useUrlPanels("actPanels")
 
@@ -147,13 +149,20 @@ function requestedPatientFields(activity) {
     .filter((f) => f && f.complete)
 }
 
-// Every field requested for this activity, plus the conditional details of each
-// requested parent. The dialog shows them all (pre-filled with current values)
-// so a completed "Données patient" task can be reopened and edited.
+// Every field requested for this activity OR already filled by the patient,
+// plus the conditional details of each included parent. Showing already-filled
+// fields (even when this activity didn't request them) keeps existing data
+// visible and editable in the dialog.
 function patientDataFields(activity) {
+  const item = selfStore.item || {}
   const requestedKeySet = new Set(requestedPatientFields(activity).map((f) => f.key))
+  const includedKeys = new Set(
+    PATIENT_FIELDS.filter(
+      (f) => f.complete && (requestedKeySet.has(f.key) || f.complete(item))
+    ).map((f) => f.key)
+  )
   return PATIENT_FIELDS.filter(
-    (f) => requestedKeySet.has(f.key) || (f.parentKey && requestedKeySet.has(f.parentKey))
+    (f) => includedKeys.has(f.key) || (f.parentKey && includedKeys.has(f.parentKey))
   )
 }
 
@@ -167,7 +176,7 @@ function buildPreparationTasks(activity) {
   if (fields.length) {
     tasks.push({
       key: 'patientData',
-      title: 'Données patient',
+      title: 'Formulaire',
       icon: mdiCardAccountDetailsOutline,
       todo: 'Renseignez vos informations administratives et cliniques.',
       completed: fields.every((f) => f.complete(item)),
@@ -255,6 +264,19 @@ function showHeaderActions(activity) {
 }
 
 function confirmAttendance(activity) {
+  // Block confirmation until every requested preparation task is done.
+  const prep = prepByActivity.value[activity.id]
+  if (prep && !prep.allCompleted) {
+    // Open the panel so the remaining tasks are visible to the patient.
+    if (!openPanels.value.includes(activity.id)) {
+      openPanels.value = [...openPanels.value, activity.id]
+    }
+    messagesStore.add({
+      type: 'info',
+      text: 'Veuillez compléter toutes les informations demandées avant de confirmer votre rendez-vous.'
+    })
+    return
+  }
   confirmedIds.value = new Set([...confirmedIds.value, activity.id])
   messagesStore.add({ type: 'success', text: 'Présence confirmée' })
 }
@@ -377,7 +399,12 @@ function handlePatientDataSubmit(values) {
     if (typeof update.carteVitaleNir === 'string') {
       update.carteVitaleNir = update.carteVitaleNir.replace(/\D/g, '')
     }
+    // Snapshot before applying so the change is logged to the "Historique des
+    // modifications" of both Données générales and Données cliniques, just as
+    // editing from the Mon dossier tab does.
+    const beforeItem = { ...selfStore.item }
     Object.assign(selfStore.item, update)
+    recordProfileChanges(beforeItem)
     patientDialogOpen.value = false
     messagesStore.add({ type: 'success', text: 'Données patient mises à jour' })
   } catch {
@@ -679,7 +706,7 @@ function openRapport(activity) {
                     <span class="text-body-medium font-weight-bold">
                       {{ prepByActivity[activity.id].allCompleted
                         ? 'Tout est prêt pour votre rendez-vous'
-                        : 'À compléter avant votre rendez-vous' }}
+                        : 'À compléter avant de pouvoir confirmer votre rendez-vous' }}
                     </span>
                   </div>
                   <v-chip size="small" :color="prepByActivity[activity.id].allCompleted ? 'success' : 'primary'"
@@ -797,7 +824,7 @@ function openRapport(activity) {
     </v-dialog>
 
     <!-- Données patient form generator -->
-    <FormGeneratorDialog v-model="patientDialogOpen" title="Données patient"
+    <FormGeneratorDialog v-model="patientDialogOpen" title="Formulaire"
       subtitle="Complétez les informations demandées par votre médecin avant la consultation."
       :fields="patientDialogFields" :initial-values="patientDialogInitial" :loading="savingPatientData"
       @submit="handlePatientDataSubmit" />

@@ -93,7 +93,7 @@ export const TESTS = [
     answersKey: 'hamiltonAnswers',
     scoreKey: 'hamiltonScore',
     maxScore: 52,
-    showOptionValue: true,
+    showOptionValue: false,
     questions: [
       {
         text: 'Humeur dépressive',

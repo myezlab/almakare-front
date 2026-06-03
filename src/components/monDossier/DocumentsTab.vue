@@ -117,7 +117,7 @@ function openRapport(rapport) {
 <template>
   <v-row>
     <v-col cols="12">
-      <v-card class="card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
+      <v-card class="card-shadow mb-16" :class="{ 'rounded-15': !$vuetify.display.mobile }">
 
         <v-expansion-panels v-model="openPanels" flat multiple variant="accordion" class="card-shadow pa-2"
           :class="{ 'rounded-15': !$vuetify.display.mobile }">
@@ -137,8 +137,8 @@ function openRapport(rapport) {
                 <v-col v-for="doc in REQUIRED_DOCS" :key="doc.key" cols="12" sm="6" md="4">
                   <div class="doc-card"
                     :class="{ 'doc-card--uploaded': documents[doc.key], 'doc-card--missing': !documents[doc.key] }"
-                    role="button" tabindex="0" @click="openDocDialog(doc)"
-                    @keydown.enter.prevent="openDocDialog(doc)" @keydown.space.prevent="openDocDialog(doc)">
+                    role="button" tabindex="0" @click="openDocDialog(doc)" @keydown.enter.prevent="openDocDialog(doc)"
+                    @keydown.space.prevent="openDocDialog(doc)">
 
                     <!-- Status badge -->
                     <div class="doc-card-badge"
@@ -222,8 +222,8 @@ function openRapport(rapport) {
                 <v-col v-for="doc in ORDONNANCES_DOCS" :key="doc.key" cols="12" sm="6" md="4">
                   <div class="doc-card"
                     :class="{ 'doc-card--uploaded': documents[doc.key], 'doc-card--missing': !documents[doc.key] }"
-                    role="button" tabindex="0" @click="openDocDialog(doc)"
-                    @keydown.enter.prevent="openDocDialog(doc)" @keydown.space.prevent="openDocDialog(doc)">
+                    role="button" tabindex="0" @click="openDocDialog(doc)" @keydown.enter.prevent="openDocDialog(doc)"
+                    @keydown.space.prevent="openDocDialog(doc)">
 
                     <div class="doc-card-badge"
                       :class="documents[doc.key] ? 'doc-card-badge--ok' : 'doc-card-badge--todo'">
@@ -257,7 +257,7 @@ function openRapport(rapport) {
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <div class="text-body-small text-medium-emphasis mb-4">
-                Les comptes rendus rédigés par votre médecin après chaque rendez-vous.
+                Les rapports rédigés par votre médecin après chaque rendez-vous.
               </div>
 
               <div v-if="rapports.length" class="d-flex flex-column ga-2">

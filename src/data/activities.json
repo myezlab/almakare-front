@@ -136,7 +136,7 @@
     "endAt": "2026-06-10T09:30:00",
     "locationName": "Cabinet Dr Robert — 12 rue de Strasbourg, 44000 Nantes",
     "report": "",
-    "requestedFields": ["carteVitaleNir", "carteVitaleIssueDate", "weight", "height", "iah", "hasMedicalHistory", "hasDietaryRestrictions"],
+    "requestedFields": ["firstName", "lastName", "carteVitaleNir", "carteVitaleIssueDate", "weight", "height", "sleepLatency", "hasMedicalHistory", "hasDietaryRestrictions"],
     "requestedTests": ["epworth", "stopBang"],
     "requestedDocuments": ["priseEnCharge"]
   }
