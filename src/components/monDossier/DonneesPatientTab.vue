@@ -1,5 +1,6 @@
 <script setup>
 import DoctorCard from "@/components/DoctorCard.vue"
+import PrestataireCard from "@/components/PrestataireCard.vue"
 import { ISOToDDMMYYYY, ISOToShortenedDate } from "@/composables/useDates"
 
 import { diffSnapshots, formatNir, generalSnapshot, useProfileHistory } from "@/composables/useProfileHistory"
@@ -7,6 +8,7 @@ import { useRules } from "@/composables/useRules"
 import { useUrlPanels } from "@/composables/useUrlPanels"
 import ACTIVITIES_DATA from "@/data/activities.json"
 import { DOCTORS_SEED } from "@/data/doctors"
+import PRESTATAIRE from "@/data/prestataire.json"
 import gendersEnum from "@/enums/genders.json"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
@@ -630,7 +632,10 @@ function selectMedecin(doctor) {
               <span class="panel-title">Prestataire</span>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
-              <div class="d-flex flex-column align-center text-center pa-6 empty-state">
+              <template v-if="PRESTATAIRE">
+                <PrestataireCard :prestataire="PRESTATAIRE" />
+              </template>
+              <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
                 <div class="empty-state-icon mb-3">
                   <v-icon :icon="mdiTruckOutline" size="32" />
                 </div>

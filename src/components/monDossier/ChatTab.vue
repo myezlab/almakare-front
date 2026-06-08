@@ -1,6 +1,7 @@
 <script setup>
+import PrestataireDialog from "@/components/PrestataireDialog.vue"
 import { ISOToTimeOrDay } from "@/composables/useDates"
-import PARTENAIRE from "@/data/partenaire.json"
+import PRESTATAIRE from "@/data/prestataire.json"
 import { useChatStore } from "@/stores/chat"
 import { useSelfStore } from "@/stores/self"
 import { mdiAccountOutline, mdiSend } from "@mdi/js"
@@ -17,13 +18,16 @@ const chatStore = useChatStore()
 
 const currentUser = computed(() => selfStore.item || {})
 
-// The chat is with the patient's "partenaire santé": the home-care provider who
+// The chat is with the patient's "prestataire santé": the home-care provider who
 // makes sure the patient uses their breathing device (PPC) correctly.
-const partenaire = {
-  name: [PARTENAIRE.firstName, PARTENAIRE.lastName].filter(Boolean).join(' ').trim(),
-  subtitle: [PARTENAIRE.company, PARTENAIRE.role].filter(Boolean).join(' · '),
-  avatarUrl: PARTENAIRE.avatarUrl,
+const prestataire = {
+  name: [PRESTATAIRE.firstName, PRESTATAIRE.lastName].filter(Boolean).join(' ').trim(),
+  subtitle: [PRESTATAIRE.company, PRESTATAIRE.role].filter(Boolean).join(' · '),
+  avatarUrl: PRESTATAIRE.avatarUrl,
 }
+
+// Opens the prestataire details dialog when the chat header is tapped.
+const prestataireDialogOpen = ref(false)
 
 const patientInitials = computed(() => {
   const u = currentUser.value || {}
@@ -59,16 +63,19 @@ onMounted(() => {
     :class="fullscreen ? 'chat-card--fullscreen' : 'chat-card--boxed card-shadow rounded-15'">
 
     <!-- =================== HEADER =================== -->
-    <div class="chat-header d-flex align-center ga-3 pa-3">
+    <div class="chat-header d-flex align-center ga-3 pa-3 cursor-pointer" role="button" tabindex="0"
+      @click="prestataireDialogOpen = true" @keydown.enter="prestataireDialogOpen = true">
       <v-avatar size="44">
-        <v-img :src="partenaire.avatarUrl" :alt="partenaire.name" cover />
+        <v-img :src="prestataire.avatarUrl" :alt="prestataire.name" cover />
       </v-avatar>
       <div class="min-w-0">
-        <div class="text-title-small font-weight-bold text-truncate">{{ partenaire.name }}</div>
-        <div class="text-body-small text-medium-emphasis text-truncate">{{ partenaire.subtitle }}</div>
+        <div class="text-title-small font-weight-bold text-truncate">{{ prestataire.name }}</div>
+        <div class="text-body-small text-medium-emphasis text-truncate">{{ prestataire.subtitle }}</div>
       </div>
     </div>
     <v-divider />
+
+    <PrestataireDialog v-model="prestataireDialogOpen" :prestataire="PRESTATAIRE" :name="prestataire.name" />
 
     <!-- =================== MESSAGES =================== -->
     <div class="chat-messages flex-grow-1 pa-4">

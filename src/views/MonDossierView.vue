@@ -43,7 +43,7 @@ const medecinTraitantLabel = computed(() => {
 const medecinDialogOpen = ref(false)
 
 const TABS = [
-  { value: 'donnees-patient', label: 'Données patient', icon: mdiAccountOutline },
+  { value: 'donnees-patient', label: 'Mes données', icon: mdiAccountOutline },
   { value: 'activites', label: 'Activités', icon: mdiCalendarCheckOutline },
   { value: 'traitements', label: 'Traitements', icon: mdiPill },
   { value: 'documents', label: 'Documents', icon: mdiFileMultipleOutline },

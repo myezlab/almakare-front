@@ -406,7 +406,7 @@ function handlePatientDataSubmit(values) {
     Object.assign(selfStore.item, update)
     recordProfileChanges(beforeItem)
     patientDialogOpen.value = false
-    messagesStore.add({ type: 'success', text: 'Données patient mises à jour' })
+    messagesStore.add({ type: 'success', text: 'Mes données mises à jour' })
   } catch {
     messagesStore.add({ type: 'error', text: 'Erreur lors de la mise à jour' })
   } finally {
