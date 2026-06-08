@@ -14,6 +14,7 @@
 // refused.
 import {
   mdiCameraFlipOutline,
+  mdiCameraPlusOutline,
   mdiCheck,
   mdiClose,
   mdiImageBrokenVariant,
@@ -42,6 +43,11 @@ const facingMode = ref("environment")
 const capturedUrl = ref("")
 let capturedBlob = null
 
+// A document can span several pages (recto/verso, multi-page scans). Each
+// confirmed page is kept here as { blob, url } until the patient validates the
+// whole set, at which point one File per page is emitted together.
+const pages = ref([])
+
 const guideText = computed(
   () =>
     props.guide ||
@@ -53,8 +59,12 @@ const guideText = computed(
 watch(
   () => props.modelValue,
   (open) => {
-    if (open) start()
-    else stop()
+    if (open) {
+      resetAll()
+      start()
+    } else {
+      stop()
+    }
   },
 )
 
@@ -139,13 +149,35 @@ function retake() {
   state.value = "streaming"
 }
 
-function confirm() {
+// Keep the still under review and go back to the camera to shoot another page.
+function addPage() {
+  commitCurrent()
+  state.value = "streaming"
+}
+
+// Move the still under review into the confirmed pages list.
+function commitCurrent() {
   if (!capturedBlob) return
+  pages.value.push({ blob: capturedBlob, url: capturedUrl.value })
+  // Ownership of the object URL moves to the page entry — don't revoke it here.
+  capturedBlob = null
+  capturedUrl.value = ""
+}
+
+function confirm() {
+  commitCurrent()
+  if (!pages.value.length) return
   const base = slug(props.title) || "document"
-  const file = new File([capturedBlob], `${base}-${Date.now()}.jpg`, {
-    type: "image/jpeg",
-  })
-  emit("capture", file)
+  const multi = pages.value.length > 1
+  const files = pages.value.map(
+    (page, i) =>
+      new File(
+        [page.blob],
+        multi ? `${base}-${Date.now()}-${i + 1}.jpg` : `${base}-${Date.now()}.jpg`,
+        { type: "image/jpeg" },
+      ),
+  )
+  emit("capture", files)
   close()
 }
 
@@ -162,7 +194,7 @@ function fallback() {
 }
 
 function close() {
-  clearCapture()
+  resetAll()
   emit("update:modelValue", false)
 }
 
@@ -172,6 +204,13 @@ function clearCapture() {
     capturedUrl.value = ""
   }
   capturedBlob = null
+}
+
+// Drop the still under review AND every confirmed page (fresh capture session).
+function resetAll() {
+  clearCapture()
+  pages.value.forEach((page) => URL.revokeObjectURL(page.url))
+  pages.value = []
 }
 
 function slug(text) {
@@ -199,6 +238,11 @@ function slug(text) {
         <v-btn v-if="state === 'streaming'" :icon="mdiCameraFlipOutline" variant="text" color="white" size="large"
           aria-label="Changer de caméra" @click="flip" />
         <div v-else class="capture-top-spacer" />
+      </div>
+
+      <!-- Page counter (multi-page capture) -->
+      <div v-if="(state === 'streaming' || state === 'review') && pages.length" class="capture-pages-chip">
+        {{ pages.length }} page{{ pages.length > 1 ? 's' : '' }} ajoutée{{ pages.length > 1 ? 's' : '' }}
       </div>
 
       <!-- Guide frame -->
@@ -234,14 +278,29 @@ function slug(text) {
 
       <!-- Bottom controls -->
       <div class="capture-bottom">
-        <button v-if="state === 'streaming'" class="shutter" aria-label="Prendre la photo" @click="capture">
-          <span class="shutter-ring" />
-        </button>
+        <template v-if="state === 'streaming'">
+          <!-- Pages already captured — finish without shooting another -->
+          <v-btn v-if="pages.length" variant="flat" color="white" rounded="lg" size="large"
+            class="text-none capture-side-btn" :prepend-icon="mdiCheck" @click="confirm">
+            Valider ({{ pages.length }})
+          </v-btn>
+          <div v-else class="capture-side-btn" />
+
+          <button class="shutter" aria-label="Prendre la photo" @click="capture">
+            <span class="shutter-ring" />
+          </button>
+
+          <div class="capture-side-btn" />
+        </template>
 
         <template v-else-if="state === 'review'">
           <v-btn variant="text" color="white" rounded="lg" size="large" class="text-none" :prepend-icon="mdiRefresh"
             @click="retake">
             Reprendre
+          </v-btn>
+          <v-btn variant="outlined" color="white" rounded="lg" size="large" class="text-none"
+            :prepend-icon="mdiCameraPlusOutline" @click="addPage">
+            Page suivante
           </v-btn>
           <v-btn color="primary" variant="flat" rounded="lg" size="large" class="text-none" :prepend-icon="mdiCheck"
             @click="confirm">
@@ -298,6 +357,22 @@ function slug(text) {
 
 .capture-top-spacer {
   width: 48px;
+}
+
+/* ---- multi-page counter chip ---- */
+.capture-pages-chip {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 60px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-primary), 0.92);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* ---- guide frame ---- */
@@ -417,10 +492,27 @@ function slug(text) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
   padding: 16px 24px 24px;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
   z-index: 2;
+}
+
+/* Side slots keep the shutter centered while an action sits beside it. */
+.capture-side-btn {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.capture-side-btn:first-child {
+  justify-content: flex-start;
+}
+
+.capture-side-btn:last-child {
+  justify-content: flex-end;
 }
 
 .shutter {

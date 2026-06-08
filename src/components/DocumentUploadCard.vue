@@ -20,9 +20,11 @@ import {
   mdiCameraOutline,
   mdiCardAccountDetailsOutline,
   mdiCheckCircle,
+  mdiClose,
   mdiFilePdfBox,
   mdiFolderOpenOutline,
   mdiImageOutline,
+  mdiPlus,
   mdiReload,
   mdiTrashCanOutline,
   mdiUploadOutline,
@@ -60,18 +62,24 @@ const errorMessage = ref("")
 const isDragging = ref(false)
 const sheetOpen = ref(false)
 const captureOpen = ref(false)
+const uploadingCount = ref(0)
 
 // In-app camera is only offered when configured and the browser supports it.
 const supportsCamera =
   typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia
 const useInAppCamera = computed(() => !!props.captureFrame && supportsCamera)
 
-// Metadata currently shown (picked file, or the stored modelValue).
-const currentFile = ref(props.modelValue || null)
-// Live object URL for an image preview (only available within the session).
-const previewUrl = ref("")
-// Kept so "Réessayer" can re-run the same upload.
-let lastFile = null
+// A document can hold several pages (recto/verso, multi-page scans). Each page
+// is file metadata { name, size, type, uploadedAt } plus an optional in-session
+// image previewUrl (object URLs only exist while the app stays open).
+const pages = ref(normalizeIncoming(props.modelValue))
+const pageCount = computed(() => pages.value.length)
+
+// When true, the next pick ADDS pages to the current document ("Ajouter une
+// page") instead of replacing it.
+const pendingAppend = ref(false)
+// Kept so "Réessayer" can re-run the same batch.
+let lastBatch = null
 
 const cameraInput = ref(null)
 const galleryInput = ref(null)
@@ -81,34 +89,48 @@ const acceptList = computed(() =>
   props.accept.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean),
 )
 
-const isImage = computed(() => (currentFile.value?.type || "").startsWith("image/"))
-const isPdf = computed(() => currentFile.value?.type === "application/pdf")
+// Turn whatever the parent stored — a single file meta, or a multi-page meta
+// carrying a `pages` array — into our internal page list.
+function normalizeIncoming(val) {
+  if (!val) return []
+  if (Array.isArray(val)) return val.map((p) => ({ ...p }))
+  if (Array.isArray(val.pages)) return val.pages.map((p) => ({ ...p }))
+  return [{ ...val }]
+}
 
 // Keep internal state in sync if the parent clears or replaces the value.
+// Skip while we're mid-upload: that change is the one we just emitted, and
+// re-normalising it would drop the in-session previews we still hold.
 watch(
   () => props.modelValue,
   (val) => {
     if (!val) {
-      resetPreview()
-      currentFile.value = null
+      resetPreviews()
+      pages.value = []
       status.value = "empty"
-    } else if (val !== currentFile.value) {
-      currentFile.value = val
+    } else if (status.value !== "uploading") {
+      const incoming = normalizeIncoming(val)
+      if (incoming.length !== pages.value.length) {
+        resetPreviews()
+        pages.value = incoming
+      }
       status.value = "done"
     }
   },
 )
 
-onBeforeUnmount(resetPreview)
+onBeforeUnmount(resetPreviews)
 
-function resetPreview() {
-  if (previewUrl.value) {
-    URL.revokeObjectURL(previewUrl.value)
-    previewUrl.value = ""
-  }
+function resetPreviews() {
+  pages.value.forEach((p) => {
+    if (p.previewUrl) URL.revokeObjectURL(p.previewUrl)
+  })
 }
 
-function openPicker() {
+// append=true is only passed explicitly; click handlers pass the DOM event, so
+// guard with `=== true` to treat those as a replace.
+function openPicker(append = false) {
+  pendingAppend.value = append === true
   if (mobile.value) {
     sheetOpen.value = true
   } else {
@@ -129,10 +151,12 @@ function pick(which) {
   }, 150)
 }
 
-// Overlay produced a photo File — run it through the normal upload flow.
-function onCaptured(file) {
+// Overlay produced one or more page Files — run them through the upload flow.
+function onCaptured(files) {
   captureOpen.value = false
-  if (file) startUpload(file)
+  const list = Array.isArray(files) ? files : files ? [files] : []
+  if (list.length) startUpload(list, { append: pendingAppend.value })
+  pendingAppend.value = false
 }
 
 // Camera unavailable / permission refused — fall back to the OS camera input.
@@ -153,55 +177,89 @@ function validate(file) {
 }
 
 function onFileChange(event) {
-  const file = event.target.files?.[0]
+  const files = Array.from(event.target.files || [])
   event.target.value = "" // allow re-picking the same file
-  if (file) startUpload(file)
+  if (files.length) startUpload(files, { append: pendingAppend.value })
+  pendingAppend.value = false
 }
 
 function onDrop(event) {
   isDragging.value = false
-  const file = event.dataTransfer?.files?.[0]
-  if (file) startUpload(file)
+  const files = Array.from(event.dataTransfer?.files || [])
+  if (files.length) startUpload(files)
 }
 
-async function startUpload(file) {
-  const problem = validate(file)
-  if (problem) {
-    errorMessage.value = problem
-    status.value = "error"
-    emit("error", problem)
-    return
+async function startUpload(files, { append = false } = {}) {
+  const list = Array.isArray(files) ? files : [files]
+  if (!list.length) return
+
+  for (const file of list) {
+    const problem = validate(file)
+    if (problem) {
+      errorMessage.value = problem
+      status.value = "error"
+      emit("error", problem)
+      return
+    }
   }
 
-  lastFile = file
+  lastBatch = { files: list, append }
   errorMessage.value = ""
   progress.value = 0
+  uploadingCount.value = list.length
   status.value = "uploading"
 
-  resetPreview()
-  if (file.type.startsWith("image/")) previewUrl.value = URL.createObjectURL(file)
-
-  const meta = {
+  const newPages = list.map((file) => ({
     name: file.name,
     size: file.size,
     type: file.type,
     uploadedAt: new Date().toISOString(),
-  }
+    previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : "",
+  }))
 
   try {
     if (props.uploader) {
-      await props.uploader(file, { onProgress: (p) => (progress.value = Math.round(p)) })
+      for (const file of list) {
+        await props.uploader(file, { onProgress: (p) => (progress.value = Math.round(p)) })
+      }
     } else {
       await simulateUpload((p) => (progress.value = p))
     }
-    currentFile.value = meta
+    if (append) {
+      pages.value = [...pages.value, ...newPages]
+    } else {
+      resetPreviews()
+      pages.value = newPages
+    }
     status.value = "done"
-    emit("update:modelValue", meta)
-    emit("uploaded", meta)
+    emitModel()
   } catch (err) {
+    newPages.forEach((p) => {
+      if (p.previewUrl) URL.revokeObjectURL(p.previewUrl)
+    })
     errorMessage.value = err?.message || "L'envoi a échoué. Vérifiez votre connexion et réessayez."
     status.value = "error"
     emit("error", errorMessage.value)
+  }
+}
+
+// Emit a single file meta for a one-page document (unchanged contract), or a
+// multi-page meta carrying every page under `pages` for several pages.
+function emitModel() {
+  const metas = pages.value.map(({ previewUrl, ...meta }) => meta)
+  const value =
+    metas.length === 0 ? null : metas.length === 1 ? metas[0] : buildMultiMeta(metas)
+  emit("update:modelValue", value)
+  emit("uploaded", value)
+}
+
+function buildMultiMeta(metas) {
+  return {
+    name: `${props.title} — ${metas.length} pages`,
+    size: metas.reduce((sum, m) => sum + (m.size || 0), 0),
+    type: metas[0].type,
+    uploadedAt: metas[metas.length - 1].uploadedAt,
+    pages: metas,
   }
 }
 
@@ -221,7 +279,7 @@ function simulateUpload(onProgress) {
 }
 
 function retry() {
-  if (lastFile) startUpload(lastFile)
+  if (lastBatch) startUpload(lastBatch.files, { append: lastBatch.append })
   else {
     status.value = "empty"
     openPicker()
@@ -229,13 +287,25 @@ function retry() {
 }
 
 function remove() {
-  resetPreview()
-  currentFile.value = null
-  lastFile = null
+  resetPreviews()
+  pages.value = []
+  lastBatch = null
   status.value = "empty"
   progress.value = 0
   emit("update:modelValue", null)
   emit("removed")
+}
+
+// Drop a single page; removing the last one clears the whole document.
+function removePage(index) {
+  const page = pages.value[index]
+  if (page?.previewUrl) URL.revokeObjectURL(page.previewUrl)
+  pages.value.splice(index, 1)
+  if (!pages.value.length) {
+    remove()
+    return
+  }
+  emitModel()
 }
 
 function formatSize(bytes) {
@@ -264,8 +334,8 @@ function formatSize(bytes) {
       <!-- Hidden inputs: camera / gallery / browse -->
       <input ref="cameraInput" type="file" accept="image/*" capture="environment" class="d-none"
         @change="onFileChange" />
-      <input ref="galleryInput" type="file" accept="image/*" class="d-none" @change="onFileChange" />
-      <input ref="browseInput" type="file" :accept="accept" class="d-none" @change="onFileChange" />
+      <input ref="galleryInput" type="file" accept="image/*" multiple class="d-none" @change="onFileChange" />
+      <input ref="browseInput" type="file" :accept="accept" multiple class="d-none" @change="onFileChange" />
 
       <!-- ================= EMPTY ================= -->
       <template v-if="status === 'empty'">
@@ -294,12 +364,13 @@ function formatSize(bytes) {
       <template v-else-if="status === 'uploading'">
         <div class="file-row d-flex align-center ga-3 pa-3">
           <div class="file-thumb file-thumb--busy" aria-hidden="true">
-            <v-icon :icon="(currentFile?.type || '').startsWith('image/') ? mdiImageOutline : mdiFilePdfBox"
-              size="24" />
+            <v-icon :icon="mdiUploadOutline" size="24" />
           </div>
           <div class="flex-grow-1 min-w-0">
-            <div class="text-body-medium font-weight-medium text-truncate">{{ currentFile?.name }}</div>
-            <div class="text-body-small text-medium-emphasis">Envoi en cours… {{ progress }}%</div>
+            <div class="text-body-medium font-weight-medium text-truncate">
+              Envoi {{ uploadingCount > 1 ? `de ${uploadingCount} fichiers` : 'en cours' }}…
+            </div>
+            <div class="text-body-small text-medium-emphasis">{{ progress }}%</div>
           </div>
         </div>
         <v-progress-linear :model-value="progress" color="primary" height="10" rounded class="mt-3"
@@ -308,30 +379,47 @@ function formatSize(bytes) {
 
       <!-- ================= DONE ================= -->
       <template v-else-if="status === 'done'">
-        <!-- Large image preview -->
-        <div v-if="isImage && previewUrl" class="preview mb-3">
-          <img :src="previewUrl" :alt="`Aperçu de ${currentFile?.name}`" class="preview-img" />
-          <div class="preview-badge" aria-hidden="true">
-            <v-icon :icon="mdiCheckCircle" size="20" />
-          </div>
+        <div v-if="pageCount > 1" class="text-body-small font-weight-medium text-medium-emphasis mb-2">
+          {{ pageCount }} pages
         </div>
 
-        <div class="file-row file-row--done d-flex align-center ga-3 pa-3">
-          <div class="file-thumb file-thumb--done" aria-hidden="true">
-            <v-icon :icon="isPdf ? mdiFilePdfBox : mdiImageOutline" size="24" />
-          </div>
-          <div class="flex-grow-1 min-w-0">
-            <div class="text-body-medium font-weight-medium text-truncate">{{ currentFile?.name }}</div>
-            <div class="text-body-small d-flex align-center ga-1" style="color: rgb(var(--v-theme-success))">
-              <v-icon :icon="mdiCheckCircle" size="15" aria-hidden="true" />
-              <span>Ajouté · {{ formatSize(currentFile?.size) }}</span>
+        <!-- One block per page -->
+        <div class="d-flex flex-column ga-3">
+          <div v-for="(page, i) in pages" :key="i">
+            <!-- Image page: large preview with a remove button -->
+            <div v-if="(page.type || '').startsWith('image/') && page.previewUrl" class="preview">
+              <img :src="page.previewUrl" :alt="`Aperçu page ${i + 1}`" class="preview-img" />
+              <div v-if="pageCount > 1" class="preview-page-badge" aria-hidden="true">Page {{ i + 1 }}</div>
+              <v-btn :icon="mdiClose" size="small" variant="flat" class="preview-remove"
+                :aria-label="`Retirer la page ${i + 1}`" @click="removePage(i)" />
+            </div>
+
+            <!-- PDF / preview-less page: compact row -->
+            <div v-else class="file-row file-row--done d-flex align-center ga-3 pa-3">
+              <div class="file-thumb file-thumb--done" aria-hidden="true">
+                <v-icon :icon="page.type === 'application/pdf' ? mdiFilePdfBox : mdiImageOutline" size="24" />
+              </div>
+              <div class="flex-grow-1 min-w-0">
+                <div class="text-body-medium font-weight-medium text-truncate">{{ page.name }}</div>
+                <div class="text-body-small d-flex align-center ga-1" style="color: rgb(var(--v-theme-success))">
+                  <v-icon :icon="mdiCheckCircle" size="15" aria-hidden="true" />
+                  <span>Ajouté · {{ formatSize(page.size) }}</span>
+                </div>
+              </div>
+              <v-btn :icon="mdiClose" variant="text" size="small" density="comfortable"
+                :aria-label="`Retirer la page ${i + 1}`" @click="removePage(i)" />
             </div>
           </div>
         </div>
 
-        <div class="d-flex ga-2 mt-3">
-          <v-btn variant="tonal" color="primary" rounded="lg" size="large" class="text-none flex-grow-1"
-            :prepend-icon="mdiUploadOutline" @click="openPicker">
+        <v-btn variant="tonal" color="primary" rounded="lg" size="large" block class="text-none mt-3"
+          :prepend-icon="mdiPlus" @click="openPicker(true)">
+          Ajouter une page
+        </v-btn>
+
+        <div class="d-flex ga-2 mt-2">
+          <v-btn variant="text" color="primary" rounded="lg" size="large" class="text-none flex-grow-1"
+            :prepend-icon="mdiUploadOutline" @click="openPicker(false)">
             Remplacer
           </v-btn>
           <v-btn variant="text" color="error" rounded="lg" size="large" class="text-none"
@@ -370,7 +458,9 @@ function formatSize(bytes) {
     <!-- ================= MOBILE SOURCE PICKER ================= -->
     <v-bottom-sheet v-model="sheetOpen">
       <v-card class="source-sheet">
-        <v-card-title class="text-title-medium font-weight-bold pa-4 pb-2 mt-2">Ajouter un document</v-card-title>
+        <v-card-title class="text-title-medium font-weight-bold pa-4 pb-2 mt-2">
+          {{ pendingAppend ? 'Ajouter une page' : 'Ajouter un document' }}
+        </v-card-title>
         <v-list>
           <v-list-item class="source-item py-4" :prepend-icon="mdiCameraOutline" title="Prendre une photo"
             @click="pick('camera')" />
@@ -515,6 +605,26 @@ function formatSize(bytes) {
   background: rgb(var(--v-theme-success));
   color: #fff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.preview-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+}
+
+.preview-page-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
 /* ---- mobile source sheet ---- */

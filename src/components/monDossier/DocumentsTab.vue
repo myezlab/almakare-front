@@ -32,6 +32,15 @@ const documents = computed(() => selfStore.item.documents || {})
 
 const otherFiles = computed(() => documents.value.other || [])
 
+// Synthetic document definition so "Autres documents" reuses the shared
+// DocumentDialog (camera / gallery / browse) exactly like the other documents.
+const OTHER_DOC = {
+  title: 'Autre document',
+  subtitle: 'Document complémentaire',
+  icon: mdiFolderOutline,
+  capture: { shape: 'page', guide: 'Cadrez votre document dans le cadre' },
+}
+
 // Every document card opens the shared DocumentDialog (same interface as the
 // requested documents in ActivitesTab), keeping the whole app consistent.
 const docDialogOpen = ref(false)
@@ -69,22 +78,32 @@ function handleDocumentRemove() {
   messagesStore.add({ type: 'success', text: 'Document supprimé' })
 }
 
-function handleOtherUpload(event) {
-  const files = Array.from(event.target.files || [])
-  if (!files.length) return
-  const list = [...(selfStore.item.documents?.other || [])]
-  for (const file of files) {
+const otherDialogOpen = ref(false)
+const savingOther = ref(false)
+
+function openOtherDialog() {
+  otherDialogOpen.value = true
+}
+
+// The shared DocumentUploadCard returns one file's metadata { name, size,
+// type, uploadedAt } — append it to the "other" list as a new entry.
+function handleOtherSubmit(file) {
+  savingOther.value = true
+  try {
+    const list = [...(selfStore.item.documents?.other || [])]
     list.push({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: `${file.uploadedAt}-${list.length}`,
       name: file.name,
       size: file.size,
       type: file.type,
-      uploadedAt: new Date().toISOString(),
+      uploadedAt: file.uploadedAt,
     })
+    selfStore.item.documents = { ...selfStore.item.documents, other: list }
+    otherDialogOpen.value = false
+    messagesStore.add({ type: 'success', text: 'Document enregistré' })
+  } finally {
+    savingOther.value = false
   }
-  selfStore.item.documents = { ...selfStore.item.documents, other: list }
-  messagesStore.add({ type: 'success', text: 'Document(s) enregistré(s)' })
-  event.target.value = ''
 }
 
 function removeOther(id) {
@@ -184,11 +203,9 @@ function openRapport(rapport) {
                   </div>
                 </div>
                 <v-btn color="primary" variant="tonal" rounded="lg" size="small" class="text-none"
-                  :prepend-icon="mdiFileDocumentPlusOutline" @click="$refs.otherInput.click()">
+                  :prepend-icon="mdiFileDocumentPlusOutline" @click="openOtherDialog">
                   Ajouter
                 </v-btn>
-                <input ref="otherInput" type="file" multiple accept="image/*,application/pdf" style="display: none"
-                  @change="handleOtherUpload" />
               </div>
 
               <div v-if="otherFiles.length" class="d-flex flex-column ga-2">
@@ -293,6 +310,10 @@ function openRapport(rapport) {
 
     <DocumentDialog v-model="docDialogOpen" :document="activeDoc" :existing="activeDocFile" :loading="savingDoc"
       @submit="handleDocumentSubmit" @remove="handleDocumentRemove" />
+
+    <!-- Same upload experience for free-form "Autres documents" -->
+    <DocumentDialog v-model="otherDialogOpen" :document="OTHER_DOC" :existing="null" :loading="savingOther"
+      @submit="handleOtherSubmit" />
 
     <!-- Rapport preview / download dialog -->
     <RapportDialog v-model="rapportDialogOpen" :rapport="activeRapport" />
