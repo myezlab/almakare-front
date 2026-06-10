@@ -104,7 +104,7 @@ const fullName = computed(() => {
     <ChatTab v-if="selfStore.item.id && isMobileChat" fullscreen />
 
     <v-row v-else-if="selfStore.item.id" justify="center" class="mt-8 pb-10">
-      <v-col :cols="$vuetify.display.mobile ? 12 : 10">
+      <v-col :cols="$vuetify.display.mobile ? 12 : 10" style="max-width: 900px">
 
         <!-- =================== HEADER =================== -->
         <v-row class="mb-2" align="center"
@@ -189,7 +189,7 @@ const fullName = computed(() => {
       </v-col>
     </v-row>
     <v-row v-else justify="center" class="mb-16 pb-10 pt-6">
-      <v-col :cols="$vuetify.display.mobile ? 12 : 10">
+      <v-col :cols="$vuetify.display.mobile ? 12 : 10" style="max-width: 900px">
         <!--  completion skeleton -->
         <v-card class="mb-4 card-shadow pa-4 rounded-15" :class="{ 'mx-6': $vuetify.display.xs }">
           <v-skeleton-loader type="heading" class="mb-2" />

@@ -34,7 +34,7 @@ const epworthScoreLabel = computed(() => {
 <template>
   <div>
     <v-row v-if="selfStore.item.id" justify="center" class="mx-6 mb-16 pb-10">
-      <v-col :cols="$vuetify.display.mobile ? 12 : 10">
+      <v-col :cols="$vuetify.display.mobile ? 12 : 10" style="max-width: 900px">
 
         <div class="text-headline-medium font-weight-bold mt-6 mb-2">Tableau de bord</div>
 
@@ -182,7 +182,7 @@ const epworthScoreLabel = computed(() => {
       </v-col>
     </v-row>
     <v-row v-else justify="center" class="mt-8 mx-6 mb-16 pb-10">
-      <v-col :cols="$vuetify.display.mobile ? 12 : 10">
+      <v-col :cols="$vuetify.display.mobile ? 12 : 10" style="max-width: 900px">
 
         <!-- <v-skeleton-loader type="heading" class="mb-6" width="200" /> -->
 

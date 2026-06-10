@@ -5,6 +5,7 @@ import DocumentDialog from "@/components/DocumentDialog.vue"
 import FormGeneratorDialog from "@/components/FormGeneratorDialog.vue"
 import LocationCard from "@/components/LocationCard.vue"
 import ActeProtocolCard from "@/components/monDossier/ActeProtocolCard.vue"
+import SlotBookingDialog from "@/components/monDossier/SlotBookingDialog.vue"
 import QuestionnaireResultsDialog from "@/components/QuestionnaireResultsDialog.vue"
 import RapportDialog from "@/components/RapportDialog.vue"
 import TestDialog from "@/components/TestDialog.vue"
@@ -17,11 +18,13 @@ import { DOCTORS_SEED } from "@/data/doctors"
 import { DOCUMENTS_BY_KEY } from "@/data/documents"
 import { PATIENT_FIELDS, PATIENT_FIELDS_BY_KEY } from "@/data/patientFields"
 import { RAPPORTS_BY_ACTIVITY } from "@/data/rapports"
+import { SLEEP_ESTABLISHMENTS } from "@/data/sleepEstablishments"
 import { TESTS, TESTS_BY_KEY, evaluateTest } from "@/data/tests"
 import { useMessagesStore } from "@/stores/messages"
 import { useSelfStore } from "@/stores/self"
 import {
   mdiCalendarBlankOutline,
+  mdiCalendarClockOutline,
   mdiCancel,
   mdiCardAccountDetailsOutline,
   mdiCheck,
@@ -43,6 +46,11 @@ const messagesStore = useMessagesStore()
 const { recordProfileChanges } = useProfileHistory()
 
 const openPanels = useUrlPanels("actPanels")
+
+// Slot bookings the patient makes for an acte performed at an établissement du
+// sommeil (see requiresSlotSelection), keyed by activity id →
+// { establishmentId, establishmentName, locationName, date, time, startAt }.
+const slotBookings = ref({})
 
 // One live questionnaire per catalog test, sharing the exact logic and data of
 // the Questionnaires tab (src/data/tests.js + useQuestionnaire). The questions,
@@ -152,13 +160,15 @@ function requestedPatientFields(activity) {
 // Every field requested for this activity OR already filled by the patient,
 // plus the conditional details of each included parent. Showing already-filled
 // fields (even when this activity didn't request them) keeps existing data
-// visible and editable in the dialog.
+// visible and editable in the dialog. An activity can opt specific keys out via
+// `excludedFields` (e.g. identity fields a given pré-questionnaire must omit).
 function patientDataFields(activity) {
   const item = selfStore.item || {}
+  const excluded = new Set(activity?.excludedFields || [])
   const requestedKeySet = new Set(requestedPatientFields(activity).map((f) => f.key))
   const includedKeys = new Set(
     PATIENT_FIELDS.filter(
-      (f) => f.complete && (requestedKeySet.has(f.key) || f.complete(item))
+      (f) => !excluded.has(f.key) && f.complete && (requestedKeySet.has(f.key) || f.complete(item))
     ).map((f) => f.key)
   )
   return PATIENT_FIELDS.filter(
@@ -172,11 +182,23 @@ function patientDataFields(activity) {
 function buildPreparationTasks(activity) {
   const item = selfStore.item || {}
   const tasks = []
+  // When the acte is performed away from the cabinet (e.g. a sleep recording),
+  // the patient first picks the établissement + créneau themselves.
+  if (activity?.requiresSlotSelection) {
+    tasks.push({
+      key: 'slotSelection',
+      title: 'Sélectionner un créneau',
+      icon: mdiCalendarClockOutline,
+      todo: "Choisissez l'établissement du sommeil et un créneau pour votre examen.",
+      completed: !!slotBookings.value[activity.id],
+      action: () => openSlotDialog(activity)
+    })
+  }
   const fields = requestedPatientFields(activity)
   if (fields.length) {
     tasks.push({
       key: 'patientData',
-      title: 'Formulaire',
+      title: 'Pré-questionnaire',
       icon: mdiCardAccountDetailsOutline,
       todo: 'Renseignez vos informations administratives et cliniques.',
       completed: fields.every((f) => f.complete(item)),
@@ -306,14 +328,34 @@ async function doCancel() {
   }
 }
 
+// For an acte the patient books themselves (requiresSlotSelection), the lieu and
+// date come from their slot booking rather than the seeded activity — and the
+// Lieu / Date cards stay hidden until that booking exists.
+function bookingFor(activity) {
+  return slotBookings.value[activity.id] || null
+}
+function hasLocationAndDate(activity) {
+  return activity?.requiresSlotSelection ? !!bookingFor(activity) : true
+}
+function locationNameFor(activity) {
+  return bookingFor(activity)?.locationName || activity.locationName
+}
+function startAtFor(activity) {
+  return bookingFor(activity)?.startAt || activity.startAt
+}
+
 function getEventTimes(activity) {
-  const start = dayjs(activity.startAt)
-  return { start, end: activity.endAt ? dayjs(activity.endAt) : start.add(30, 'minute') }
+  const booking = bookingFor(activity)
+  const start = dayjs(startAtFor(activity))
+  const end = booking
+    ? start.add(12, 'hour')
+    : activity.endAt ? dayjs(activity.endAt) : start.add(30, 'minute')
+  return { start, end }
 }
 
 // Long French date/time shown in the open panel, e.g. "Mercredi 10 juin à 9h00".
 function fullDateTime(activity) {
-  return ISOToLongDateTime(activity.startAt)
+  return ISOToLongDateTime(startAtFor(activity))
 }
 
 function calendarTitle(activity) {
@@ -373,6 +415,29 @@ function downloadIcs(activity) {
   link.download = `${activity.title}.ics`
   link.click()
   URL.revokeObjectURL(url)
+}
+
+// =================== SLOT BOOKING (établissement + créneau) ===================
+const slotDialogOpen = ref(false)
+const slotDialogActivity = ref(null)
+const slotDialogBooking = computed(() =>
+  slotDialogActivity.value ? slotBookings.value[slotDialogActivity.value.id] || null : null
+)
+
+function openSlotDialog(activity) {
+  slotDialogActivity.value = activity
+  slotDialogOpen.value = true
+}
+
+function handleSlotConfirm(booking) {
+  const activity = slotDialogActivity.value
+  if (!activity) return
+  slotBookings.value = { ...slotBookings.value, [activity.id]: booking }
+  slotDialogOpen.value = false
+  messagesStore.add({
+    type: 'success',
+    text: `Créneau réservé le ${ISOToDDMMYYYY(booking.date)} à ${booking.time}`
+  })
 }
 
 // =================== DONNÉES PATIENT FORM GENERATOR ===================
@@ -594,7 +659,8 @@ function openRapport(activity) {
                   <v-chip v-if="isCancelled(activity)" color="error" size="x-small" variant="tonal" label>
                     Annulé
                   </v-chip>
-                  <v-chip v-else-if="confirmedIds.has(activity.id)" color="success" size="x-small" variant="tonal" label>
+                  <v-chip v-else-if="confirmedIds.has(activity.id)" color="success" size="x-small" variant="tonal"
+                    label>
                     Confirmé
                   </v-chip>
                   <v-chip v-else-if="isDone(activity)" color="primary" size="x-small" variant="tonal" label>
@@ -635,13 +701,17 @@ function openRapport(activity) {
                 <v-col v-if="getDoctor(activity)" cols="12">
                   <DoctorCard :doctor="getDoctor(activity)" :name="activity.doctor" />
                 </v-col>
-                <v-col cols="12" md="6">
-                  <LocationCard :location-name="activity.locationName" class="h-100" />
-                </v-col>
-                <v-col cols="12" md="6">
-                  <DateCard :start-at="activity.startAt" :upcoming="isUpcoming(activity)" class="h-100"
-                    @google="addToGoogle(activity)" @outlook="addToOutlook(activity)" @ical="downloadIcs(activity)" />
-                </v-col>
+                <!-- For an acte booked by the patient, Lieu / Date only appear
+                     once they have validated their créneau. -->
+                <template v-if="hasLocationAndDate(activity)">
+                  <v-col cols="12" md="6">
+                    <LocationCard :location-name="locationNameFor(activity)" class="h-100" />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <DateCard :start-at="startAtFor(activity)" :upcoming="isUpcoming(activity)" class="h-100"
+                      @google="addToGoogle(activity)" @outlook="addToOutlook(activity)" @ical="downloadIcs(activity)" />
+                  </v-col>
+                </template>
               </v-row>
 
               <!-- =================== COMPTE RENDU + RAPPORT (not shown while upcoming) ===================
@@ -768,7 +838,7 @@ function openRapport(activity) {
                    so the patient can still cancel after confirming. -->
               <!-- Once confirmed, only a discreet centered Annuler remains. -->
               <div v-if="confirmedIds.has(activity.id) && isUpcoming(activity) && !isCancelled(activity)"
-                class="d-flex justify-center">
+                class="d-flex justify-center mt-2">
                 <v-btn color="error" variant="text" rounded="lg" size="small" class="text-none"
                   @click="askCancel(activity)">
                   Annuler
@@ -823,8 +893,12 @@ function openRapport(activity) {
       </v-card>
     </v-dialog>
 
+    <!-- Slot booking (établissement du sommeil + créneau) -->
+    <SlotBookingDialog v-model="slotDialogOpen" :establishments="SLEEP_ESTABLISHMENTS" :booking="slotDialogBooking"
+      @confirm="handleSlotConfirm" />
+
     <!-- Données patient form generator -->
-    <FormGeneratorDialog v-model="patientDialogOpen" title="Formulaire"
+    <FormGeneratorDialog v-model="patientDialogOpen" title="Pré-questionnaire"
       subtitle="Complétez les informations demandées par votre médecin avant la consultation."
       :fields="patientDialogFields" :initial-values="patientDialogInitial" :loading="savingPatientData"
       @submit="handlePatientDataSubmit" />

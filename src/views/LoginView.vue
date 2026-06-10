@@ -9,6 +9,7 @@ import {
   mdiCheckCircleOutline,
   mdiEye,
   mdiEyeOff,
+  mdiPhone,
 } from "@mdi/js"
 import { computed, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
@@ -17,7 +18,7 @@ const route = useRoute()
 const router = useRouter()
 const messagesStore = useMessagesStore()
 const selfStore = useSelfStore()
-const { required, emailValidation, passwordValidation } = useRules()
+const { required, emailValidation, passwordValidation, phoneNumberValidation } = useRules()
 
 // sign-in | sign-up | reset-password | loading
 const status = ref(route.query.mode === "signup" ? "sign-up" : "sign-in")
@@ -38,9 +39,10 @@ const showSignUpConfirmPassword = ref(false)
 const signUpForm = ref(null)
 
 // Sign-up — patient identity & coverage
-const signUpFirstName = ref("")
-const signUpLastName = ref("")
-const signUpDob = ref(null)
+const signUpFirstName = ref("Jean")
+const signUpLastName = ref("Dupont")
+const signUpDob = ref('1990-01-01')
+const signUpPhone = ref("+33621212121")
 
 // Password reset
 const resetEmail = ref("")
@@ -84,6 +86,7 @@ async function handleSignUp() {
       lastName: signUpLastName.value,
       fullName: `${signUpFirstName.value} ${signUpLastName.value}`.trim(),
       dob: signUpDob.value ? new Date(signUpDob.value).toISOString() : null,
+      phoneNumber: signUpPhone.value,
     })
     redirectToApp()
   } catch (error) {
@@ -172,15 +175,19 @@ async function handlePasswordReset() {
         <div class="text-body-medium text-medium-emphasis mb-6">Rejoignez Almakare en créant votre compte</div>
 
         <v-form ref="signUpForm" @submit.prevent="handleSignUp">
-          <v-text-field v-model="signUpFirstName" label="Prénom" variant="outlined" rounded="lg"
-            density="comfortable" class="mb-2" :rules="[required]" />
+          <v-text-field v-model="signUpFirstName" label="Prénom" variant="outlined" rounded="lg" density="comfortable"
+            class="mb-2" :rules="[required]" />
 
-          <v-text-field v-model="signUpLastName" label="Nom" variant="outlined" rounded="lg"
-            density="comfortable" class="mb-2" :rules="[required]" />
+          <v-text-field v-model="signUpLastName" label="Nom" variant="outlined" rounded="lg" density="comfortable"
+            class="mb-2" :rules="[required]" />
 
           <v-date-input v-model="signUpDob" label="Date de naissance" variant="outlined" rounded="lg"
             density="comfortable" class="mb-2" input-format="dd/MM/yyyy" placeholder="jj/mm/aaaa"
             :prepend-inner-icon="mdiCalendar" prepend-icon="" :rules="[required]" />
+
+          <v-text-field v-model="signUpPhone" label="Téléphone" type="tel" variant="outlined" rounded="lg"
+            density="comfortable" class="mb-2" :prepend-inner-icon="mdiPhone"
+            :rules="[required, phoneNumberValidation]" />
 
           <v-text-field v-model="signUpEmail" label="Email" type="email" variant="outlined" rounded="lg"
             density="comfortable" class="mb-2" :rules="[required, emailValidation]" />

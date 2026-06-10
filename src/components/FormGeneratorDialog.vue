@@ -3,12 +3,13 @@
 //
 // Pass a `fields` array describing what to render and the component builds the
 // form, validates it, and emits the collected values on submit. Supported field
-// types: 'text', 'textarea', 'checkbox', 'options' (button group / radio).
+// types: 'text', 'textarea', 'checkbox', 'options' (button group / radio),
+// 'multiselect' (multi-choice chip select).
 //
 // Each field definition:
 //   {
 //     key:        String   // property name in the emitted values object
-//     type:       'text' | 'textarea' | 'checkbox' | 'options'
+//     type:       'text' | 'textarea' | 'checkbox' | 'options' | 'multiselect'
 //     label:      String
 //     cols:       Number   // grid columns on mobile     (default 12)
 //     md:         Number   // grid columns from md up     (default = cols)
@@ -49,6 +50,8 @@ function resetModel() {
       next[field.key] = false
     } else if (field.type === "options") {
       next[field.key] = null
+    } else if (field.type === "multiselect") {
+      next[field.key] = []
     } else {
       next[field.key] = ""
     }
@@ -156,6 +159,17 @@ async function submit() {
                     {{ opt.title }}
                   </v-btn>
                 </v-btn-toggle>
+              </div>
+
+              <!-- MULTISELECT (multi-choice chips) -->
+              <div v-else-if="field.type === 'multiselect'">
+                <div class="field-label mb-2">{{ field.label }}</div>
+                <v-chip-group v-model="model[field.key]" column multiple selected-class="text-primary">
+                  <v-chip v-for="opt in field.options" :key="String(opt.value)" :value="opt.value" filter
+                    variant="outlined" class="text-none">
+                    {{ opt.title }}
+                  </v-chip>
+                </v-chip-group>
               </div>
 
               </v-col>

@@ -61,7 +61,12 @@
       "Bash(curl -s \"https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv_js.wasm\")",
       "Bash(curl -s \"https://docs.opencv.org/4.9.0/opencv.js\")",
-      "Bash(node -e \"const i=require\\('@mdi/js'\\); ['mdiArrowDownThin','mdiArrowUpThin','mdiCloseCircle','mdiPlus','mdiPowerSleep','mdiMoonWaningCrescent'].forEach\\(n=>console.log\\(n, typeof i[n]==='string'?'OK':'MISSING'\\)\\)\")"
+      "Bash(node -e \"const i=require\\('@mdi/js'\\); ['mdiArrowDownThin','mdiArrowUpThin','mdiCloseCircle','mdiPlus','mdiPowerSleep','mdiMoonWaningCrescent'].forEach\\(n=>console.log\\(n, typeof i[n]==='string'?'OK':'MISSING'\\)\\)\")",
+      "WebFetch(domain:www.sommeil-mg.net)",
+      "WebFetch(domain:www.info-somnolence.fr)",
+      "Bash(pip install *)",
+      "Bash(python -c ' *)",
+      "Bash('C:\\\\Users\\\\felix\\\\AppData\\\\Local\\\\Python\\\\pythoncore-3.14-64\\\\python.exe' -c ' *)"
     ],
     "additionalDirectories": [
       "\\tmp"

@@ -66,3 +66,44 @@ export function getAvailability(daysAhead = 21) {
 
   return days
 }
+
+// Overnight créneaux for a sleep recording (e.g. polygraphie ventilatoire
+// nocturne): the patient is admitted in the evening and the recording runs
+// through the night, so each day offers only one or two long slots rather than
+// the short consultation slots above.
+const NIGHT_SLOTS = [
+  { time: '20:00', label: '20h00 → 07h00' },
+  { time: '21:30', label: '21h30 → 08h00' },
+]
+
+/**
+ * Returns upcoming bookable nights, each with 1–2 long overnight créneaux.
+ * Weekends are skipped; some nights are fully booked and omitted.
+ * @param {number} daysAhead Number of calendar days to look ahead
+ * @returns {Array<{ date: string, weekday: string, label: string, slots: Array<{ time: string, label: string, available: boolean }> }>}
+ */
+export function getSleepRecordingSlots(daysAhead = 21) {
+  const days = []
+  const now = dayjs()
+
+  for (let i = 1; i <= daysAhead; i++) {
+    const d = now.add(i, 'day')
+    const dow = d.day()
+    if (dow === 0 || dow === 6) continue
+    // Every 7th eligible night is fully booked and omitted.
+    if (i % 7 === 3) continue
+
+    // Alternate between one and two open beds for the night.
+    const count = i % 2 === 0 ? 2 : 1
+    const slots = NIGHT_SLOTS.slice(0, count).map((s) => ({ ...s, available: true }))
+
+    days.push({
+      date: d.format('YYYY-MM-DD'),
+      weekday: d.format('dddd'),
+      label: d.format('DD MMM'),
+      slots,
+    })
+  }
+
+  return days
+}

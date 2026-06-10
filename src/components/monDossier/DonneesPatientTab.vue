@@ -7,6 +7,7 @@ import { diffSnapshots, formatNir, generalSnapshot, useProfileHistory } from "@/
 import { useRules } from "@/composables/useRules"
 import { useUrlPanels } from "@/composables/useUrlPanels"
 import ACTIVITIES_DATA from "@/data/activities.json"
+import { clinicalDisplayRows } from "@/data/patientFields"
 import { DOCTORS_SEED } from "@/data/doctors"
 import PRESTATAIRE from "@/data/prestataire.json"
 import gendersEnum from "@/enums/genders.json"
@@ -17,7 +18,6 @@ import dayjs from "dayjs"
 import { computed, ref, watch } from "vue"
 
 const GENDER_LABELS = { male: 'Homme', female: 'Femme', other: 'Autre' }
-const SLEEP_LATENCY_LABELS = { rapide: 'Rapide', lente: 'Lente' }
 const EMPTY = '-'
 
 const { phoneNumberValidation } = useRules()
@@ -51,10 +51,12 @@ const bmiDisplay = computed(() => {
 
 const genderLabel = computed(() => GENDER_LABELS[currentUser.value?.gender] || '')
 
-const hasClinicalData = computed(() => {
-  const u = currentUser.value || {}
-  return u.weight != null || u.height != null || u.iah != null || u.sleepLatency != null
-})
+// Read-only rows mirroring the patient's persistent clinical fields (catalog
+// order); only answered fields are shown, and the panel only appears when at
+// least one has a value.
+const clinicalRows = computed(() =>
+  clinicalDisplayRows(currentUser.value || {}).filter((row) => row.value))
+const hasClinicalData = computed(() => clinicalRows.value.length > 0)
 
 const lastConsultationReport = computed(() => {
   const today = dayjs().startOf('day')
@@ -262,7 +264,10 @@ function selectMedecin(doctor) {
           <v-expansion-panel value="general">
             <v-expansion-panel-title>
               <div class="d-flex align-center flex-grow-1">
-                <span class="panel-title">Données générales</span>
+                <div class="d-flex flex-column">
+                  <span class="panel-title">Données générales</span>
+                  <span class="panel-subtitle">Informations administratives ou descriptives</span>
+                </div>
                 <v-spacer />
                 <v-btn v-if="showGeneralView" :icon="mdiPencil" color="primary" variant="text" size="small"
                   density="comfortable" class="mr-2" @click.stop="startEditGeneral" />
@@ -303,6 +308,18 @@ function selectMedecin(doctor) {
                   <v-col cols="12" md="6">
                     <div class="field-label">Adresse</div>
                     <div class="field-value">{{ fullAddress || EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Poids</div>
+                    <div class="field-value">{{ currentUser.weight != null ? `${currentUser.weight} kg` : EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Taille</div>
+                    <div class="field-value">{{ currentUser.height != null ? `${currentUser.height} m` : EMPTY }}</div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">IMC</div>
+                    <div class="field-value">{{ bmiDisplay != null ? bmiDisplay : EMPTY }}</div>
                   </v-col>
                   <v-col cols="12" md="6">
                     <div class="field-label">Régime alimentaire</div>
@@ -507,29 +524,16 @@ function selectMedecin(doctor) {
           <!-- Données Cliniques -->
           <v-expansion-panel v-if="hasClinicalData" value="clinical">
             <v-expansion-panel-title>
-              <span class="panel-title">Données cliniques</span>
+              <div class="d-flex flex-column">
+                <span class="panel-title">Données cliniques</span>
+                <span class="panel-subtitle">Informations médicales liées à l'état de santé et au sommeil</span>
+              </div>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <v-row>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Poids</div>
-                  <div class="field-value">{{ currentUser.weight != null ? `${currentUser.weight} kg` : EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Taille</div>
-                  <div class="field-value">{{ currentUser.height != null ? `${currentUser.height} m` : EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">IMC</div>
-                  <div class="field-value">{{ bmiDisplay != null ? bmiDisplay : EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">IAH</div>
-                  <div class="field-value">{{ currentUser.iah != null ? currentUser.iah : EMPTY }}</div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <div class="field-label">Latence d'endormissement</div>
-                  <div class="field-value">{{ SLEEP_LATENCY_LABELS[currentUser.sleepLatency] || EMPTY }}</div>
+                <v-col v-for="row in clinicalRows" :key="row.key" cols="12" md="6">
+                  <div class="field-label">{{ row.label }}</div>
+                  <div class="field-value whitespace-pre-line">{{ row.value || EMPTY }}</div>
                 </v-col>
               </v-row>
               <div class="d-flex justify-start mt-2">

@@ -59,18 +59,19 @@ function openResults(key) {
   activeKey.value = key
 }
 
-// Save the completed questionnaire, reveal the results dialog, then clear the
-// form so it can be filled again.
+// Save the completed questionnaire and clear the form, collapse all panels, then
+// briefly wait for the collapse animation before revealing the results dialog.
 function saveQuestionnaire(key) {
   const { instance } = byKey[key]
   instance.save()
   instance.reset()
-  openResults(key)
+  openPanels.value = []
+  setTimeout(() => openResults(key), 300)
 }
 </script>
 
 <template>
-  <v-row>
+  <v-row class="mb-16">
     <v-col cols="12">
       <v-card class="card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }">
         <v-expansion-panels v-model="openPanels" multiple variant="accordion" flat class="pa-2">
@@ -79,8 +80,8 @@ function saveQuestionnaire(key) {
             <v-expansion-panel-title>
               <div class="d-flex align-center ga-3 flex-grow-1">
                 <span class="panel-title">{{ test.title }}</span>
-                <v-chip v-if="instance.latest && !$vuetify.display.mobile" :color="instance.latestColor"
-                  variant="tonal" size="small" class="ml-2">
+                <v-chip v-if="instance.latest && !$vuetify.display.mobile" :color="instance.latestColor" variant="tonal"
+                  size="small" class="ml-2">
                   {{ instance.latestLabel }}
                 </v-chip>
               </div>
@@ -102,7 +103,7 @@ function saveQuestionnaire(key) {
                   <div class="d-flex flex-wrap ga-2" :class="{ 'mt-3': !question.caption }">
                     <v-btn v-for="option in optionsFor(test, question)" :key="option.value"
                       :color="instance.answers[i] === option.value ? 'primary' : undefined" variant="flat" rounded="lg"
-                      size="small" class="text-none"
+                      size="small" class="text-none answer-btn"
                       :class="{ 'border-light': instance.answers[i] !== option.value }"
                       @click="instance.select(i, option.value)">
                       {{ optionLabel(test, option) }}
@@ -149,5 +150,18 @@ function saveQuestionnaire(key) {
 <style scoped>
 .letter-spacing {
   letter-spacing: 0.08em;
+}
+
+/* Let long option labels wrap fully instead of being clipped to one line. */
+.answer-btn {
+  height: auto;
+  min-height: 32px;
+  max-width: 100%;
+}
+
+.answer-btn :deep(.v-btn__content) {
+  white-space: normal;
+  text-align: left;
+  padding-block: 6px;
 }
 </style>

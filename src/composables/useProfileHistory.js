@@ -8,11 +8,11 @@
 // (src/data/profileHistory.js) so old and new entries line up field for field.
 
 import { ISOToDDMMYYYY } from "@/composables/useDates"
+import { clinicalDisplayRows } from "@/data/patientFields"
 import { PROFILE_HISTORY_SEED } from "@/data/profileHistory"
 import { useSelfStore } from "@/stores/self"
 
 const GENDER_LABELS = { male: 'Homme', female: 'Femme', other: 'Autre' }
-const SLEEP_LATENCY_LABELS = { rapide: 'Rapide', lente: 'Lente' }
 
 // Format a 15-digit NIR into the spaced display form. Returns null when empty,
 // and the raw input untouched when it isn't a full 15-digit number.
@@ -45,12 +45,14 @@ export function generalSnapshot(u = {}) {
 
 // Labelled snapshot of the "Données cliniques" section. Labels match the seed
 // ('Poids (kg)', 'IAH', …) and the patient-field labels used in the form.
+// Poids/Taille stay hand-listed (they live in the Données générales panel but
+// are historised as clinical); the remaining persistent clinical fields — IAH,
+// latence and every pré-questionnaire field — come straight from the catalog.
 export function clinicalSnapshot(u = {}) {
   return [
     { label: 'Poids (kg)', value: u.weight != null ? String(u.weight) : '' },
     { label: 'Taille (m)', value: u.height != null ? String(u.height) : '' },
-    { label: 'IAH', value: u.iah != null ? String(u.iah) : '' },
-    { label: "Latence d'endormissement", value: SLEEP_LATENCY_LABELS[u.sleepLatency] || '' },
+    ...clinicalDisplayRows(u).map(({ label, value }) => ({ label, value })),
   ]
 }
 
