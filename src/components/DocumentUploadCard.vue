@@ -42,9 +42,11 @@ const props = defineProps({
   icon: { type: String, default: mdiCardAccountDetailsOutline },
   accept: { type: String, default: "image/jpeg,image/png,application/pdf" },
   maxSizeMb: { type: Number, default: 10 },
-  // Optional in-app camera config { shape: 'card' | 'page', guide: string }.
-  // When set (and getUserMedia is available) "Prendre une photo" opens the
-  // DocumentCaptureOverlay instead of leaving the app for the OS camera.
+  // Optional in-app camera config { shape: 'card' | 'page', guide: string,
+  // scan?: boolean }. When set (and getUserMedia is available) "Prendre une
+  // photo" opens the DocumentCaptureOverlay instead of leaving the app for the
+  // OS camera. Real-time OpenCV scanning is OFF by default (manual shutter); opt
+  // in per document with `scan: true` once the OpenCV path is sorted out.
   captureFrame: { type: Object, default: null },
   // Optional async uploader: (file, { onProgress, signal }) => any.
   // Resolve to persist; throw to surface the error state.
@@ -479,7 +481,8 @@ function formatSize(bytes) {
 
     <!-- ================= IN-APP CAMERA ================= -->
     <DocumentCaptureOverlay v-if="useInAppCamera" v-model="captureOpen" :title="title"
-      :frame="captureFrame.shape" :guide="captureFrame.guide" @capture="onCaptured" @error="onCaptureFallback" />
+      :frame="captureFrame.shape" :guide="captureFrame.guide" :scan="captureFrame.scan === true"
+      @capture="onCaptured" @error="onCaptureFallback" />
   </v-card>
 </template>
 

@@ -1,17 +1,18 @@
 <script setup>
-// In-app document camera.
+// In-app document camera with real-time scanning.
 //
 // Keeps the patient inside the app instead of bouncing them to the OS camera.
-// Opens the live camera stream (getUserMedia) behind a full-screen overlay with
-// a guide frame matched to the document being captured ('card' for ID-1 cards,
-// 'page' for A4 documents). The patient frames the document, taps the shutter,
-// reviews the still, then validates — at which point a JPEG `File` is emitted
-// and fed into DocumentUploadCard's normal upload flow.
+// Opens the live camera stream (getUserMedia) behind a full-screen overlay. When
+// `scan` is on, OpenCV.js (lazy-loaded) detects the document edges live, draws an
+// outline over the preview, and auto-captures once the page is held still for ~1s
+// — then perspective-corrects and enhances the result. The patient can still tap
+// the shutter manually. Either way they review the still and validate, at which
+// point a JPEG `File` per page is emitted into DocumentUploadCard's upload flow.
 //
-// Designed for elderly / non-technical patients: one big shutter, a clear guide
-// frame, plain-language hints, and a graceful fallback (the parent reopens the
-// native file picker) whenever the camera is unavailable or permission is
-// refused.
+// Designed for elderly / non-technical patients: hands-free auto-capture, a big
+// manual shutter, plain-language hints, and graceful fallbacks — to the static
+// guide frame if OpenCV can't load, and to the native file picker if the camera
+// is unavailable or permission is refused.
 import {
   mdiCameraFlipOutline,
   mdiCameraPlusOutline,
@@ -22,6 +23,8 @@ import {
 } from "@mdi/js"
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue"
 
+import { useDocumentScanner } from "@/composables/useDocumentScanner"
+
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   title: { type: String, default: "Document" },
@@ -29,12 +32,30 @@ const props = defineProps({
   frame: { type: String, default: "page" },
   // On-screen framing instruction.
   guide: { type: String, default: "" },
+  // Real-time OpenCV.js document detection + auto-capture + perspective
+  // correction. Degrades gracefully to the manual shutter when OpenCV can't
+  // load or no document is detected.
+  scan: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(["update:modelValue", "capture", "error"])
 
 const videoEl = ref(null)
+const overlayEl = ref(null)
 let stream = null
+
+// ---- Real-time scanner (OpenCV.js) -----------------------------------------
+const scanner = useDocumentScanner(() => videoEl.value, {
+  stableMs: 1000,
+  onAutoCapture: () => {
+    // Only auto-capture from the live preview, and only once per still.
+    if (state.value === "streaming" && !capturing) doCapture()
+  },
+})
+// Scanning UI is shown only once OpenCV is ready AND a document is in view.
+const scanActive = computed(() => props.scan && scanner.ready.value)
+const documentInView = computed(() => !!scanner.quad.value)
+let capturing = false
 
 // 'loading' | 'streaming' | 'review' | 'error'
 const state = ref("loading")
@@ -68,7 +89,69 @@ watch(
   },
 )
 
-onBeforeUnmount(stop)
+// Run the detection loop only while the live preview is on screen.
+watch(state, (s) => {
+  if (s === "streaming" && scanActive.value) scanner.start()
+  else scanner.stop()
+})
+
+// Redraw the detection overlay whenever the quad or stability progress changes.
+watch([scanner.quad, scanner.progress], drawOverlay)
+
+// Map the normalised detected quad onto the displayed (object-fit: cover) video
+// and stroke/fill it, tinting greener as the auto-capture countdown fills.
+function drawOverlay() {
+  const canvas = overlayEl.value
+  const video = videoEl.value
+  if (!canvas || !video) return
+  const ctx = canvas.getContext("2d")
+  const dpr = window.devicePixelRatio || 1
+  const cw = canvas.clientWidth
+  const ch = canvas.clientHeight
+  if (canvas.width !== cw * dpr || canvas.height !== ch * dpr) {
+    canvas.width = cw * dpr
+    canvas.height = ch * dpr
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx.clearRect(0, 0, cw, ch)
+
+  const quad = scanner.quad.value
+  if (!quad || !video.videoWidth) return
+
+  // object-fit: cover — the video is scaled up until it fills the container,
+  // overflow cropped equally on the two long sides.
+  const scale = Math.max(cw / video.videoWidth, ch / video.videoHeight)
+  const rw = video.videoWidth * scale
+  const rh = video.videoHeight * scale
+  const ox = (cw - rw) / 2
+  const oy = (ch - rh) / 2
+  const pts = quad.map((p) => ({ x: ox + p.x * rw, y: oy + p.y * rh }))
+
+  const progress = scanner.progress.value
+  const locked = progress >= 1
+
+  ctx.beginPath()
+  pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)))
+  ctx.closePath()
+  ctx.fillStyle = `rgba(34, 197, 94, ${0.1 + progress * 0.2})`
+  ctx.fill()
+  ctx.lineWidth = locked ? 4 : 3
+  ctx.strokeStyle = locked ? "#22c55e" : "rgba(255, 255, 255, 0.95)"
+  ctx.stroke()
+
+  // Corner handles for a tangible "locked-on" feel.
+  ctx.fillStyle = locked ? "#22c55e" : "#fff"
+  for (const p of pts) {
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, locked ? 7 : 5, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
+onBeforeUnmount(() => {
+  stop()
+  scanner.dispose()
+})
 
 async function start() {
   state.value = "loading"
@@ -97,12 +180,19 @@ async function start() {
       await videoEl.value.play().catch(() => {})
     }
     state.value = "streaming"
+    // Kick off scanning in the background. OpenCV downloads lazily here; until
+    // it's ready the static guide frame shows and the manual shutter works.
+    if (props.scan) {
+      const ok = await scanner.load()
+      if (ok && state.value === "streaming") scanner.start()
+    }
   } catch (err) {
     fail(err?.name || "camera-error")
   }
 }
 
 function stop() {
+  scanner.stop()
   if (stream) {
     stream.getTracks().forEach((track) => track.stop())
     stream = null
@@ -123,25 +213,48 @@ function fail(name) {
   state.value = "error"
 }
 
-function capture() {
+// Shutter handler / auto-capture entry point. Prefers the OpenCV pipeline
+// (perspective-corrected + enhanced) and falls back to a plain frame grab.
+async function doCapture() {
   const video = videoEl.value
-  if (!video || !video.videoWidth) return
+  if (!video || !video.videoWidth || capturing) return
+  capturing = true
+  scanner.stop() // freeze detection while we shoot
 
-  const canvas = document.createElement("canvas")
-  canvas.width = video.videoWidth
-  canvas.height = video.videoHeight
-  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height)
-
-  canvas.toBlob(
-    (blob) => {
-      if (!blob) return
+  try {
+    let blob
+    if (scanActive.value) {
+      ;({ blob } = await scanner.capture())
+    } else {
+      blob = await grabFrameBlob(video)
+    }
+    if (blob) {
       capturedBlob = blob
       capturedUrl.value = URL.createObjectURL(blob)
       state.value = "review"
-    },
-    "image/jpeg",
-    0.92,
-  )
+    }
+  } catch {
+    // Pipeline hiccup — fall back to the raw frame so the user isn't stuck.
+    const blob = await grabFrameBlob(video).catch(() => null)
+    if (blob) {
+      capturedBlob = blob
+      capturedUrl.value = URL.createObjectURL(blob)
+      state.value = "review"
+    }
+  } finally {
+    capturing = false
+  }
+}
+
+// Raw current frame → JPEG Blob (no OpenCV).
+function grabFrameBlob(video) {
+  return new Promise((resolve) => {
+    const canvas = document.createElement("canvas")
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.92)
+  })
 }
 
 function retake() {
@@ -228,6 +341,8 @@ function slug(text) {
       <!-- Live camera (kept mounted while streaming/loading) -->
       <video v-show="state === 'streaming' || state === 'loading'" ref="videoEl" class="capture-media" autoplay
         playsinline muted />
+      <!-- Real-time document-detection overlay (drawn over the live video) -->
+      <canvas v-show="state === 'streaming'" ref="overlayEl" class="capture-overlay-canvas" />
       <!-- Frozen still under review -->
       <img v-if="state === 'review'" :src="capturedUrl" class="capture-media" :alt="`Aperçu : ${title}`" />
 
@@ -245,8 +360,8 @@ function slug(text) {
         {{ pages.length }} page{{ pages.length > 1 ? 's' : '' }} ajoutée{{ pages.length > 1 ? 's' : '' }}
       </div>
 
-      <!-- Guide frame -->
-      <div v-if="state === 'streaming'" class="capture-guide-wrap">
+      <!-- Static guide frame — shown until OpenCV scanning takes over -->
+      <div v-if="state === 'streaming' && !scanActive" class="capture-guide-wrap">
         <div class="capture-guide" :class="`capture-guide--${frame}`">
           <span class="capture-corner capture-corner--tl" />
           <span class="capture-corner capture-corner--tr" />
@@ -254,6 +369,17 @@ function slug(text) {
           <span class="capture-corner capture-corner--br" />
         </div>
         <div class="capture-hint">{{ guideText }}</div>
+      </div>
+
+      <!-- Scanning status: searching / hold-still countdown ring -->
+      <div v-if="state === 'streaming' && scanActive" class="capture-scan-status">
+        <v-progress-circular v-if="documentInView" :model-value="scanner.progress.value * 100"
+          :color="scanner.progress.value >= 1 ? 'success' : 'white'" size="56" width="4">
+          <v-icon :icon="mdiCheck" color="white" size="22" />
+        </v-progress-circular>
+        <div class="capture-hint capture-hint--scan">
+          {{ documentInView ? "Maintenez stable…" : "Recherche du document…" }}
+        </div>
       </div>
 
       <!-- Loading -->
@@ -286,7 +412,7 @@ function slug(text) {
           </v-btn>
           <div v-else class="capture-side-btn" />
 
-          <button class="shutter" aria-label="Prendre la photo" @click="capture">
+          <button class="shutter" aria-label="Prendre la photo" @click="doCapture">
             <span class="shutter-ring" />
           </button>
 
@@ -330,6 +456,35 @@ function slug(text) {
   height: 100%;
   object-fit: cover;
   background: #000;
+}
+
+/* Detection overlay sits exactly over the video, never intercepts taps. */
+.capture-overlay-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ---- live-scan status (ring + hint) ---- */
+.capture-scan-status {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom) + 128px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.capture-hint--scan {
+  position: static;
+  transform: none;
 }
 
 /* ---- top bar ---- */

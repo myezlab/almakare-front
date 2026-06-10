@@ -49,7 +49,19 @@
       "Bash(iconv -f UTF-16 -t UTF-8 \"c:/Users/felix/APPS/almakare/src/data/activities.json\")",
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('src/data/activities.json','utf8'\\)\\); console.log\\('JSON OK'\\)\")",
       "Bash(node -e \"const f=require\\('./src/data/patientFields.js'\\)\")",
-      "Bash(node -e \"console.log\\('skip'\\)\")"
+      "Bash(node -e \"console.log\\('skip'\\)\")",
+      "Bash(node -e \"new Function\\(require\\('fs'\\).readFileSync\\('src/utils/opencv.js','utf8'\\).replace\\(/export /g,''\\)\\); new Function\\(require\\('fs'\\).readFileSync\\('src/utils/documentScanner.js','utf8'\\).replace\\(/export /g,''\\).replace\\(/import.*from.*/g,''\\)\\); new Function\\(require\\('fs'\\).readFileSync\\('src/composables/useDocumentScanner.js','utf8'\\).replace\\(/export /g,''\\).replace\\(/import.*from.*/g,''\\)\\); console.log\\('JS syntax OK'\\)\")",
+      "Bash(curl -sI https://docs.opencv.org/4.10.0/opencv.js)",
+      "Bash(echo \"=== exit $? ===\")",
+      "Bash(curl -s https://almakare.com/)",
+      "Bash(curl -sI https://almakare.web.app/)",
+      "WebSearch",
+      "WebFetch(domain:reseau-morphee.fr)",
+      "WebFetch(domain:www.reseau-morphee.fr)",
+      "Bash(curl -s \"https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv_js.wasm\")",
+      "Bash(curl -s \"https://docs.opencv.org/4.9.0/opencv.js\")",
+      "Bash(node -e \"const i=require\\('@mdi/js'\\); ['mdiArrowDownThin','mdiArrowUpThin','mdiCloseCircle','mdiPlus','mdiPowerSleep','mdiMoonWaningCrescent'].forEach\\(n=>console.log\\(n, typeof i[n]==='string'?'OK':'MISSING'\\)\\)\")"
     ],
     "additionalDirectories": [
       "\\tmp"

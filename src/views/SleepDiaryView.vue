@@ -1,12 +1,14 @@
 <script setup>
+import QualityRating from '@/components/QualityRating.vue'
+import SleepBandInput from '@/components/SleepBandInput.vue'
 import SleepDiaryStreak from '@/components/SleepDiaryStreak.vue'
 import { useMessagesStore } from '@/stores/messages'
 import { useSelfStore } from '@/stores/self'
+import { hourLabels as makeHourLabels, toPct } from '@/utils/sleepTimeline'
 import {
   mdiMoonWaningCrescent,
   mdiPencilOutline,
   mdiPlus, mdiTrashCanOutline,
-  mdiWhiteBalanceSunny,
 } from '@mdi/js'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -20,33 +22,14 @@ const route = useRoute()
 const router = useRouter()
 const { xs } = useDisplay()
 
-const QUALITY_OPTIONS = ['TB', 'B', 'Moy', 'M', 'TM']
 const QUALITY_COLORS = { TB: 'success', B: 'success', Moy: 'warning', M: 'error', TM: 'error' }
-const QUALITY_LABELS = { TB: 'Très bien', B: 'Bien', Moy: 'Moyen', M: 'Mauvais', TM: 'Très mauvais' }
 
 function qualityColor(q) {
   return QUALITY_COLORS[q] || 'grey'
 }
 
-// Timeline window: 20:00 → 16:00 next day (20 h span)
-const TL_START = 20
-const TL_SPAN = 20
-
-const hourLabels = computed(() => {
-  const labels = []
-  for (let i = 0;i <= TL_SPAN;i += 4) {
-    labels.push({ label: `${(TL_START + i) % 24}h`, pct: (i / TL_SPAN) * 100 })
-  }
-  return labels
-})
-
-function toPct(timeStr) {
-  if (!timeStr) return null
-  const [h, m] = timeStr.split(':').map(Number)
-  let hrs = h + m / 60
-  if (hrs < TL_START - 4) hrs += 24
-  return Math.min(100, Math.max(0, ((hrs - TL_START) / TL_SPAN) * 100))
-}
+// Timeline geometry is shared with the editable band via the sleepTimeline util.
+const hourLabels = makeHourLabels()
 
 function sleepSegs(entry) {
   const s = toPct(entry.bedtime)
@@ -81,6 +64,12 @@ function napSegs(entry) {
     .filter(Boolean)
 }
 
+function somnoMarks(entry) {
+  return (entry.somnolence || [])
+    .map(t => toPct(t))
+    .filter(p => p !== null)
+}
+
 // Data management — persisted via selfStore (localStorage)
 const entries = computed({
   get: () => selfStore.item.sleepDiaryEntries || [],
@@ -90,9 +79,6 @@ const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const showForm = ref(false)
-// Both diary sections start open so nothing is hidden on first glance, but each
-// can be collapsed to focus on matin / soir one at a time.
-const openPanels = ref([0, 1])
 const showDelete = ref(false)
 const deleteTarget = ref(null)
 
@@ -110,6 +96,7 @@ function emptyForm(date = todayStr()) {
     morningForm: null,
     medications: '',
     naps: [],
+    somnolence: [],
     daytimeForm: null,
   }
 }
@@ -144,9 +131,18 @@ function fromQueryDate(q) {
   return match ? `${match[3]}-${match[2]}-${match[1]}` : null
 }
 
+// Carry the previous night's coucher/lever into a fresh entry so the user starts
+// from a realistic band and only nudges it, rather than setting times from zero.
+function lastTimes(excludeDate) {
+  const prev = entries.value.find(e => e.date !== excludeDate && (e.bedtime || e.wakeTime))
+  return prev ? { bedtime: prev.bedtime, wakeTime: prev.wakeTime } : {}
+}
+
 function openForDate(date) {
   const existing = entries.value.find(e => e.date === date)
-  form.value = existing ? { ...emptyForm(date), ...existing } : emptyForm(date)
+  form.value = existing
+    ? { ...emptyForm(date), ...existing }
+    : { ...emptyForm(date), ...lastTimes(date) }
   showForm.value = true
 }
 
@@ -190,16 +186,19 @@ watch(showForm, (open) => {
   }
 })
 
+function persist(payload) {
+  const list = [...entries.value]
+  const idx = list.findIndex(e => e.date === payload.date)
+  if (idx >= 0) list[idx] = payload
+  else list.push(payload)
+  list.sort((a, b) => b.date.localeCompare(a.date))
+  entries.value = list
+}
+
 async function saveEntry() {
   saving.value = true
   try {
-    const payload = { ...form.value }
-    const list = [...entries.value]
-    const idx = list.findIndex(e => e.date === payload.date)
-    if (idx >= 0) list[idx] = payload
-    else list.push(payload)
-    list.sort((a, b) => b.date.localeCompare(a.date))
-    entries.value = list
+    persist({ ...form.value })
     showForm.value = false
     messagesStore.add({ type: 'success', text: 'Entrée enregistrée avec succès' })
   } catch {
@@ -208,6 +207,18 @@ async function saveEntry() {
     saving.value = false
   }
 }
+
+// One-tap quick log: tapping a face on the dashboard card creates today's entry
+// with that night quality, carrying over the previous night's times. The user
+// can refine it later from the full form.
+const quickQuality = ref(null)
+watch(quickQuality, (q) => {
+  if (!q) return
+  const date = todayStr()
+  persist({ ...emptyForm(date), ...lastTimes(date), nightQuality: q })
+  messagesStore.add({ type: 'success', text: 'Nuit enregistrée — complétez votre agenda si besoin' })
+  quickQuality.value = null
+})
 
 function confirmDelete(entry) {
   deleteTarget.value = entry
@@ -230,28 +241,9 @@ async function doDelete() {
   }
 }
 
-function addAwakening() { form.value.awakenings = [...form.value.awakenings, { start: '', end: '' }] }
-function removeAwakening(i) { form.value.awakenings = form.value.awakenings.filter((_, j) => j !== i) }
-function addNap() { form.value.naps = [...form.value.naps, { start: '', end: '' }] }
-function removeNap(i) { form.value.naps = form.value.naps.filter((_, j) => j !== i) }
-
 function fmtDate(ds) {
   if (!ds) return ''
   return new Date(ds + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
-}
-
-// Time picker state
-const timePicker = ref({ show: false, value: null, callback: null })
-
-function openTimePicker(currentValue, callback) {
-  timePicker.value = { show: true, value: currentValue || null, callback }
-}
-
-function confirmTimePicker() {
-  if (timePicker.value.callback) {
-    timePicker.value.callback(timePicker.value.value)
-  }
-  timePicker.value.show = false
 }
 </script>
 
@@ -270,15 +262,30 @@ function confirmTimePicker() {
         <template v-if="selfStore.item.id">
 
           <!-- Weekly streak — encourages a daily entry -->
-          <v-card class="mb-8 pa-5 card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }" color="white">
+          <v-card class="mb-6 pa-5 card-shadow" :class="{ 'rounded-15': !$vuetify.display.mobile }" color="white">
             <SleepDiaryStreak :entries="entries" />
           </v-card>
 
+          <!-- One-tap quick log for the current night -->
+          <v-card v-if="!hasToday" class="mb-6 pa-5 card-shadow"
+            :class="{ 'rounded-15': !$vuetify.display.mobile }" color="white">
+            <div class="d-flex align-center mb-3" style="gap: 8px;">
+              <v-icon :icon="mdiMoonWaningCrescent" color="primary" size="22" />
+              <span class="text-title-medium font-weight-bold">Comment avez-vous dormi cette nuit ?</span>
+            </div>
+            <QualityRating v-model="quickQuality" />
+            <div class="text-center mt-2">
+              <v-btn variant="text" size="small" color="primary" class="text-none" @click="openTodayEntry">
+                Remplir en détail
+              </v-btn>
+            </div>
+          </v-card>
+
           <!-- Add / edit today -->
-          <div class="mb-8" :class="{ 'mx-6': $vuetify.display.mobile }">
-            <v-btn :prepend-icon="mdiPlus" color="primary" variant="flat" rounded="lg" size="large" class="text-none"
-              :block="$vuetify.display.mobile" @click="openTodayEntry">
-              {{ hasToday ? "Modifier l'entrée du jour" : 'Ajouter une entrée' }}
+          <div v-else class="mb-6" :class="{ 'mx-6': $vuetify.display.mobile }">
+            <v-btn :prepend-icon="mdiPencilOutline" color="primary" variant="flat" rounded="lg" size="large"
+              class="text-none" :block="$vuetify.display.mobile" @click="openTodayEntry">
+              Modifier l'entrée du jour
             </v-btn>
           </div>
 
@@ -310,6 +317,7 @@ function confirmTimePicker() {
                 </template>
                 <div v-for="(n, ni) in napSegs(e)" :key="'n' + ni" class="tl-seg tl-nap"
                   :style="{ left: n.l + '%', width: n.w + '%' }" />
+                <span v-for="(p, mi) in somnoMarks(e)" :key="'m' + mi" class="tl-som" :style="{ left: p + '%' }">S</span>
               </div>
             </div>
 
@@ -322,6 +330,10 @@ function confirmTimePicker() {
               <div class="d-flex align-center" style="gap: 6px;">
                 <div class="legend-nap" />
                 <span class="text-body-small text-medium-emphasis">Sieste</span>
+              </div>
+              <div class="d-flex align-center" style="gap: 6px;">
+                <span class="legend-som">S</span>
+                <span class="text-body-small text-medium-emphasis">Somnolence</span>
               </div>
             </div>
           </v-card>
@@ -388,153 +400,42 @@ function confirmTimePicker() {
                     prepend-icon="" hide-details density="comfortable" />
                 </div>
 
-                <!-- Sections matin & soir as collapsible panels -->
-                <v-expansion-panels v-model="openPanels" multiple variant="accordion" class="diary-panels mb-2">
-
-                  <!-- Section matin -->
-                  <v-expansion-panel rounded="lg">
-                    <v-expansion-panel-title class="panel-title">
-                      <div class="section-header">
-                        <v-icon :icon="mdiWhiteBalanceSunny" color="warning" size="22" class="mr-2" />
-                        <div>
-                          <div>Section matin</div>
-                          <div class="panel-subtitle">À remplir au réveil</div>
-                        </div>
-                      </div>
-                    </v-expansion-panel-title>
-                    <v-expansion-panel-text>
-
-                <v-row class="mb-4">
-                  <v-col cols="6">
-                    <div class="field-label">Heure de coucher</div>
-                    <v-btn variant="outlined" rounded="lg" block size="large"
-                      :color="form.bedtime ? 'primary' : undefined" class="text-none time-btn"
-                      @click="openTimePicker(form.bedtime, v => form.bedtime = v)">
-                      {{ form.bedtime || 'Heure' }}
-                    </v-btn>
-                  </v-col>
-                  <v-col cols="6">
-                    <div class="field-label">Heure de lever</div>
-                    <v-btn variant="outlined" rounded="lg" block size="large"
-                      :color="form.wakeTime ? 'primary' : undefined" class="text-none time-btn"
-                      @click="openTimePicker(form.wakeTime, v => form.wakeTime = v)">
-                      {{ form.wakeTime || 'Heure' }}
-                    </v-btn>
-                  </v-col>
-                </v-row>
-
-                <!-- Awakenings -->
-                <div class="mb-4">
-                  <div class="d-flex align-center justify-space-between mb-3">
-                    <div class="field-label mb-0">Réveils nocturnes</div>
-                    <v-btn :prepend-icon="mdiPlus" size="small" variant="tonal" color="primary" rounded="lg"
-                      class="text-none" @click="addAwakening">
-                      Ajouter
-                    </v-btn>
+                <!-- Interactive sleep timeline -->
+                <div class="mb-6">
+                  <div class="field-label">Votre nuit</div>
+                  <div class="text-body-small text-medium-emphasis mb-3">
+                    Faites glisser les poignées pour indiquer votre coucher, votre lever et vos réveils. Les horaires
+                    sont volontairement approximatifs.
                   </div>
-                  <div v-for="(aw, i) in form.awakenings" :key="i" class="d-flex align-center mb-3" style="gap: 8px;">
-                    <v-btn variant="outlined" rounded="lg" size="large" :color="aw.start ? 'primary' : undefined"
-                      class="text-none time-btn flex-1" @click="openTimePicker(aw.start, v => aw.start = v)">
-                      {{ aw.start || 'Heure' }}
-                    </v-btn>
-                    <span class="text-medium-emphasis font-weight-bold">→</span>
-                    <v-btn variant="outlined" rounded="lg" size="large" :color="aw.end ? 'primary' : undefined"
-                      class="text-none time-btn flex-1" @click="openTimePicker(aw.end, v => aw.end = v)">
-                      {{ aw.end || 'Heure' }}
-                    </v-btn>
-                    <v-btn :icon="mdiTrashCanOutline" size="large" variant="text" color="error"
-                      @click="removeAwakening(i)" />
-                  </div>
+                  <SleepBandInput v-model:bedtime="form.bedtime" v-model:wake-time="form.wakeTime"
+                    v-model:awakenings="form.awakenings" v-model:naps="form.naps"
+                    v-model:somnolence="form.somnolence" />
                 </div>
 
                 <!-- Night quality -->
                 <div class="mb-5">
                   <div class="field-label">Qualité de la nuit</div>
-                  <div class="d-flex flex-wrap" style="gap: 10px;">
-                    <v-btn v-for="opt in QUALITY_OPTIONS" :key="opt"
-                      :color="form.nightQuality === opt ? qualityColor(opt) : undefined"
-                      :variant="form.nightQuality === opt ? 'flat' : 'outlined'" rounded="lg" size="large"
-                      class="text-none quality-btn" @click="form.nightQuality = opt">
-                      {{ QUALITY_LABELS[opt] }}
-                    </v-btn>
-                  </div>
+                  <QualityRating v-model="form.nightQuality" />
                 </div>
 
                 <!-- Morning form -->
                 <div class="mb-5">
                   <div class="field-label">Forme au réveil</div>
-                  <div class="d-flex flex-wrap" style="gap: 10px;">
-                    <v-btn v-for="opt in QUALITY_OPTIONS" :key="opt"
-                      :color="form.morningForm === opt ? qualityColor(opt) : undefined"
-                      :variant="form.morningForm === opt ? 'flat' : 'outlined'" rounded="lg" size="large"
-                      class="text-none quality-btn" @click="form.morningForm = opt">
-                      {{ QUALITY_LABELS[opt] }}
-                    </v-btn>
-                  </div>
+                  <QualityRating v-model="form.morningForm" />
+                </div>
+
+                <!-- Daytime form -->
+                <div class="mb-5">
+                  <div class="field-label">Forme dans la journée</div>
+                  <QualityRating v-model="form.daytimeForm" />
                 </div>
 
                 <!-- Medications / events -->
-                <div class="mb-5">
+                <div>
                   <div class="field-label">Médicaments / Événements</div>
                   <v-textarea v-model="form.medications" density="comfortable" variant="outlined" rounded="lg" rows="2"
                     hide-details placeholder="Ex : Doliprane, sport le soir, stress…" />
                 </div>
-
-                    </v-expansion-panel-text>
-                  </v-expansion-panel>
-
-                  <!-- Section soir -->
-                  <v-expansion-panel rounded="lg">
-                    <v-expansion-panel-title class="panel-title">
-                      <div class="section-header">
-                        <v-icon :icon="mdiMoonWaningCrescent" color="primary" size="22" class="mr-2" />
-                        <div>
-                          <div>Section soir</div>
-                          <div class="panel-subtitle">À remplir avant de dormir</div>
-                        </div>
-                      </div>
-                    </v-expansion-panel-title>
-                    <v-expansion-panel-text>
-
-                <!-- Naps -->
-                <div class="mb-5">
-                  <div class="d-flex align-center justify-space-between mb-3">
-                    <div class="field-label mb-0">Siestes</div>
-                    <v-btn :prepend-icon="mdiPlus" size="small" variant="tonal" color="primary" rounded="lg"
-                      class="text-none" @click="addNap">
-                      Ajouter
-                    </v-btn>
-                  </div>
-                  <div v-for="(nap, i) in form.naps" :key="i" class="d-flex align-center mb-3" style="gap: 8px;">
-                    <v-btn variant="outlined" rounded="lg" size="large" :color="nap.start ? 'primary' : undefined"
-                      class="text-none time-btn flex-1" @click="openTimePicker(nap.start, v => nap.start = v)">
-                      {{ nap.start || 'Heure' }}
-                    </v-btn>
-                    <span class="text-medium-emphasis font-weight-bold">→</span>
-                    <v-btn variant="outlined" rounded="lg" size="large" :color="nap.end ? 'primary' : undefined"
-                      class="text-none time-btn flex-1" @click="openTimePicker(nap.end, v => nap.end = v)">
-                      {{ nap.end || 'Heure' }}
-                    </v-btn>
-                    <v-btn :icon="mdiTrashCanOutline" size="large" variant="text" color="error" @click="removeNap(i)" />
-                  </div>
-                </div>
-
-                <!-- Daytime form -->
-                <div class="mb-2">
-                  <div class="field-label">Forme dans la journée</div>
-                  <div class="d-flex flex-wrap" style="gap: 10px;">
-                    <v-btn v-for="opt in QUALITY_OPTIONS" :key="opt"
-                      :color="form.daytimeForm === opt ? qualityColor(opt) : undefined"
-                      :variant="form.daytimeForm === opt ? 'flat' : 'outlined'" rounded="lg" size="large"
-                      class="text-none quality-btn" @click="form.daytimeForm = opt">
-                      {{ QUALITY_LABELS[opt] }}
-                    </v-btn>
-                  </div>
-                </div>
-
-                    </v-expansion-panel-text>
-                  </v-expansion-panel>
-                </v-expansion-panels>
 
               </v-card-text>
               <v-divider />
@@ -550,45 +451,6 @@ function confirmTimePicker() {
               </v-card-actions>
             </v-card>
           </component>
-
-          <!-- Time Picker — bottom sheet on xs, dialog on larger screens -->
-          <v-bottom-sheet v-if="xs" v-model="timePicker.show" inset>
-            <v-sheet rounded="t-xl" class="pa-4 pb-6">
-              <div class="text-center text-title-medium font-weight-bold mb-2">
-                Heure
-              </div>
-              <v-time-picker v-model="timePicker.value" format="24hr" hide-header color="primary" class="w-100" />
-              <div class="d-flex mt-3" style="gap: 12px;">
-                <v-btn variant="outlined" rounded="lg" size="large" class="text-none flex-1"
-                  @click="timePicker.show = false">
-                  Annuler
-                </v-btn>
-                <v-btn color="primary" variant="flat" rounded="lg" size="large" class="text-none flex-1"
-                  @click="confirmTimePicker">
-                  Enregistrer
-                </v-btn>
-              </div>
-            </v-sheet>
-          </v-bottom-sheet>
-
-          <v-dialog v-else v-model="timePicker.show" max-width="340">
-            <v-card class="pa-4 card-shadow rounded-15">
-              <div class="text-center text-title-medium font-weight-bold mb-2">
-                Heure
-              </div>
-              <v-time-picker v-model="timePicker.value" format="24hr" hide-header color="primary" class="w-100" />
-              <div class="d-flex mt-3" style="gap: 12px;">
-                <v-btn variant="outlined" rounded="lg" size="large" class="text-none flex-1"
-                  @click="timePicker.show = false">
-                  Annuler
-                </v-btn>
-                <v-btn color="primary" variant="flat" rounded="lg" size="large" class="text-none flex-1"
-                  @click="confirmTimePicker">
-                  Enregistrer
-                </v-btn>
-              </div>
-            </v-card>
-          </v-dialog>
 
           <!-- Delete confirm dialog -->
           <v-dialog v-model="showDelete" max-width="360">
@@ -647,65 +509,6 @@ function confirmTimePicker() {
   font-weight: 600;
   margin-bottom: 8px;
   color: rgba(0, 0, 0, 0.75);
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-/* Collapsible matin / soir sections */
-.diary-panels {
-  border-radius: 12px;
-}
-
-.diary-panels .v-expansion-panel {
-  background: rgba(0, 0, 0, 0.015);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px !important;
-  margin-bottom: 12px;
-  overflow: hidden;
-}
-
-.diary-panels .v-expansion-panel:last-child {
-  margin-bottom: 0;
-}
-
-/* Hide the default accordion divider line between panels */
-.diary-panels .v-expansion-panel:not(:first-child)::after {
-  border-top: none !important;
-}
-
-.panel-title {
-  min-height: 68px;
-  font-weight: 700;
-}
-
-.panel-subtitle {
-  font-size: 0.8rem;
-  font-weight: 400;
-  color: rgba(0, 0, 0, 0.55);
-  margin-top: 2px;
-}
-
-.time-btn {
-  font-size: 1.05rem !important;
-  letter-spacing: 0.01em;
-  min-height: 48px !important;
-}
-
-.quality-btn {
-  min-width: 90px !important;
-}
-
-.quality-full {
-  opacity: 0.75;
-}
-
-.flex-1 {
-  flex: 1;
 }
 
 .tl-grid {
@@ -775,6 +578,16 @@ function confirmTimePicker() {
   border-radius: 0 0 2px 2px;
 }
 
+.tl-som {
+  position: absolute;
+  top: -1px;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  color: rgb(var(--v-theme-primary));
+}
+
 .legend-sleep {
   width: 20px;
   height: 10px;
@@ -793,5 +606,17 @@ function confirmTimePicker() {
   border-radius: 2px;
   flex-shrink: 0;
   background: rgba(var(--v-theme-warning), 0.85);
+}
+
+.legend-som {
+  width: 14px;
+  height: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 </style>
