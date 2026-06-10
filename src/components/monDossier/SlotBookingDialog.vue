@@ -37,15 +37,18 @@ const selected = ref(null) // { date, time }
 
 const availability = ref(getSleepRecordingSlots(21))
 
-// Pagination — 3 days at once on desktop, 1 on mobile (mirrors PrendreRendezVous).
-const pageSize = computed(() => (mobile.value ? 1 : 3))
+// Desktop paginates 3 days at a time behind chevrons; mobile drops pagination
+// entirely and shows every day in one scrollable list (the dialog is fullscreen
+// + scrollable there), so the patient just scrolls to the day they want.
+const pageSize = 3
 const pageIndex = ref(0)
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(availability.value.length / pageSize.value))
+  Math.max(1, Math.ceil(availability.value.length / pageSize))
 )
 const visibleDays = computed(() => {
-  const start = pageIndex.value * pageSize.value
-  return availability.value.slice(start, start + pageSize.value)
+  if (mobile.value) return availability.value
+  const start = pageIndex.value * pageSize
+  return availability.value.slice(start, start + pageSize)
 })
 
 function prevPage() {
@@ -142,16 +145,16 @@ function confirm() {
         <v-menu>
           <template #activator="{ props: menuProps }">
             <v-btn v-bind="menuProps" variant="outlined" rounded="lg" block size="large"
-              class="text-none justify-space-between establishment-btn">
-              <template #prepend>
-                <v-icon :icon="mdiMapMarkerOutline" />
-              </template>
-              <span class="text-truncate flex-grow-1 text-start">
-                {{ selectedEstablishment ? selectedEstablishment.name : "Sélectionnez un établissement" }}
-              </span>
-              <template #append>
-                <v-icon :icon="mdiChevronDown" />
-              </template>
+              class="text-none establishment-btn">
+              <!-- Icons live inside the default slot (not #prepend/#append) so the
+                   chevron stays within the button bounds on narrow screens. -->
+              <div class="d-flex align-center w-100">
+                <v-icon :icon="mdiMapMarkerOutline" class="mr-2 flex-shrink-0" />
+                <span class="text-truncate flex-grow-1 text-start">
+                  {{ selectedEstablishment ? selectedEstablishment.name : "Sélectionnez un établissement" }}
+                </span>
+                <v-icon :icon="mdiChevronDown" class="ml-2 flex-shrink-0" />
+              </div>
             </v-btn>
           </template>
           <v-list density="comfortable" rounded="lg" class="card-shadow">
@@ -168,7 +171,7 @@ function confirm() {
         <template v-if="selectedEstablishment">
           <div class="d-flex align-center justify-space-between mt-6 mb-3">
             <div class="text-title-small font-weight-bold">Créneaux disponibles</div>
-            <div class="d-flex align-center ga-1">
+            <div v-if="!mobile" class="d-flex align-center ga-1">
               <v-btn :icon="mdiChevronLeft" variant="text" size="small" :disabled="pageIndex === 0"
                 aria-label="Précédent" @click="prevPage" />
               <span class="text-body-small text-medium-emphasis px-1">{{ pageIndex + 1 }} / {{ totalPages }}</span>
@@ -240,7 +243,9 @@ function confirm() {
 
 .slots-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  /* Sleep-recording slots carry wide range labels (e.g. "20h00 → 07h00"),
+     so cells need room — one per row when the column is narrow. */
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 8px;
 }
 
