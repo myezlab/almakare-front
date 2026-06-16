@@ -8,7 +8,7 @@ import { hourLabels as makeHourLabels, toPct } from '@/utils/sleepTimeline'
 import {
   mdiMoonWaningCrescent,
   mdiPencilOutline,
-  mdiPlus, mdiTrashCanOutline,
+  mdiTrashCanOutline,
 } from '@mdi/js'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -138,24 +138,31 @@ function lastTimes(excludeDate) {
   return prev ? { bedtime: prev.bedtime, wakeTime: prev.wakeTime } : {}
 }
 
-function openForDate(date) {
+function openForDate(date, quality = null) {
   const existing = entries.value.find(e => e.date === date)
   form.value = existing
     ? { ...emptyForm(date), ...existing }
     : { ...emptyForm(date), ...lastTimes(date) }
+  // Prefilled quality from the dashboard quick-tap (?quality=…); the user can
+  // still change it and complete the rest of the entry before saving.
+  if (quality) form.value.nightQuality = quality
   showForm.value = true
 }
 
 // Opening/editing an entry is driven through the route so the URL reflects the
 // day being filled (deep-linkable, e.g. from the "compléter votre agenda"
 // notification). The watch below reacts and opens the form.
-function setDayQuery(date) {
+function setDayQuery(date, quality = null) {
   const day = toQueryDate(date)
-  if (route.query.day === day) {
-    openForDate(date)
+  const query = { ...route.query, day }
+  if (quality) query.quality = quality
+  else delete query.quality
+  // When the day query already matches, the watch won't re-fire — open directly.
+  if (route.query.day === day && (route.query.quality || null) === quality) {
+    openForDate(date, quality)
     return
   }
-  router.replace({ query: { ...route.query, day } })
+  router.replace({ query })
 }
 
 function openTodayEntry() {
@@ -172,16 +179,17 @@ watch(
   [() => route.query.day, () => selfStore.item?.id],
   ([day, id]) => {
     const date = fromQueryDate(day)
-    if (date && id && !showForm.value) openForDate(date)
+    if (date && id && !showForm.value) openForDate(date, route.query.quality)
   },
   { immediate: true },
 )
 
 // Strip the query once the form is dismissed so the URL stays clean.
 watch(showForm, (open) => {
-  if (!open && route.query.day !== undefined) {
+  if (!open && (route.query.day !== undefined || route.query.quality !== undefined)) {
     const nextQuery = { ...route.query }
     delete nextQuery.day
+    delete nextQuery.quality
     router.replace({ query: nextQuery })
   }
 })
@@ -208,15 +216,12 @@ async function saveEntry() {
   }
 }
 
-// One-tap quick log: tapping a face on the dashboard card creates today's entry
-// with that night quality, carrying over the previous night's times. The user
-// can refine it later from the full form.
+// Quick prompt: tapping a face opens today's entry with that night quality
+// prefilled, so the user lands in the full form ready to complete the rest.
 const quickQuality = ref(null)
 watch(quickQuality, (q) => {
   if (!q) return
-  const date = todayStr()
-  persist({ ...emptyForm(date), ...lastTimes(date), nightQuality: q })
-  messagesStore.add({ type: 'success', text: 'Nuit enregistrée — complétez votre agenda si besoin' })
+  setDayQuery(todayStr(), q)
   quickQuality.value = null
 })
 

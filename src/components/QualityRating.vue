@@ -52,8 +52,8 @@ function pick(value) {
   justify-content: center;
   min-height: 52px;
   border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: white;
   cursor: pointer;
   /* Normalize iOS Safari's native button chrome and tap flash. */
   -webkit-appearance: none;
@@ -62,25 +62,21 @@ function pick(value) {
   transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
 
+/* Faces stay full-colour and obviously tappable by default — no hover/selection
+   dependence, so they never read as disabled on touch devices. Selection is
+   conveyed by the coloured border/shadow below, not by dimming the others. */
 .face-emoji {
   font-size: 26px;
   line-height: 1;
-  filter: grayscale(0.55);
-  opacity: 0.7;
-  transition: filter 0.12s ease, opacity 0.12s ease;
 }
 
 .face-btn:active {
   transform: scale(0.92);
 }
 
+/* Selected face gets a subtle tint in addition to the coloured border below. */
 .face-active {
-  background: white;
-}
-
-.face-active .face-emoji {
-  filter: none;
-  opacity: 1;
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .face-error {

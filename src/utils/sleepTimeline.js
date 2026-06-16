@@ -45,6 +45,25 @@ export function pctToTime(pct) {
 // between two draggable edges so they never cross.
 export const MIN_GAP_PCT = (15 / (TL_SPAN * 60)) * 100
 
+function toIsoDate(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+// Current consecutive streak (in days) ending today, computed from the
+// sleep-diary entries. If today isn't filled yet we start from yesterday so the
+// streak isn't broken before the user has had a chance to fill the day.
+export function sleepStreak(entries = []) {
+  const filled = new Set(entries.map(e => e.date))
+  const cursor = new Date()
+  let count = 0
+  if (!filled.has(toIsoDate(cursor))) cursor.setDate(cursor.getDate() - 1)
+  while (filled.has(toIsoDate(cursor))) {
+    count++
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return count
+}
+
 // Hour labels every 4 h across the window, e.g. 20h · 0h · 4h … 20h.
 export function hourLabels() {
   const labels = []

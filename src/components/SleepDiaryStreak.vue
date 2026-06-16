@@ -1,5 +1,6 @@
 <script setup>
 import { useSelfStore } from '@/stores/self'
+import { sleepStreak } from '@/utils/sleepTimeline'
 import { mdiFire } from '@mdi/js'
 import { computed } from 'vue'
 
@@ -54,19 +55,7 @@ const week = computed(() => {
 })
 
 // Current consecutive streak ending today (or yesterday if today not yet filled).
-const streak = computed(() => {
-  const filled = new Set(allEntries.value.map(e => e.date))
-  const cursor = new Date()
-  let count = 0
-  // If today isn't filled yet, start counting from yesterday so the streak
-  // isn't broken before the user has had a chance to fill the day.
-  if (!filled.has(toIso(cursor))) cursor.setDate(cursor.getDate() - 1)
-  while (filled.has(toIso(cursor))) {
-    count++
-    cursor.setDate(cursor.getDate() - 1)
-  }
-  return count
-})
+const streak = computed(() => sleepStreak(allEntries.value))
 
 const iconSize = computed(() => (props.dense ? 22 : 30))
 </script>

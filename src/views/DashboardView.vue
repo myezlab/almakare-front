@@ -1,9 +1,9 @@
 <script setup>
 import PpcNightlyCard from '@/components/PpcNightlyCard.vue'
-import SleepDiaryStreak from '@/components/SleepDiaryStreak.vue'
 import { useParamsStore } from '@/stores/params'
 import { useSelfStore } from '@/stores/self'
-import { mdiAccountQuestion, mdiClipboardPulse, mdiFolderOutline, mdiLungs, mdiMoonWaningCrescent } from '@mdi/js'
+import { sleepStreak } from '@/utils/sleepTimeline'
+import { mdiAccountQuestion, mdiClipboardPulse, mdiFolderOutline, mdiLungs } from '@mdi/js'
 import { computed, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -14,6 +14,29 @@ const InstallAppCard = defineAsyncComponent(() =>
 const router = useRouter()
 const selfStore = useSelfStore()
 const paramsStore = useParamsStore()
+
+const sleepStreakDays = computed(() =>
+  sleepStreak(selfStore.item?.sleepDiaryEntries ?? []),
+)
+
+// Compact night-quality prompt on the card, using the full Réseau Morphée
+// 5-level scale (TB / B / Moy / M / TM) shared with the agenda form
+// (QualityRating), so a quick tap here prefills the entry the user then
+// refines on the SleepDiary page.
+const nightQualityOptions = [
+  { value: 'TM', emoji: '😣', label: 'Très mauvais' },
+  { value: 'M', emoji: '😕', label: 'Mauvais' },
+  { value: 'Moy', emoji: '😐', label: 'Moyen' },
+  { value: 'B', emoji: '🙂', label: 'Bien' },
+  { value: 'TB', emoji: '😄', label: 'Très bien' },
+]
+
+function pickNightQuality(value) {
+  const now = new Date()
+  const pad = n => String(n).padStart(2, '0')
+  const day = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}`
+  router.push({ name: 'SleepDiary', query: { day, quality: value } })
+}
 
 const epworthScoreColor = computed(() => {
   const score = selfStore.item?.epworthScore
@@ -71,15 +94,14 @@ const epworthScoreLabel = computed(() => {
             </v-card>
           </v-col>
 
-          <!-- Nightly PPC therapy data (auto-synced from the device) -->
-          <v-col cols="12">
-            <PpcNightlyCard />
-          </v-col>
-
           <!-- Sleep diary card -->
-          <v-col cols="12" md="6">
-            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100 d-flex flex-column"
+          <v-col cols="12">
+            <v-card class="pa-6 card-shadow rounded-15 cursor-pointer h-100 d-flex flex-column position-relative"
               @click="router.push({ name: 'SleepDiary' })">
+              <v-chip v-if="sleepStreakDays > 0" color="deep-orange" variant="tonal" size="small"
+                class="font-weight-bold position-absolute" style="top: 16px; right: 16px">
+                🔥 {{ sleepStreakDays }}
+              </v-chip>
               <v-row align="stretch" class="flex-grow-1">
                 <v-col class="d-flex flex-column">
                   <div class="text-title-medium text-medium-emphasis text-uppercase font-weight-bold mb-1">
@@ -88,14 +110,23 @@ const epworthScoreLabel = computed(() => {
                   <div class="text-body-medium text-medium-emphasis mb-4">
                     Suivez votre sommeil nuit après nuit avec un agenda visuel
                   </div>
-                  <SleepDiaryStreak dense class="mb-4" @click.stop />
-                  <v-btn :prepend-icon="mdiMoonWaningCrescent" variant="tonal" color="primary" rounded="lg"
-                    @click.stop="router.push({ name: 'SleepDiary' })" class="text-none mt-auto align-self-start">
-                    Ouvrir l'agenda
-                  </v-btn>
+                  <div class="mt-auto">
+                    <div class="text-body-medium font-weight-medium mb-2">Qualité de la nuit</div>
+                    <div class="d-flex" style="gap: 8px;">
+                      <button v-for="opt in nightQualityOptions" :key="opt.value" type="button" class="night-face-btn"
+                        :aria-label="opt.label" @click.stop="pickNightQuality(opt.value)">
+                        <span class="night-face-emoji">{{ opt.emoji }}</span>
+                      </button>
+                    </div>
+                  </div>
                 </v-col>
               </v-row>
             </v-card>
+          </v-col>
+
+          <!-- Nightly PPC therapy data (auto-synced from the device) -->
+          <v-col cols="12">
+            <PpcNightlyCard />
           </v-col>
 
           <!-- Epworth test card -->
@@ -224,3 +255,43 @@ const epworthScoreLabel = computed(() => {
     </v-row>
   </div>
 </template>
+
+<style scoped>
+/* Compact night-quality faces on the sleep-diary card — mirrors QualityRating's
+   look so the prompt feels continuous with the full agenda form. */
+.night-face-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: white;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+/* Full-colour and tappable by default — no hover dependence, so the faces never
+   read as disabled on touch devices. */
+.night-face-emoji {
+  font-size: 24px;
+  line-height: 1;
+}
+
+@media (hover: hover) {
+  .night-face-btn:hover {
+    border-color: rgba(var(--v-theme-primary), 0.5);
+    background: rgba(var(--v-theme-primary), 0.04);
+  }
+}
+
+.night-face-btn:active {
+  transform: scale(0.92);
+  border-color: rgba(var(--v-theme-primary), 0.5);
+  background: rgba(var(--v-theme-primary), 0.06);
+}
+</style>

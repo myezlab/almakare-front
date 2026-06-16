@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { FAKE_CLINICAL_DATA } from '@/data/clinicalData'
+import { fakeSleepDiaryEntries } from '@/data/sleepDiary'
 
 const STORAGE_KEY = 'almakare.self'
 
@@ -20,6 +21,12 @@ function withClinicalDefaults(base) {
   const result = { ...base }
   for (const [key, value] of Object.entries(FAKE_CLINICAL_DATA)) {
     if (result[key] == null || result[key] === '') result[key] = value
+  }
+  // Pre-populate the sleep diary with a few weeks of past nights so the agenda
+  // (and the night-quality emojis on the PPC card) aren't empty in the demo.
+  // Real entries always win — we only fill when nothing has been logged yet.
+  if (!Array.isArray(result.sleepDiaryEntries) || result.sleepDiaryEntries.length === 0) {
+    result.sleepDiaryEntries = fakeSleepDiaryEntries.map((e) => ({ ...e }))
   }
   return result
 }
