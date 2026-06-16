@@ -34,7 +34,25 @@ export const ppcTracking = [
   { date: "2026-05-30", usage: 6.8, iah: 2.8, leaks: 12 },
   { date: "2026-05-31", usage: 7.2, iah: 2.4, leaks: 9 },
   { date: "2026-06-01", usage: 7.5, iah: 2.0, leaks: 8 },
+  { date: "2026-06-02", usage: 6.9, iah: 2.8, leaks: 12 },
+  { date: "2026-06-03", usage: 7.0, iah: 3.1, leaks: 13 },
+  { date: "2026-06-04", usage: 5.6, iah: 4.6, leaks: 20 },
+  { date: "2026-06-05", usage: 6.7, iah: 3.5, leaks: 15 },
+  { date: "2026-06-06", usage: 0, iah: 0, leaks: 0 },
+  { date: "2026-06-07", usage: 0, iah: 0, leaks: 0 },
+  { date: "2026-06-08", usage: 6.4, iah: 5.2, leaks: 22 },
+  { date: "2026-06-09", usage: 7.1, iah: 3.8, leaks: 14 },
+  { date: "2026-06-10", usage: 6.5, iah: 4.2, leaks: 16 },
+  { date: "2026-06-11", usage: 5.8, iah: 6.4, leaks: 24 },
+  { date: "2026-06-12", usage: 7.1, iah: 3.4, leaks: 11 },
+  { date: "2026-06-13", usage: 0, iah: 0, leaks: 0 },
+  { date: "2026-06-14", usage: 0, iah: 0, leaks: 0 },
+  { date: "2026-06-15", usage: 6.2, iah: 9.1, leaks: 31 },
+  { date: "2026-06-16", usage: 6.9, iah: 5.3, leaks: 17 },
 ]
+
+// Last 7 nights, for the compact dashboard card.
+export const recentNights = ppcTracking.slice(-7)
 
 // Summary metrics derived for the header / KPIs.
 export const ppcSummary = {

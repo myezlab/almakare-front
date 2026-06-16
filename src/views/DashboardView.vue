@@ -1,4 +1,5 @@
 <script setup>
+import PpcNightlyCard from '@/components/PpcNightlyCard.vue'
 import SleepDiaryStreak from '@/components/SleepDiaryStreak.vue'
 import { useParamsStore } from '@/stores/params'
 import { useSelfStore } from '@/stores/self'
@@ -68,6 +69,11 @@ const epworthScoreLabel = computed(() => {
                 </v-col>
               </v-row>
             </v-card>
+          </v-col>
+
+          <!-- Nightly PPC therapy data (auto-synced from the device) -->
+          <v-col cols="12">
+            <PpcNightlyCard />
           </v-col>
 
           <!-- Sleep diary card -->

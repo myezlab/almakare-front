@@ -75,7 +75,6 @@ function pick(value) {
 }
 
 .face-active {
-  transform: scale(1.12);
   background: white;
 }
 

@@ -53,7 +53,7 @@ function goToDashboard() {
 }
 
 function logout() {
-  selfStore.item = {}
+  selfStore.reset()
   router.push({ name: 'Login' })
 }
 

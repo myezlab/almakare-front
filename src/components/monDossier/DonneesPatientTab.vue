@@ -18,6 +18,8 @@ import dayjs from "dayjs"
 import { computed, ref, watch } from "vue"
 
 const GENDER_LABELS = { male: 'Homme', female: 'Femme', other: 'Autre' }
+const MARITAL_LABELS = { enCouple: 'En couple', celibataire: 'Célibataire' }
+const MARITAL_OPTIONS = [{ title: 'En couple', value: 'enCouple' }, { title: 'Célibataire', value: 'celibataire' }]
 const EMPTY = '-'
 
 const { phoneNumberValidation } = useRules()
@@ -50,6 +52,7 @@ const bmiDisplay = computed(() => {
 })
 
 const genderLabel = computed(() => GENDER_LABELS[currentUser.value?.gender] || '')
+const maritalLabel = computed(() => MARITAL_LABELS[currentUser.value?.maritalStatus] || '')
 
 // Read-only rows mirroring the patient's persistent clinical fields (catalog
 // order); only answered fields are shown, and the panel only appears when at
@@ -119,6 +122,9 @@ const generalModel = ref({
   dietaryRestrictions: '',
   hasMedicalHistory: null,
   medicalHistory: '',
+  hasCurrentTreatments: null,
+  hasCurrentTreatmentsDetails: '',
+  maritalStatus: null,
   carteVitaleNir: '',
   carteVitaleIssueDate: '',
 })
@@ -146,6 +152,9 @@ watch(() => currentUser.value, (item) => {
     dietaryRestrictions: item.dietaryRestrictions || '',
     hasMedicalHistory: item.hasMedicalHistory ?? (item.medicalHistory ? true : null),
     medicalHistory: item.medicalHistory || '',
+    hasCurrentTreatments: item.hasCurrentTreatments ?? (item.hasCurrentTreatmentsDetails ? true : null),
+    hasCurrentTreatmentsDetails: item.hasCurrentTreatmentsDetails || '',
+    maritalStatus: item.maritalStatus || null,
     carteVitaleNir: item.carteVitaleNir || '',
     carteVitaleIssueDate: item.carteVitaleIssueDate || '',
   }
@@ -182,6 +191,9 @@ async function handleSaveGeneral(proxyModel, confirmSave) {
       dietaryRestrictions: value.hasDietaryRestrictions ? value.dietaryRestrictions : '',
       hasMedicalHistory: value.hasMedicalHistory,
       medicalHistory: value.hasMedicalHistory ? value.medicalHistory : '',
+      hasCurrentTreatments: value.hasCurrentTreatments,
+      hasCurrentTreatmentsDetails: value.hasCurrentTreatments ? value.hasCurrentTreatmentsDetails : '',
+      maritalStatus: value.maritalStatus,
       carteVitaleNir: (value.carteVitaleNir || '').replace(/\D/g, ''),
       carteVitaleIssueDate: value.carteVitaleIssueDate || '',
     }
@@ -336,6 +348,18 @@ function selectMedecin(doctor) {
                         ? 'Aucun'
                         : (currentUser.medicalHistory || EMPTY) }}
                     </div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Traitements en cours</div>
+                    <div class="field-value whitespace-pre-line">
+                      {{ currentUser.hasCurrentTreatments === false
+                        ? 'Aucun'
+                        : (currentUser.hasCurrentTreatmentsDetails || EMPTY) }}
+                    </div>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <div class="field-label">Situation maritale</div>
+                    <div class="field-value">{{ maritalLabel || EMPTY }}</div>
                   </v-col>
                   <v-col cols="12" md="6">
                     <div class="field-label">Numéro de sécurité sociale</div>
@@ -494,6 +518,24 @@ function selectMedecin(doctor) {
                           :rules="[v => !!v || 'Veuillez préciser ou répondre Non']" />
                       </v-col>
 
+                      <v-col cols="12">
+                        <div class="field-label mb-2">Suivez-vous des traitements en cours&nbsp;?</div>
+                        <v-btn-toggle v-model="proxyModel.value.hasCurrentTreatments" mandatory="force" color="primary"
+                          rounded="lg" density="comfortable" variant="outlined" class="mb-3">
+                          <v-btn :value="true" class="text-none">Oui</v-btn>
+                          <v-btn :value="false" class="text-none">Non</v-btn>
+                        </v-btn-toggle>
+                        <v-textarea v-if="proxyModel.value.hasCurrentTreatments === true"
+                          v-model.trim="proxyModel.value.hasCurrentTreatmentsDetails"
+                          label="Précisez vos traitements en cours" variant="outlined" rounded="lg" rows="2" auto-grow
+                          :rules="[v => !!v || 'Veuillez préciser ou répondre Non']" />
+                      </v-col>
+
+                      <v-col cols="12" md="6">
+                        <v-select v-model="proxyModel.value.maritalStatus" label="Situation maritale"
+                          :items="MARITAL_OPTIONS" variant="outlined" rounded="lg" />
+                      </v-col>
+
                       <v-col cols="12" md="6">
                         <v-text-field v-model.trim="proxyModel.value.carteVitaleNir" label="Numéro de sécurité sociale"
                           variant="outlined" rounded="lg" inputmode="numeric" :rules="nirRules"
@@ -522,7 +564,7 @@ function selectMedecin(doctor) {
           </v-expansion-panel>
 
           <!-- Données Cliniques -->
-          <v-expansion-panel v-if="hasClinicalData" value="clinical">
+          <v-expansion-panel value="clinical">
             <v-expansion-panel-title>
               <div class="d-flex flex-column">
                 <span class="panel-title">Données cliniques</span>
@@ -530,17 +572,28 @@ function selectMedecin(doctor) {
               </div>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
-              <v-row>
-                <v-col v-for="row in clinicalRows" :key="row.key" cols="12" md="6">
-                  <div class="field-label">{{ row.label }}</div>
-                  <div class="field-value whitespace-pre-line">{{ row.value || EMPTY }}</div>
-                </v-col>
-              </v-row>
-              <div class="d-flex justify-start mt-2">
-                <v-btn variant="text" rounded="lg" size="small" class="text-none" :prepend-icon="mdiHistory"
-                  @click="openHistory('clinical')">
-                  Historique
-                </v-btn>
+              <template v-if="hasClinicalData">
+                <v-row>
+                  <v-col v-for="row in clinicalRows" :key="row.key" cols="12" md="6">
+                    <div class="field-label">{{ row.label }}</div>
+                    <div class="field-value whitespace-pre-line">{{ row.value || EMPTY }}</div>
+                  </v-col>
+                </v-row>
+                <div class="d-flex justify-start mt-2">
+                  <v-btn variant="text" rounded="lg" size="small" class="text-none" :prepend-icon="mdiHistory"
+                    @click="openHistory('clinical')">
+                    Historique
+                  </v-btn>
+                </div>
+              </template>
+              <div v-else class="d-flex flex-column align-center text-center pa-6 empty-state">
+                <div class="empty-state-icon mb-3">
+                  <v-icon :icon="mdiClipboardTextOutline" size="32" />
+                </div>
+                <div class="text-title-medium font-weight-bold mb-1">Aucune donnée clinique</div>
+                <div class="text-body-small text-medium-emphasis">
+                  Vos informations médicales apparaîtront ici une fois renseignées.
+                </div>
               </div>
             </v-expansion-panel-text>
           </v-expansion-panel>

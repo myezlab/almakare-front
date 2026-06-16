@@ -153,6 +153,30 @@ export const PATIENT_FIELDS = [
     complete: (item) => item.iah != null
   },
   {
+    key: 'bloodPressure',
+    type: 'text',
+    label: 'Pression artérielle',
+    displayLabel: 'Pression artérielle',
+    group: 'Données cliniques',
+    cols: 12,
+    md: 6,
+    clinical: true,
+    rules: [requiredRule],
+    complete: (item) => !!item.bloodPressure
+  },
+  {
+    key: 'oxygenSaturation',
+    type: 'text',
+    label: 'Saturation en oxygène',
+    displayLabel: 'Saturation en oxygène',
+    group: 'Données cliniques',
+    cols: 12,
+    md: 6,
+    clinical: true,
+    rules: [requiredRule],
+    complete: (item) => !!item.oxygenSaturation
+  },
+  {
     key: 'sleepLatency',
     type: 'options',
     label: "Votre vitesse d'endormissement",
@@ -221,6 +245,9 @@ export const PATIENT_FIELDS = [
     displayLabel: 'Traitements en cours',
     group: G1,
     detailLabel: 'Précisez vos traitements en cours',
+    // General (administrative/descriptive) info, not sleep/clinical state: shown
+    // and edited in the "Données générales" panel, historised as general.
+    clinical: false,
   }),
   ...yesNoPrecise({
     key: 'hasFamilyHistory',
@@ -236,7 +263,8 @@ export const PATIENT_FIELDS = [
     displayLabel: 'Situation maritale',
     group: G1,
     options: [{ title: 'En couple', value: 'enCouple' }, { title: 'Célibataire', value: 'celibataire' }],
-    clinical: true,
+    // General (administrative/descriptive) info: lives in the "Données
+    // générales" panel, not "Données cliniques".
     rules: [answerRule],
     complete: (item) => item.maritalStatus != null,
   },
@@ -455,10 +483,15 @@ export function formatPatientValue(field, item = {}) {
   return String(value)
 }
 
-// Persistent clinical fields (the primary, non-conditional ones), in catalog
-// order — the single source for both the "Données cliniques" panel display and
-// the clinical history snapshot.
-export const CLINICAL_FIELDS = PATIENT_FIELDS.filter((f) => f.clinical && f.complete)
+// Persistent clinical fields surfaced in the "Données cliniques" panel, in
+// display order — the single source for both the panel display and the clinical
+// history snapshot. Only these vitals are mirrored here; the pré-questionnaire's
+// clinical answers are intentionally not shown in "Mon dossier".
+const CLINICAL_DISPLAY_KEYS = ['bloodPressure', 'oxygenSaturation', 'iah']
+
+export const CLINICAL_FIELDS = CLINICAL_DISPLAY_KEYS
+  .map((key) => PATIENT_FIELDS_BY_KEY[key])
+  .filter(Boolean)
 
 // [{ label, value }] rows describing the patient's clinical data.
 export function clinicalDisplayRows(item = {}) {

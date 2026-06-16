@@ -13,6 +13,7 @@ import { PROFILE_HISTORY_SEED } from "@/data/profileHistory"
 import { useSelfStore } from "@/stores/self"
 
 const GENDER_LABELS = { male: 'Homme', female: 'Femme', other: 'Autre' }
+const MARITAL_LABELS = { enCouple: 'En couple', celibataire: 'Célibataire' }
 
 // Format a 15-digit NIR into the spaced display form. Returns null when empty,
 // and the raw input untouched when it isn't a full 15-digit number.
@@ -38,6 +39,8 @@ export function generalSnapshot(u = {}) {
     { label: 'Adresse', value: address },
     { label: 'Régime alimentaire', value: u.hasDietaryRestrictions === false ? 'Aucun' : (u.dietaryRestrictions || '') },
     { label: 'Antécédents médicaux', value: u.hasMedicalHistory === false ? 'Aucun' : (u.medicalHistory || '') },
+    { label: 'Traitements en cours', value: u.hasCurrentTreatments === false ? 'Aucun' : (u.hasCurrentTreatmentsDetails || '') },
+    { label: 'Situation maritale', value: MARITAL_LABELS[u.maritalStatus] || '' },
     { label: 'Numéro de sécurité sociale', value: formatNir(u.carteVitaleNir) || '' },
     { label: "Date d'émission carte vitale", value: u.carteVitaleIssueDate || '' },
   ]

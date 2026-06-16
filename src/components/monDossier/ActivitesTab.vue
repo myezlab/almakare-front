@@ -151,10 +151,12 @@ const sections = computed(() => {
 //   `requestedDocuments` — document keys (see src/data/documents.js), one card each.
 
 // Requested fields that drive completion (the primary, non-conditional ones).
+// The Pré-questionnaire is patient-facing and no longer collects clinical
+// measurements, so clinical fields are excluded from its completion as well.
 function requestedPatientFields(activity) {
   return (activity?.requestedFields || [])
     .map((k) => PATIENT_FIELDS_BY_KEY[k])
-    .filter((f) => f && f.complete)
+    .filter((f) => f && f.complete && f.group !== 'Données cliniques')
 }
 
 // Every field requested for this activity OR already filled by the patient,
@@ -171,9 +173,21 @@ function patientDataFields(activity) {
       (f) => !excluded.has(f.key) && f.complete && (requestedKeySet.has(f.key) || f.complete(item))
     ).map((f) => f.key)
   )
-  return PATIENT_FIELDS.filter(
-    (f) => includedKeys.has(f.key) || (f.parentKey && includedKeys.has(f.parentKey))
+  // The Pré-questionnaire is patient-facing: drop the clinical-measurement
+  // section (filled by the practitioner) entirely.
+  const visible = PATIENT_FIELDS.filter(
+    (f) =>
+      (includedKeys.has(f.key) || (f.parentKey && includedKeys.has(f.parentKey))) &&
+      f.group !== 'Données cliniques'
   )
+  // Section order: keep the questionnaire sections in catalog order and push
+  // "Données générales" to the end. A stable sort by group rank keeps the field
+  // order within each section intact.
+  const rankOf = (f) => (f.group === 'Données générales' ? 1 : 0)
+  return visible
+    .map((f, i) => [f, i])
+    .sort((a, b) => rankOf(a[0]) - rankOf(b[0]) || a[1] - b[1])
+    .map(([f]) => f)
 }
 
 // Preparation cards for a single activity: the aggregate "Données patient" card
@@ -188,6 +202,7 @@ function buildPreparationTasks(activity) {
     tasks.push({
       key: 'slotSelection',
       title: 'Sélectionner un créneau',
+      completedTitle: 'Créneau sélectionné',
       icon: mdiCalendarClockOutline,
       todo: "Choisissez l'établissement du sommeil et un créneau pour votre examen.",
       completed: !!slotBookings.value[activity.id],
@@ -796,7 +811,7 @@ function openRapport(activity) {
                     <template #append>
                       <v-icon :icon="mdiCheck" color="success" size="18" class="ml-1" />
                     </template>
-                    {{ task.title }}
+                    {{ task.completedTitle || task.title }}
                   </v-chip>
                 </div>
 

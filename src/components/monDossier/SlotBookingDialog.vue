@@ -15,7 +15,6 @@ import {
   mdiChevronDown,
   mdiChevronLeft,
   mdiChevronRight,
-  mdiClose,
   mdiMapMarkerOutline
 } from "@mdi/js"
 import { computed, ref, watch } from "vue"
@@ -131,9 +130,6 @@ function confirm() {
         <v-card-subtitle class="text-body-medium text-medium-emphasis text-wrap mt-1">
           Choisissez l'établissement du sommeil puis un créneau disponible.
         </v-card-subtitle>
-        <template #append>
-          <v-btn :icon="mdiClose" variant="text" density="comfortable" aria-label="Fermer" @click="close" />
-        </template>
       </v-card-item>
 
       <v-divider />
